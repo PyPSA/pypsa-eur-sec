@@ -75,6 +75,10 @@ def build_eurostat(year):
            2017: "data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx"}
 
     #2016 includes BA, 2017 doesn't
+    
+    # for testing
+#    fns = {2016: "/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/eurostat-energy_balances-june_2016_edition/{year}-Energy-Balances-June2016edition.xlsx",
+#           2017: "/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx"}
 
     #with sheet as None, an ordered dictionary of all sheets is returned
     dfs = pd.read_excel(fns[stats_from_year].format(year=year),
@@ -93,7 +97,9 @@ def build_eurostat(year):
 def build_swiss(year):
 
     fn = "data/switzerland-sfoe/switzerland-new_format.csv"
-
+    
+    # for testing
+#    fn = "/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/switzerland-sfoe/switzerland-new_format.csv"
     #convert PJ/a to TWh/a
     return (pd.read_csv(fn,index_col=list(range(2)))/3.6).loc["CH",str(year)]
 
@@ -102,7 +108,10 @@ def build_swiss(year):
 
 def build_idees(year):
     base_dir = "data/jrc-idees-2015"
-
+    
+    # for testing
+#    base_dir="/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/jrc-idees-2015"
+    
     totals = pd.DataFrame()
 
     #convert ktoe/a to TWh/a
@@ -379,11 +388,13 @@ def build_energy_totals():
     clean_df.loc[missing,"total aviation freight"] = clean_df.loc[missing,["total domestic aviation freight","total international aviation freight"]].sum(axis=1)
 
 
-    #fix missing data for BA (services and road energy data)
-    missing = (clean_df.loc["BA"] == 0.)
-
-    #add back in proportional to RS with ratio of total residential demand
-    clean_df.loc["BA",missing] = clean_df.loc["BA","total residential"]/clean_df.loc["RS","total residential"]*clean_df.loc["RS",missing]
+    # check if BA is in the idees
+    if "BA" in clean_df.index:
+        #fix missing data for BA (services and road energy data)
+        missing = (clean_df.loc["BA"] == 0.)
+    
+        #add back in proportional to RS with ratio of total residential demand
+        clean_df.loc["BA",missing] = clean_df.loc["BA","total residential"]/clean_df.loc["RS","total residential"]*clean_df.loc["RS",missing]
 
     clean_df.to_csv(snakemake.output.energy_name)
 
@@ -396,6 +407,8 @@ def build_eea_co2():
     #https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-14
     #downloaded 190222 (modified by EEA last on 181130)
     fn = "data/eea/UNFCCC_v21.csv"
+    # for testing
+#    fn =  '/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/eea/UNFCCC_v21.csv'
     df = pd.read_csv(fn, encoding="latin-1")
     df.loc[df["Year"] == "1985-1987","Year"] = 1986
     df["Year"] = df["Year"].astype(int)
@@ -532,7 +545,7 @@ def build_transport_data():
 
     return transport_data
 
-
+#%%
 
 if __name__ == "__main__":
 
@@ -545,11 +558,20 @@ if __name__ == "__main__":
         snakemake.output['energy_name'] = "data/energy_totals.csv"
         snakemake.output['co2_name'] = "data/co2_totals.csv"
         snakemake.output['transport_name'] = "data/transport_data.csv"
+        
+        # for testing
+        pre_path = "/home/ws/bw0928/Dokumente/pypsa-eur-sec/"
+        snakemake.output['energy_name'] = pre_path + "data/energy_totals.csv"
+        snakemake.output['co2_name'] = pre_path + "data/co2_totals.csv"
+        snakemake.output['transport_name'] = pre_path + "data/transport_data.csv"
+        
 
         snakemake.input = Dict()
         snakemake.input['nuts3_shapes'] = 'resources/nuts3_shapes.geojson'
 
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index('index')
+    # for testing
+#    nuts3 = gpd.read_file("/home/ws/bw0928/Dokumente/pypsa-eur/resources/nuts3_shapes.geojson").set_index('index')
     population = nuts3['pop'].groupby(nuts3.country).sum()
 
     year = 2011
