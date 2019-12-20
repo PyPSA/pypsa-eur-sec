@@ -202,7 +202,7 @@ rule prepare_sector_network:
         solar_thermal_rural="resources/solar_thermal_rural_{network}_s{simpl}_{clusters}.nc"
     output: config['results_dir']  +  config['run'] + '/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}.nc'
     threads: 1
-    resources: mem=1000
+    resources: mem=2000
     benchmark: "benchmarks/prepare_network/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}"
     script: "scripts/prepare_sector_network.py"
 
