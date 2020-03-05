@@ -172,14 +172,14 @@ rule build_industrial_demand:
 
 rule prepare_sector_network:
     input:
-        network=pypsaeur('networks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}.nc'),
+        network=pypsaeur('networks/{network}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
         energy_totals_name='data/energy_totals.csv',
         co2_totals_name='data/co2_totals.csv',
         transport_name='data/transport_data.csv',
         biomass_potentials='data/biomass_potentials.csv',
         timezone_mappings='data/timezone_mappings.csv',
         heat_profile="data/heat_load_profile_BDEW.csv",
-        costs="data/costs.csv",
+        costs="data/costs_old.csv",
         clustered_pop_layout="resources/pop_layout_{network}_s{simpl}_{clusters}.csv",
         industrial_demand="resources/industrial_demand_{network}_s{simpl}_{clusters}.csv",
         heat_demand_urban="resources/heat_demand_urban_{network}_s{simpl}_{clusters}.nc",

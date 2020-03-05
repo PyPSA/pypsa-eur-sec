@@ -335,8 +335,8 @@ def prepare_data(network):
 
     ## Get overall demand curve for all vehicles
 
-    dir_name = "data/emobility/"
-    traffic = pd.read_csv(os.path.join(dir_name,"KFZ__count"),skiprows=2)["count"]
+    dir_name = "/data/emobility/"
+    traffic = pd.read_csv("/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/emobility/KFZ__count",skiprows=2)["count"]
 
     #Generate profiles
     transport_shape = generate_periodic_profiles(dt_index=network.snapshots.tz_localize("UTC"),
@@ -390,7 +390,7 @@ def prepare_data(network):
 
     ## derive plugged-in availability for PKW's (cars)
 
-    traffic = pd.read_csv(os.path.join(dir_name,"Pkw__count"),skiprows=2)["count"]
+    traffic = pd.read_csv("/home/ws/bw0928/Dokumente/pypsa-eur-sec/data/emobility/Pkw__count",skiprows=2)["count"]
 
     avail_max = 0.95
 
@@ -1401,7 +1401,7 @@ def remove_h2_network(n):
            capital_cost=h2_capital_cost)
 
 
-
+#%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
@@ -1413,7 +1413,7 @@ if __name__ == "__main__":
         )
         import yaml
         with open('config.yaml') as f:
-            snakemake.config = yaml.load(f)
+            snakemake.config = yaml.safe_load(f)
 
 
     logging.basicConfig(level=snakemake.config['logging_level'])
