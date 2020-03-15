@@ -119,3 +119,7 @@ To download and extract it on the command line:
 projects/pypsa-eur-sec/data % wget "https://nworbmot.org/pypsa-eur-sec-data-bundle-190719.tar.gz"
 projects/pypsa-eur-sec/data % tar xvzf pypsa-eur-sec-data-bundle-190719.tar.gz
 ```
+
+## Workflow
+
+![workflow diagram](graphics/workflow.png)
