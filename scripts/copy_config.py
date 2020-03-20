@@ -7,4 +7,9 @@ files = ["config.yaml",
          "scripts/prepare_sector_network.py"]
 
 for f in files:
-    copy(f,snakemake.config['summary_dir'] + '/' + snakemake.config['run'] + '/configs/')
+    copy(
+        f,
+        snakemake.config['summary_dir'] +
+        '/' +
+        snakemake.config['run'] +
+        '/configs/')
