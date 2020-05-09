@@ -22,7 +22,7 @@ if __name__ == "__main__":
     url = "https://nworbmot.org/pypsa-eur-sec-data-bundle-190719.tar.gz"
 
     tarball_fn = Path("sector-bundle.tar.xz")
-    to_fn = Path("data/bundle")
+    to_fn = Path("data")
 
     logger.info(f"Downloading databundle from '{url}'.")
     progress_retrieve(url, tarball_fn)
