@@ -116,10 +116,19 @@ and heating profiles.
 
 The data bundle is about 640 MB.
 
-To download and extract it on the command line:
+The rule `retrieve_sector_databundle` can automatically download and
+extract it with the following setting in `config.yaml`:
+
+```yaml
+enable:
+  retrieve_sector_databundle: true
+```
+
+Alternatively, run:
+
 ```shell
-projects/pypsa-eur-sec/data % wget "https://nworbmot.org/pypsa-eur-sec-data-bundle-190719.tar.gz"
-projects/pypsa-eur-sec/data % tar xvzf pypsa-eur-sec-data-bundle-190719.tar.gz
+projects/pypsa-eur-sec/data/bundle % wget "https://nworbmot.org/pypsa-eur-sec-data-bundle-190719.tar.gz"
+projects/pypsa-eur-sec/data/bundle % tar xvzf pypsa-eur-sec-data-bundle-190719.tar.gz
 ```
 
 
