@@ -3,7 +3,7 @@ from six import iteritems
 
 import sys
 
-sys.path.append("../pypsa-eur/scripts")
+sys.path.append("pypsa-eur/scripts")
 
 import pandas as pd
 
