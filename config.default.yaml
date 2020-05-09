@@ -28,6 +28,9 @@ snapshots:
   end: "2014-01-01"
   closed: 'left' # end is not inclusive
 
+enable:
+  retrieve_sector_databundle: true
+
 atlite:
   cutout_dir: '../pypsa-eur/cutouts'
   cutout_name: "europe-2013-era5"

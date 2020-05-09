@@ -36,10 +36,17 @@ rule prepare_sector_networks:
                  **config['scenario'])
 
 
+if config['enable'].get('retrieve_sector_databundle', True):
+    rule retrieve_sector_databundle:
+        output:  directory("data/bundle")
+        log: "logs/retrieve_sector_databundle.log"
+        script: 'scripts/retrieve_sector_databundle.py'
+
+
 rule build_population_layouts:
     input:
         nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
-        urban_percent="data/urban_percent.csv"
+        urban_percent="data/bundle/urban_percent.csv"
     output:
         pop_layout_total="resources/pop_layout_total.nc",
         pop_layout_urban="resources/pop_layout_urban.nc",
@@ -122,18 +129,18 @@ rule build_energy_totals:
     input:
         nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
     output:
-        energy_name='data/energy_totals.csv',
-	co2_name='data/co2_totals.csv',
-	transport_name='data/transport_data.csv'
+        energy_name='data/bundle/energy_totals.csv',
+	co2_name='data/bundle/co2_totals.csv',
+	transport_name='data/bundle/transport_data.csv'
     threads: 1
     resources: mem_mb=10000
     script: 'scripts/build_energy_totals.py'
 
 rule build_biomass_potentials:
     input:
-        jrc_potentials="data/biomass/JRC Biomass Potentials.xlsx"
+        jrc_potentials="data/bundle/biomass/JRC Biomass Potentials.xlsx"
     output:
-        biomass_potentials='data/biomass_potentials.csv'
+        biomass_potentials='data/bundle/biomass_potentials.csv'
     threads: 1
     resources: mem_mb=1000
     script: 'scripts/build_biomass_potentials.py'
@@ -173,11 +180,11 @@ rule build_industrial_demand:
 rule prepare_sector_network:
     input:
         network=pypsaeur('networks/{network}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
-        energy_totals_name='data/energy_totals.csv',
-        co2_totals_name='data/co2_totals.csv',
-        transport_name='data/transport_data.csv',
-        biomass_potentials='data/biomass_potentials.csv',
-        timezone_mappings='data/timezone_mappings.csv',
+        energy_totals_name='data/bundle/energy_totals.csv',
+        co2_totals_name='data/bundle/co2_totals.csv',
+        transport_name='data/bundle/transport_data.csv',
+        biomass_potentials='data/bundle/biomass_potentials.csv',
+        timezone_mappings='data/bundle/timezone_mappings.csv',
         heat_profile="data/heat_load_profile_BDEW.csv",
         costs="data/costs.csv",
         clustered_pop_layout="resources/pop_layout_{network}_s{simpl}_{clusters}.csv",
@@ -253,7 +260,7 @@ rule make_summary:
                **config['scenario']),
         plots=expand(config['results_dir'] + config['run'] + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all.pdf",
                **config['scenario'])
-        #heat_demand_name='data/heating/daily_heat_demand.h5'
+        #heat_demand_name='data/bundle/heating/daily_heat_demand.h5'
     output:
         nodal_costs=config['summary_dir'] + '/' + config['run'] + '/csvs/nodal_costs.csv',
         nodal_capacities=config['summary_dir'] + '/' + config['run'] + '/csvs/nodal_capacities.csv',
