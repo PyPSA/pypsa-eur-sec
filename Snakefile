@@ -1,3 +1,8 @@
+from os.path import exists
+from shutil import copyfile
+
+if not exists("config.yaml"):
+    copyfile("config.default.yaml", "config.yaml")
 
 configfile: "config.yaml"
 
