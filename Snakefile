@@ -12,9 +12,9 @@ wildcard_constraints:
 
 
 subworkflow pypsaeur:
-    workdir: "../pypsa-eur"
-    snakefile: "../pypsa-eur/Snakefile"
-    configfile: "../pypsa-eur/config.yaml"
+    workdir: "pypsa-eur"
+    snakefile: "pypsa-eur/Snakefile"
+    configfile: "pypsa-eur/config.yaml"
 
 rule all:
      input: config['summary_dir'] + '/' + config['run'] + '/graphs/costs.pdf'

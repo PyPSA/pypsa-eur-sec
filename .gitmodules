@@ -1,0 +1,3 @@
+[submodule "pypsa-eur"]
+	path = pypsa-eur
+	url = https://github.com/pypsa/pypsa-eur
