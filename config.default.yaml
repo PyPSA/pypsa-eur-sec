@@ -30,6 +30,8 @@ snapshots:
 
 enable:
   retrieve_sector_databundle: true
+  build_energy_totals: false
+  build_biomass_potentials: false
 
 atlite:
   cutout_dir: '../pypsa-eur/cutouts'

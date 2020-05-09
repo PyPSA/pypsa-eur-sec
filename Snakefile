@@ -39,6 +39,12 @@ datafiles = ["urban_percent.csv",
              "biomass/JRC Biomass Potentials.xlsx",
              "timezone_mappings.csv"]
 
+if not config['enable'].get('build_energy_totals', False):
+    datafiles.extend(['energy_totals.csv', 'co2_totals.csv', 'transport_data.csv'])
+
+if not config['enable'].get("build_biomass_potentials", False):
+    datafiles.append("biomass_potentials.csv")
+
 if config['enable'].get('retrieve_sector_databundle', True):
     rule retrieve_sector_databundle:
         output:  expand('data/{file}', file=datafiles)
@@ -127,26 +133,28 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+if config['enable'].get('build_energy_totals', False):
+    rule build_energy_totals:
+        input:
+            nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
+        output:
+            energy_name='data/energy_totals.csv',
+            co2_name='data/co2_totals.csv',
+            transport_name='data/transport_data.csv'
+        threads: 1
+        resources: mem_mb=10000
+        script: 'scripts/build_energy_totals.py'
 
-rule build_energy_totals:
-    input:
-        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
-    output:
-        energy_name='data/energy_totals.csv',
-        co2_name='data/co2_totals.csv',
-        transport_name='data/transport_data.csv'
-    threads: 1
-    resources: mem_mb=10000
-    script: 'scripts/build_energy_totals.py'
 
-rule build_biomass_potentials:
-    input:
-        jrc_potentials="data/biomass/JRC Biomass Potentials.xlsx"
-    output:
-        biomass_potentials='data/biomass_potentials.csv'
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_biomass_potentials.py'
+if config['enable'].get('build_biomass_potentials', False):
+    rule build_biomass_potentials:
+        input:
+            jrc_potentials="data/biomass/JRC Biomass Potentials.xlsx"
+        output:
+            biomass_potentials='data/biomass_potentials.csv'
+        threads: 1
+        resources: mem_mb=1000
+        script: 'scripts/build_biomass_potentials.py'
 
 
 rule build_industry_sector_ratios:
