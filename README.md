@@ -86,17 +86,15 @@ Liquid hydrocarbons: copper-plated since transport costs are low.
 
 # Installation
 
-First install [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur) and all
-its dependencies. Clone the repository:
+Clone the PyPSA-Eur-Sec repository with:
 ```shell
-projects % git clone git@github.com:PyPSA/pypsa-eur.git
+projects % git clone --recurse-submodules git@github.com:PyPSA/pypsa-eur-sec.git
 ```
-then download and unpack all the data files.
 
-Create a parallel directory for PyPSA-Eur-Sec with:
-```shell
-projects % git clone git@github.com:nworbmot/pypsa-eur-sec.git
-```
+This also clones [PyPSA-Eur](https://github.com/PyPSA/pypsa-eur)
+as a submodule.
+[Install all its dependencies](https://pypsa-eur.readthedocs.io/en/latest/installation.html).
+
 
 ## Package requirements
 
