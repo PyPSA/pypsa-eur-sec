@@ -128,11 +128,15 @@ rule build_solar_thermal_profiles:
 
 rule build_energy_totals:
     input:
-        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
+        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
+	district_heat_share='data/district_heat_share.csv',
+        idee_dir='data/jrc-idees-2015',
+        eea_co2="data/eea/UNFCCC_v21.csv",
+        swiss="data/switzerland-sfoe/switzerland-new_format.csv"
     output:
         energy_name='data/energy_totals.csv',
-	co2_name='data/co2_totals.csv',
-	transport_name='data/transport_data.csv'
+    	co2_name='data/co2_totals.csv',
+    	transport_name='data/transport_data.csv'
     threads: 1
     resources: mem_mb=10000
     script: 'scripts/build_energy_totals.py'
@@ -211,6 +215,7 @@ rule prepare_sector_network:
         solar_thermal_urban="resources/solar_thermal_urban_{network}_s{simpl}_{clusters}.nc",
 	PAC_demand="data/PAC_assumptions/demand/",
 	PAC_efficiencies="data/PAC_assumptions/supply/efficiencies.csv",
+        PAC_dh_share="data/PAC_assumptions/demand/district_heating_share.csv",
         solar_thermal_rural="resources/solar_thermal_rural_{network}_s{simpl}_{clusters}.nc"
     output: config['results_dir']  +  config['run'] + '/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{co2_budget_name}_{planning_horizons}.nc'
     threads: 1
