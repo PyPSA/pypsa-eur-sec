@@ -1791,6 +1791,11 @@ def get_PAC_demand():
     for sector in sectors:
         PAC_demand[sector] = pd.read_csv(snakemake.input.PAC_demand + "{}.csv".format(sector),
                                          index_col=0)
+
+    # check for fossils (oil, coal, gas)
+    for fossil in ['coal', 'fossil oil products', 'fossil gas']:
+        options[fossil] = pd.concat(PAC_demand, axis=1).loc[fossil].xs(year, level=1).sum() != 0
+
     PAC_demand["transport_share"] = pd.read_csv(snakemake.input.PAC_demand + "transport_share.csv",
                                                 index_col=0)
 
@@ -1994,5 +1999,10 @@ if __name__ == "__main__":
     if not options["ccs"]:
         print("no CCS")
         n.links = n.links[~n.links.carrier.str.contains("CCS")]
+
+    for fossil, carrier in zip(['coal', 'fossil oil products', 'fossil gas'], ["coal", "oil", "gas"]):
+        if not options[fossil]:
+            print("no ", fossil)
+            n.generators = n.generators[n.generators.carrier!="gas"]
 
     n.export_to_netcdf(snakemake.output[0])
