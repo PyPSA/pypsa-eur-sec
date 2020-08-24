@@ -1717,7 +1717,8 @@ def scale_to_PAC_demand(n):
                                    sector + " space"]].sum().sum() / 1e6
         pac_heat = PAC_demand[sector].sum() - PAC_demand[sector].loc["electricity"]
         scale_factor = pac_heat[year] / pypsa_heat
-        heat_demand[[sector + " water", sector + " space"]] *= scale_factor
+        heat_demand[sector + " water"] *= scale_factor
+        heat_demand[sector + " space"] *= scale_factor
 #%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
