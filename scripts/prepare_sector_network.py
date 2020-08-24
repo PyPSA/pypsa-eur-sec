@@ -911,14 +911,24 @@ def add_transport(network):
                  suffix=" EV battery",
                  carrier="Li ion")
 
+    pypsa_transport = (transport[nodes]+shift_df(transport[nodes],1)+shift_df(transport[nodes],2))/3.
+
+    # convert TWh to MWh
+    pac_transport =  (PAC_demand["transport"].loc["electricity", year] *
+                PAC_demand["transport_share"].loc[['Motorbikes',
+                                                   'Cars', 'Vans', 'Buses',  'Trucks (<16t)',
+                                                   'Trucks (>16t)',
+                                                   'Passenger rail', 'Freight rail'],
+                                                  'Direct electrification (EVs)'].sum() * 1e6)
+    transport_elec = pac_transport/pypsa_transport.sum().sum() * pypsa_transport
     network.madd("Load",
                  nodes,
                  suffix=" transport",
                  bus=nodes + " EV battery",
                  carrier="transport",
-                 p_set=(1-options['transport_fuel_cell_share'])*(transport[nodes]+shift_df(transport[nodes],1)+shift_df(transport[nodes],2))/3.)
+                 p_set=transport_elec)
 
-    p_nom = nodal_transport_data["number cars"]*0.011*(1-options['transport_fuel_cell_share'])  #3-phase charger with 11 kW * x% of time grid-connected
+    p_nom = nodal_transport_data["number cars"]*0.011*(pac_transport/PAC_demand["transport"][year].sum())  #3-phase charger with 11 kW * x% of time grid-connected
 
     network.madd("Link",
                  nodes,
@@ -957,19 +967,64 @@ def add_transport(network):
                      bus=nodes + " EV battery",
                      carrier="battery storage",
                      e_cyclic=True,
-                     e_nom=nodal_transport_data["number cars"]*0.05*options["bev_availability"]*(1-options['transport_fuel_cell_share']), #50 kWh battery http://www.zeit.de/mobilitaet/2014-10/auto-fahrzeug-bestand
+                     e_nom=nodal_transport_data["number cars"]*0.05*options["bev_availability"]*(PAC_demand["transport"].loc["electricity", year]/PAC_demand["transport"][year].sum()), #50 kWh battery http://www.zeit.de/mobilitaet/2014-10/auto-fahrzeug-bestand
                      e_max_pu=1,
                      e_min_pu=dsm_profile[nodes])
 
+    # add H2 demand for trucks
+    pac_h2= (PAC_demand["transport"].loc["renewable hydrogen", year] *1e6
+             *  PAC_demand["transport_share"].loc[['Trucks (<16t)', 'Trucks (>16t)'], "Hydrogen"].sum())
+    transport_h2 = pac_h2/pypsa_transport.sum().sum() * pypsa_transport
+    network.madd("Load",
+                 nodes,
+                 suffix=" transport fuel cell",
+                 bus=nodes + " H2",
+                 carrier="transport fuel cell",
+                 p_set=transport_h2)
 
-    if options['transport_fuel_cell_share'] != 0:
+    # oil for transport -------------------------------------------
+    network.madd("Bus",
+                 ["oil for transport"],
+                 location="EU",
+                 carrier="oil for transport")
 
-        network.madd("Load",
-                     nodes,
-                     suffix=" transport fuel cell",
-                     bus=nodes + " H2",
-                     carrier="transport fuel cell",
-                     p_set=options['transport_fuel_cell_share']/costs.at["fuel cell","efficiency"]*transport[nodes])
+    network.madd("Load",
+                 ["oil for transport"],
+                 bus="oil for transport",
+                 carrier="oil for transport",
+                 p_set=PAC_demand["transport"].loc[["fossil oil products"], year].sum() * 1e6 /8760.)
+
+    network.madd("Link",
+                 ["oil for transport"],
+                 bus0="EU oil",
+                 bus1="oil for transport",
+                 bus2="co2 atmosphere",
+                 carrier="oil for transport",
+                 p_nom_extendable=True,
+                 efficiency=1.,
+                 efficiency2=costs.at['oil','CO2 intensity'])
+
+    # fossil gas for transport -------------------------------------------
+    network.madd("Bus",
+                 ["gas for transport"],
+                 location="EU",
+                 carrier="gas for transport")
+
+    network.madd("Load",
+                 ["gas for transport"],
+                 bus="gas for transport",
+                 carrier="gas for transport",
+                 p_set=PAC_demand["industry"].loc[["fossil gas"], year].sum() * 1e6 /8760.)
+
+    network.madd("Link",
+                 ["gas for transport"],
+                 bus0="EU gas",
+                 bus1="gas for transport",
+                 bus2="co2 atmosphere",
+                 carrier="gas for transport",
+                 p_nom_extendable=True,
+                 efficiency=1.,
+                 efficiency2=costs.at['gas','CO2 intensity'])
 
 
 
@@ -1513,6 +1568,16 @@ def add_industry(network):
                   bus=nodes + " H2",
                   carrier="H2 for shipping",
                   p_set=shipping_pac)
+
+    # electricity for shipping
+    shipping_pac_elec = (PAC_demand["transport"].loc["electricity", year] *
+                         PAC_demand["transport_share"].loc["Shipping", 'Direct electrification (EVs)'] * 1e6 / 8760.)
+    network.madd("Load",
+                  nodes,
+                  suffix=" electricity for shipping",
+                  bus=nodes,
+                  carrier="electricity for shipping",
+                  p_set=weights * shipping_pac_elec)
 
     network.madd("Bus",
                  ["Fischer-Tropsch"],
