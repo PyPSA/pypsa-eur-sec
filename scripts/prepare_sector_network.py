@@ -1089,6 +1089,7 @@ def add_heat(network):
 
         network.madd("Bus",
                      nodes[name] + " " + name + " heat",
+                     location=nodes[name],
                      carrier=name + " heat")
 
         #  Add heat load
@@ -2009,7 +2010,7 @@ if __name__ == "__main__":
                        biomass_potentials='pypsa-eur-sec-PAC/data/biomass_potentials.csv',
                        PAC_demand="pypsa-eur-sec-PAC/data/PAC_assumptions/demand/",
                        PAC_efficiencies="pypsa-eur-sec-PAC/data/PAC_assumptions/supply/efficiencies.csv",
-                       PAC_dh_share="data/PAC_assumptions/demand/district_heating_share.csv",
+                       PAC_dh_share="pypsa-eur-sec-PAC/data/PAC_assumptions/demand/district_heating_share.csv",
                        industrial_demand='pypsa-eur-sec-PAC/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
             output=['pypsa-eur-sec-PAC/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc']
         )
@@ -2035,6 +2036,7 @@ if __name__ == "__main__":
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout,index_col=0)
     pop_layout["ct"] = pop_layout.index.str[:2]
     ct_total = pop_layout.total.groupby(pop_layout["ct"]).sum()
+    ct_urban = pop_layout.urban.groupby(pop_layout["ct"]).sum()
     pop_layout["ct_total"] = pop_layout["ct"].map(ct_total.get)
     pop_layout["fraction"] = pop_layout["total"]/pop_layout["ct_total"]
     pop_w = pop_layout["total"]/pop_layout["total"].sum()

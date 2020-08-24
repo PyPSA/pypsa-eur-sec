@@ -410,17 +410,18 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake
         snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='39', lv='1.0',
-                           sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
-                           co2_budget_name='b30b3',
+            wildcards=dict(network='elec', simpl='', clusters='38', lv='1.0',
+                           sector_opts='Co2L0-120H-T-H-B-I-solar3-dist1',
+                           co2_budget_name='PAC',
                            planning_horizons='2020'),
-            input=dict(network='pypsa-eur-sec/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc',
+            input=dict(network='pypsa-eur-sec-PAC/results/PAC_myopic/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc',
                        powerplants='pypsa-eur/resources/powerplants.csv',
                        clustermaps='pypsa-eur/resources/clustermaps_{network}_s{simpl}_{clusters}.h5',
-                       costs='pypsa-eur-sec/data/costs/costs_{planning_horizons}.csv',
-                       cop_air_total="pypsa-eur-sec/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc",
-                       cop_soil_total="pypsa-eur-sec/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc"),
-            output=['pypsa-eur-sec/results/test/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc'],
+                       clustered_pop_layout="pypsa-eur-sec-PAC/resources/pop_layout_{network}_s{simpl}_{clusters}.csv",
+                       costs='technology-data/outputs/costs_{planning_horizons}.csv',
+                       cop_air_total="pypsa-eur-sec-PAC/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc",
+                       cop_soil_total="pypsa-eur-sec-PAC/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc"),
+            output=['pypsa-eur-sec-PAC/results/test/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc'],
         )
         import yaml
         with open('config.yaml') as f:
