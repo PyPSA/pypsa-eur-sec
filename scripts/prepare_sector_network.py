@@ -1827,4 +1827,9 @@ if __name__ == "__main__":
     if snakemake.config["sector"]['electricity_grid_connection']:
         add_electricity_grid_connection(n)
 
+    # remove CCS
+    if not options["ccs"]:
+        print("no CCS")
+        n.links = n.links[~n.links.carrier.str.contains("CCS")]
+
     n.export_to_netcdf(snakemake.output[0])

@@ -91,6 +91,7 @@ sector:
   'dac' : True
   'co2_vent' : True
   'SMR' : True
+  'ccs': False
   'ccs_fraction' : 0.9
   'hydrogen_underground_storage' : True
   'use_fischer_tropsch_waste_heat' : True
