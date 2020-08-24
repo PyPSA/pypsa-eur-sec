@@ -1889,6 +1889,16 @@ def scale_to_PAC_demand(n):
         scale_factor = pac_heat[year] / pypsa_heat
         heat_demand[sector + " water"] *= scale_factor
         heat_demand[sector + " space"] *= scale_factor
+
+def add_PAC_efficiencies(n):
+    """
+    update PAC efficiency assumptions for electrolysis, fuel cell + methanation
+    """
+    efficiencies = pd.read_csv(snakemake.input.PAC_efficiencies,
+                               index_col=0)
+    n.links.loc[n.links.carrier=="H2 Electrolysis", "efficiency"] = efficiencies.loc["H2 Electrolysis", year]
+    n.links.loc[n.links.carrier=="H2 Fuel Cell", "efficiency"] = efficiencies.loc["H2 Fuel Cell", year]
+    n.links.loc[n.links.carrier.isin(["helmeth", "Sabatier"]), "efficiency"]= efficiencies.loc["Methanation", year]
 #%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
@@ -1918,6 +1928,7 @@ if __name__ == "__main__":
                        co2_totals_name='pypsa-eur-sec-PAC/data/co2_totals.csv',
                        biomass_potentials='pypsa-eur-sec-PAC/data/biomass_potentials.csv',
                        PAC_demand="pypsa-eur-sec-PAC/data/PAC_assumptions/demand/",
+                       PAC_efficiencies="pypsa-eur-sec-PAC/data/PAC_assumptions/supply/efficiencies.csv",
                        industrial_demand='pypsa-eur-sec-PAC/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
             output=['pypsa-eur-sec-PAC/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc']
         )
@@ -2019,6 +2030,8 @@ if __name__ == "__main__":
         remove_h2_network(n)
 
     add_agriculture(n)
+
+    add_PAC_efficiencies(n)
 
     for o in opts:
         m = re.match(r'^\d+h$', o, re.IGNORECASE)

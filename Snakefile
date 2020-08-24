@@ -210,6 +210,7 @@ rule prepare_sector_network:
         solar_thermal_total="resources/solar_thermal_total_{network}_s{simpl}_{clusters}.nc",
         solar_thermal_urban="resources/solar_thermal_urban_{network}_s{simpl}_{clusters}.nc",
 	PAC_demand="data/PAC_assumptions/demand/",
+	PAC_efficiencies="data/PAC_assumptions/supply/efficiencies.csv",
         solar_thermal_rural="resources/solar_thermal_rural_{network}_s{simpl}_{clusters}.nc"
     output: config['results_dir']  +  config['run'] + '/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{co2_budget_name}_{planning_horizons}.nc'
     threads: 1
