@@ -1668,6 +1668,56 @@ def remove_h2_network(n):
            capital_cost=h2_capital_cost)
 
 
+def add_agriculture(n):
+    """
+    add agriculture load weighted by population
+    """
+    print("add agriculture sector with PAC assumptions")
+    # electricity as flat load
+    nodes = pop_layout.index
+    pac_agri_elec = PAC_demand["agriculture"].loc["electricity", year] * 1e6 / 8760
+    pac_agri_elec_w = pop_w * pac_agri_elec
+    n.loads_t.p_set[nodes] = n.loads_t.p_set[nodes].apply(lambda row: row + pac_agri_elec_w, axis=1)
+
+    # heat for agriculture
+    pac_agri_heat = PAC_demand["agriculture"].loc[
+            (PAC_demand["agriculture"].index.str.contains("heat")) &
+            ((~ PAC_demand["agriculture"].index.str.contains("(delivered energy)")))
+            , year].fillna(0).sum() * 1e6 / 8760
+    pac_agri_heat_w = pop_w * pac_agri_heat
+    rural_heat = n.loads.carrier=="services rural heat"
+    n.loads_t.p_set.loc[:, rural_heat] = (n.loads_t.p_set.loc[: , rural_heat]
+                                          .apply(lambda row: row+pac_agri_heat_w,
+                                                 axis=1))
+
+def get_PAC_demand():
+    PAC_demand = {}
+    sectors = ["agriculture", "services", "residential", "industry", "transport"]
+    for sector in sectors:
+        PAC_demand[sector] = pd.read_csv(snakemake.input.PAC_demand + "{}.csv".format(sector),
+                                         index_col=0)
+
+    return PAC_demand
+
+
+def scale_to_PAC_demand(n):
+    print("scale demand to PAC assumptions")
+
+    # add residential and service electricity demand
+    pypsa_elec = n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"].sum().sum()/1e6
+    pac_elec = (PAC_demand["residential"].loc["electricity", year] +
+                PAC_demand["services"].loc["electricity", year])
+    scale_factor = pac_elec / pypsa_elec
+    print("electricity scale factor: ", scale_factor)
+    n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"] *= scale_factor
+
+    # scale heat demand
+    for sector in ["residential", "services"]:
+        pypsa_heat =  heat_demand[[sector + " water",
+                                   sector + " space"]].sum().sum() / 1e6
+        pac_heat = PAC_demand[sector].sum() - PAC_demand[sector].loc["electricity"]
+        scale_factor = pac_heat[year] / pypsa_heat
+        heat_demand[[sector + " water", sector + " space"]] *= scale_factor
 #%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
@@ -1696,6 +1746,7 @@ if __name__ == "__main__":
                        temp_air_total='pypsa-eur-sec-PAC/resources/temp_air_total_{network}_s{simpl}_{clusters}.nc',
                        co2_totals_name='pypsa-eur-sec-PAC/data/co2_totals.csv',
                        biomass_potentials='pypsa-eur-sec-PAC/data/biomass_potentials.csv',
+                       PAC_demand="data/PAC_assumptions/demand/",
                        industrial_demand='pypsa-eur-sec-PAC/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
             output=['pypsa-eur-sec-PAC/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc']
         )
@@ -1723,6 +1774,7 @@ if __name__ == "__main__":
     ct_total = pop_layout.total.groupby(pop_layout["ct"]).sum()
     pop_layout["ct_total"] = pop_layout["ct"].map(ct_total.get)
     pop_layout["fraction"] = pop_layout["total"]/pop_layout["ct_total"]
+    pop_w = pop_layout["total"]/pop_layout["total"].sum()
 
     costs = prepare_costs(snakemake.input.costs,
                           snakemake.config['costs']['USD2013_to_EUR2013'],
@@ -1763,6 +1815,14 @@ if __name__ == "__main__":
 
     nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, co2_totals, nodal_transport_data = prepare_data(n)
 
+    year=snakemake.wildcards.planning_horizons[-4:]
+
+    # get PAC demand assumptions
+    PAC_demand = get_PAC_demand()
+
+    # scale electricity and heat to PAC assumptions
+    scale_to_PAC_demand(n)
+
     if "nodistrict" in opts:
         options["central"] = False
 
@@ -1786,6 +1846,8 @@ if __name__ == "__main__":
 
     if "noH2network" in opts:
         remove_h2_network(n)
+
+    add_agriculture(n)
 
     for o in opts:
         m = re.match(r'^\d+h$', o, re.IGNORECASE)
