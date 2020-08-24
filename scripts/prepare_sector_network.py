@@ -1668,45 +1668,46 @@ def remove_h2_network(n):
            capital_cost=h2_capital_cost)
 
 
-
+#%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake
         snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='37', lv='1.0',
+            wildcards=dict(network='elec', simpl='', clusters='38', lv='1.0',
                            opts='', planning_horizons='2020',
                            co2_budget_name='go',
                            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1'),
             input=dict(network='pypsa-eur/networks/{network}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
-                       timezone_mappings='pypsa-eur-sec/data/timezone_mappings.csv',
-                       co2_budget='pypsa-eur-sec/data/co2_budget.csv',
-                       clustered_pop_layout='pypsa-eur-sec/resources/pop_layout_{network}_s{simpl}_{clusters}.csv',
-                       costs='pypsa-eur-sec/data/costs/costs_{planning_horizons}.csv',
+                       timezone_mappings='pypsa-eur-sec-PAC/data/timezone_mappings.csv',
+                       co2_budget='pypsa-eur-sec-PAC/data/co2_budget.csv',
+                       clustered_pop_layout='pypsa-eur-sec-PAC/resources/pop_layout_{network}_s{simpl}_{clusters}.csv',
+                       costs='technology-data/outputs/costs_{planning_horizons}.csv',
                        profile_offwind_ac='pypsa-eur/resources/profile_offwind-ac.nc',
                        profile_offwind_dc='pypsa-eur/resources/profile_offwind-dc.nc',
                        clustermaps="pypsa-eur/resources/clustermaps_{network}_s{simpl}_{clusters}.h5",
-                       cop_air_total='pypsa-eur-sec/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc',
-                       cop_soil_total='pypsa-eur-sec/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc',
-                       solar_thermal_total='pypsa-eur-sec/resources/solar_thermal_total_{network}_s{simpl}_{clusters}.nc',
-                       energy_totals_name='pypsa-eur-sec/data/energy_totals.csv',
-                       heat_demand_total='pypsa-eur-sec/resources/heat_demand_total_{network}_s{simpl}_{clusters}.nc',
-                       heat_profile='pypsa-eur-sec/data/heat_load_profile_BDEW.csv',
-                       transport_name='pypsa-eur-sec/data/transport_data.csv',
-                       temp_air_total='pypsa-eur-sec/resources/temp_air_total_{network}_s{simpl}_{clusters}.nc',
-                       co2_totals_name='pypsa-eur-sec/data/co2_totals.csv',
-                       biomass_potentials='pypsa-eur-sec/data/biomass_potentials.csv',
-                       industrial_demand='pypsa-eur-sec/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
-            output=['pypsa-eur-sec/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc']
+                       cop_air_total='pypsa-eur-sec-PAC/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc',
+                       cop_soil_total='pypsa-eur-sec-PAC/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc',
+                       solar_thermal_total='pypsa-eur-sec-PAC/resources/solar_thermal_total_{network}_s{simpl}_{clusters}.nc',
+                       energy_totals_name='pypsa-eur-sec-PAC/data/energy_totals.csv',
+                       heat_demand_total='pypsa-eur-sec-PAC/resources/heat_demand_total_{network}_s{simpl}_{clusters}.nc',
+                       heat_profile='pypsa-eur-sec-PAC/data/heat_load_profile_BDEW.csv',
+                       transport_name='pypsa-eur-sec-PAC/data/transport_data.csv',
+                       temp_air_total='pypsa-eur-sec-PAC/resources/temp_air_total_{network}_s{simpl}_{clusters}.nc',
+                       co2_totals_name='pypsa-eur-sec-PAC/data/co2_totals.csv',
+                       biomass_potentials='pypsa-eur-sec-PAC/data/biomass_potentials.csv',
+                       industrial_demand='pypsa-eur-sec-PAC/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
+            output=['pypsa-eur-sec-PAC/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc']
         )
         import yaml
-        with open('config.yaml') as f:
-            snakemake.config = yaml.load(f)
+        with open('config.yaml', encoding='utf8') as f:
+            snakemake.config = yaml.safe_load(f)
 
 
     logging.basicConfig(level=snakemake.config['logging_level'])
 
-    timezone_mappings = pd.read_csv(snakemake.input.timezone_mappings,index_col=0,squeeze=True,header=None)
+    timezone_mappings = pd.read_csv(snakemake.input.timezone_mappings,
+                                    index_col=0, squeeze=True, header=None)
 
     options = snakemake.config["sector"]
 
