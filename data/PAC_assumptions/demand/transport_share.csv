@@ -1,0 +1,11 @@
+ESTAT statistical energy datasheets - EU28,Direct electrification (EVs),Hydrogen,Ammonia,Liquid synthetic fuels,2-3 gen biofuels
+Motorbikes,0.02,0.0,0.0,0.0,0.0
+Cars,0.32,0.0,0.0,0.0,0.0
+Vans,0.1,0.0,0.0,0.0,0.0
+Buses,0.08,0.0,0.0,0.0,0.0
+Trucks (<16t),0.06,0.08,0.0,0.0,0.0
+Trucks (>16t),0.21,0.26,0.0,0.0,0.0
+Passenger rail,0.05,0.0,0.0,0.0,0.0
+Freight rail,0.04,0.0,0.0,0.0,0.0
+Shipping,0.12,0.66,1.0,0.0,0.0
+Aviation,0.0,0.0,0.0,1.0,1.0

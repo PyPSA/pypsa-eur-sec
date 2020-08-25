@@ -1,0 +1,31 @@
+Unnamed: 0,2015,2020,2025,2030,2035,2040,2045,2050
+Fossil fuels,,,,,,,,
+coal,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+fossil oil products,3385.0,3385.0,2606.0,1713.0,686.0,0.0,0.0,0.0
+fossil gas,37.0,28.0,17.0,8.0,0.0,0.0,0.0,0.0
+waste,,,,,,,,
+steam,,,,,,,,
+Bioenergy,,,,,,,,
+solid biomass,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+liquid biofuels,149.0,276.0,149.0,48.0,61.0,60.0,35.0,9.0
+out of which 1st gen,117.0,243.0,116.0,0.0,0.0,0.0,0.0,0.0
+out of which 2-3 gen,32.0,32.0,33.0,48.0,61.0,60.0,35.0,9.0
+biomethane,1.0,1.0,1.0,0.0,0.0,0.0,0.0,0.0
+biogas,,,,,,,,
+Electricity,,,,,,,,
+electricity,56.0,56.0,363.0,641.0,890.0,1114.0,1153.0,1185.0
+Low temperature heat,,,,,,,,
+solid biomass heat (delivered energy),,,,,,,,
+biomethane heat (delivered energy),,,,,,,,
+biogas heat (delivered energy),,,,,,,,
+solar thermal,,,,,,,,
+geothermal heat,,,,,,,,
+ambient heat captured by heat pumps,,,,,,,,
+industrial excess heat recovery,,,,,,,,
+municipal solid waste (non-renewable),,,,,,,,
+municipal solid waste (renewable),,,,,,,,
+Non-fossil gases + fuels,,,,,,,,
+renewable hydrogen,0.0,2.0,21.0,131.0,230.0,237.0,244.0,250.0
+renewable  ammonia,0.0,1.0,7.0,45.0,79.0,81.0,83.0,86.0
+synthetic methane,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+liquid synthetic fuels,0.0,3.0,31.0,192.0,337.0,347.0,360.0,374.0

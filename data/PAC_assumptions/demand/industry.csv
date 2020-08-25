@@ -1,0 +1,31 @@
+Unnamed: 0,2015,2020,2025,2030,2035,2040,2045,2050
+Fossil fuels,,,,,,,,
+coal,394.0,339.0,277.0,140.0,3.0,0.0,0.0,0.0
+fossil oil products,239.0,192.0,143.0,99.0,50.0,0.0,0.0,0.0
+fossil gas,1077.0,916.0,674.0,462.0,203.0,0.0,0.0,0.0
+waste,30.0,24.0,18.0,12.0,6.0,0.0,0.0,0.0
+steam,110.0,105.0,89.0,56.0,29.0,0.0,0.0,0.0
+Bioenergy,,,,,,,,
+solid biomass,280.0,261.0,227.0,207.0,185.0,157.0,132.0,114.0
+liquid biofuels,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+out of which 1st gen,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+out of which 2-3 gen,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+biomethane,0.0,6.0,22.0,36.0,63.0,71.0,49.0,47.0
+biogas,7.0,8.0,8.0,9.0,10.0,8.0,8.0,8.0
+Electricity,,,,,,,,
+electricity,955.0,1038.0,1141.0,1246.0,1344.0,1381.0,1371.0,1349.0
+Low temperature heat,,,,,,,,
+solid biomass heat (delivered energy),29.0,29.0,23.0,15.0,6.0,0.0,0.0,0.0
+biomethane heat (delivered energy),0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+biogas heat (delivered energy),3.0,3.0,2.0,1.0,1.0,0.0,0.0,0.0
+solar thermal,0.0,1.0,6.0,8.0,10.0,10.0,10.0,10.0
+geothermal heat,0.0,3.0,8.0,14.0,16.0,19.0,19.0,19.0
+ambient heat captured by heat pumps,0.0,2.0,34.0,65.0,87.0,116.0,99.0,84.0
+industrial excess heat recovery,0.0,7.0,24.0,48.0,83.0,104.0,100.0,92.0
+municipal solid waste (non-renewable),14.0,11.0,8.0,6.0,3.0,0.0,0.0,0.0
+municipal solid waste (renewable),11.0,8.0,6.0,4.0,2.0,0.0,0.0,0.0
+Non-fossil gases + fuels,,,,,,,,
+renewable hydrogen,0.0,26.0,70.0,161.0,328.0,335.0,340.0,325.0
+renewable  ammonia,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+synthetic methane,0.0,1.0,11.0,37.0,63.0,81.0,74.0,74.0
+liquid synthetic fuels,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
