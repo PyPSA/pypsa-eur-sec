@@ -183,7 +183,7 @@ def add_co2_tracking(n):
     #TODO move maximum somewhere more transparent
     n.madd("Store",["co2 stored"],
            e_nom_extendable = True,
-           e_nom_max=200,
+           e_nom_max=2000,
            capital_cost=20.,
            carrier="co2 stored",
            bus="co2 stored")
@@ -2227,6 +2227,7 @@ if __name__ == "__main__":
     for fossil, carrier in zip(['coal', 'fossil oil products', 'fossil gas'], ["coal", "oil", "gas"]):
         if not options[fossil]:
             print("no ", fossil)
-            n.generators = n.generators[n.generators.carrier!="gas"]
+            n.generators = n.generators[n.generators.carrier!=carrier]
+            n.loads =  n.loads[~n.loads.carrier.str.contains(carrier)]
 
     n.export_to_netcdf(snakemake.output[0])
