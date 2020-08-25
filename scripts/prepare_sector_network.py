@@ -183,7 +183,7 @@ def add_co2_tracking(n):
     #TODO move maximum somewhere more transparent
     n.madd("Store",["co2 stored"],
            e_nom_extendable = True,
-           e_nom_max=2e8,
+           e_nom_max=200,
            capital_cost=20.,
            carrier="co2 stored",
            bus="co2 stored")
@@ -1755,22 +1755,6 @@ def add_industry(network):
                  carrier="kerosene for aviation",
                  p_set = PAC_aviation)
 
-    # NB: CO2 gets released again to atmosphere when plastics decay or kerosene is burned
-    # except for the process emissions when naphtha is used for petrochemicals,
-    # which can be captured with other industry process emissions
-    # tco2 per hour
-    co2 = (network.loads.loc[["kerosene for aviation"],
-                          "p_set"].sum()
-            * costs.at["oil", 'CO2 intensity']
-            - industrial_demand.loc[nodes, "process emission from feedstock"].sum()
-            / 8760.)
-
-    network.madd("Load",
-                 ["Fischer-Tropsch emissions"],
-                 bus="co2 atmosphere",
-                 carrier="Fischer-Tropsch emissions",
-                 p_set=-co2)
-
     # low heat for industry ----------------------------------------
 
     heat_w = (industrial_demand.loc[nodes, "low-temperature heat"]/
@@ -1800,7 +1784,26 @@ def add_industry(network):
                  carrier="industry new electricity",
                  p_set=industry_elec
                  )
+
+    # -process emissions -------
     if options["process_emissions"]:
+
+
+        # NB: CO2 gets released again to atmosphere when plastics decay or kerosene is burned
+        # except for the process emissions when naphtha is used for petrochemicals,
+        # which can be captured with other industry process emissions
+        # tco2 per hour
+        co2 = (network.loads.loc[["kerosene for aviation"],
+                              "p_set"].sum()
+                * costs.at["oil", 'CO2 intensity']
+                - industrial_demand.loc[nodes, "process emission from feedstock"].sum()
+                / 8760.)
+
+        network.madd("Load",
+                     ["Fischer-Tropsch emissions"],
+                     bus="co2 atmosphere",
+                     carrier="Fischer-Tropsch emissions",
+                     p_set=-co2)
 
         network.madd("Bus",
                      ["process emissions"],
