@@ -1910,6 +1910,7 @@ def add_agriculture(n):
             (~(PAC_demand["agriculture"].index.str.contains("delivered energy")))
             , year].fillna(0).sum() * 1e6 / 8760
     pac_agri_heat_w = pop_w * pac_agri_heat
+    pac_agri_heat_w.rename(index= lambda x: x+ " services rural heat", inplace=True)
     rural_heat = n.loads.carrier=="services rural heat"
     n.loads_t.p_set.loc[:, rural_heat] = (n.loads_t.p_set.loc[: , rural_heat]
                                           .apply(lambda row: row+pac_agri_heat_w,
@@ -1957,6 +1958,7 @@ def scale_to_PAC_demand(n):
         scale_factor = pac_heat[year] / pypsa_heat
         heat_demand[sector + " water"] *= scale_factor
         heat_demand[sector + " space"] *= scale_factor
+        print("heat scale factor for sector ", sector, " : ", scale_factor)
 
 
 def add_PAC_efficiencies(n):
@@ -1985,6 +1987,7 @@ def scale_DH_share(n):
                                          ~((n.loads.carrier.str.contains("urban central heat")))] *= scale_factor_not_dh
 
     n.loads_t.p_set.loc[:, n.loads.carrier=="urban central heat"] *= scale_factor_dh
+    print("district heating share is scaled up by; ", scale_factor_dh)
 #%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
