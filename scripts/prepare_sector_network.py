@@ -1571,6 +1571,7 @@ def add_industry(network):
                  p_set=PAC_demand["industry"].loc[["fossil gas",
                                                    "synthetic methane",
                                                    "biogas",
+                                                   "steam",
                                                    "biomethane"], year].sum() * 1e6 /8760.)
 
     network.madd("Link",
@@ -1799,40 +1800,41 @@ def add_industry(network):
                  carrier="industry new electricity",
                  p_set=industry_elec
                  )
+    if options["process_emissions"]:
 
-    network.madd("Bus",
-                 ["process emissions"],
-                 location="EU",
-                 carrier="process emissions")
+        network.madd("Bus",
+                     ["process emissions"],
+                     location="EU",
+                     carrier="process emissions")
 
-    #this should be process emissions fossil+feedstock
-    #then need load on atmosphere for feedstock emissions that are currently going to atmosphere via Link Fischer-Tropsch demand
-    network.madd("Load",
-                 ["process emissions"],
-                 bus="process emissions",
-                 carrier="process emissions",
-                 p_set = -industrial_demand.loc[nodes,["process emission","process emission from feedstock"]].sum(axis=1).sum()/8760.)
+        #this should be process emissions fossil+feedstock
+        #then need load on atmosphere for feedstock emissions that are currently going to atmosphere via Link Fischer-Tropsch demand
+        network.madd("Load",
+                     ["process emissions"],
+                     bus="process emissions",
+                     carrier="process emissions",
+                     p_set = -industrial_demand.loc[nodes,["process emission","process emission from feedstock"]].sum(axis=1).sum()/8760.)
 
-    network.madd("Link",
-                 ["process emissions"],
-                 bus0="process emissions",
-                 bus1="co2 atmosphere",
-                 carrier="process emissions",
-                 p_nom_extendable=True,
-                 efficiency=1.)
+        network.madd("Link",
+                     ["process emissions"],
+                     bus0="process emissions",
+                     bus1="co2 atmosphere",
+                     carrier="process emissions",
+                     p_nom_extendable=True,
+                     efficiency=1.)
 
-    #assume enough local waste heat for CCS
-    network.madd("Link",
-                 ["process emissions CCS"],
-                 bus0="process emissions",
-                 bus1="co2 atmosphere",
-                 bus2="co2 stored",
-                 carrier="process emissions CCS",
-                 p_nom_extendable=True,
-                 capital_cost=costs.at["industry CCS","fixed"]*8760, #8760 converts EUR/(tCO2/a) to EUR/(tCO2/h)
-                 efficiency=(1-options["ccs_fraction"]),
-                 efficiency2=options["ccs_fraction"],
-                 lifetime=costs.at['industry CCS','lifetime'])
+        #assume enough local waste heat for CCS
+        network.madd("Link",
+                     ["process emissions CCS"],
+                     bus0="process emissions",
+                     bus1="co2 atmosphere",
+                     bus2="co2 stored",
+                     carrier="process emissions CCS",
+                     p_nom_extendable=True,
+                     capital_cost=costs.at["industry CCS","fixed"]*8760, #8760 converts EUR/(tCO2/a) to EUR/(tCO2/h)
+                     efficiency=(1-options["ccs_fraction"]),
+                     efficiency2=options["ccs_fraction"],
+                     lifetime=costs.at['industry CCS','lifetime'])
 
 
 
