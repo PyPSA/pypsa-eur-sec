@@ -5,17 +5,17 @@ logging_level: INFO
 results_dir: 'results/'
 summary_dir: results
 costs_dir: '../technology-data/outputs/'
-run: 'your-run-name'  # use this to keep track of runs with different settings
+run: 'PAC_myopic'  # use this to keep track of runs with different settings
 foresight: 'myopic' #options are overnight, myopic, perfect (perfect is not yet implemented)
 
 
 scenario:
   sectors: [E]  # ignore this legacy setting
   simpl: ['']  # only relevant for PyPSA-Eur
-  lv: [1.0,1.5]    # allowed transmission line volume expansion, can be any float >= 1.0 (today) or "opt"
-  clusters: [45,50] # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
+  lv: [1.0]    # allowed transmission line volume expansion, can be any float >= 1.0 (today) or "opt"
+  clusters: [38] # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
   opts: ['']  # only relevant for PyPSA-Eur
-  sector_opts: [Co2L0-3H-H-B-solar3-dist1]  # this is where the main scenario settings are
+  sector_opts: [Co2L0-120H-T-H-B-I-solar3-dist1]  # this is where the main scenario settings are
   # to really understand the options here, look in scripts/prepare_sector_network.py
   # Co2Lx specifies the CO2 target in x% of the 1990 values; default will give default (5%);
   # Co2L0p25 will give 25% CO2 emissions; Co2Lm0p05 will give 5% negative emissions
@@ -25,7 +25,7 @@ scenario:
   # solarx or onwindx changes the available installable potential by factor x
   # dist{n} includes distribution grids with investment cost of n times cost in data/costs.csv
   planning_horizons : [2020, 2030, 2040, 2050] #investment years for myopic and perfect; or costs year for overnight
-  co2_budget_name: ['go'] #gives shape of CO2 budgets over planning horizon
+  co2_budget_name: ['PAC'] #gives shape of CO2 budgets over planning horizon
 
 # snapshots are originally set in PyPSA-Eur/config.yaml but used again by PyPSA-Eur-Sec
 snapshots:
@@ -57,6 +57,7 @@ existing_capacities:
 
 sector:
   'central' : True
+  'central_real' : True
   'central_fraction' : 0.6
   'dsm_restriction_value' : 0.75  #Set to 0 for no restriction on BEV DSM
   'dsm_restriction_time' : 7  #Time at which SOC of BEV has to be dsm_restriction_value
@@ -87,17 +88,20 @@ sector:
   'solar_cf_correction': 0.788457  # =  >>> 1/1.2683
   'marginal_cost_storage' : 0. #1e-4
   'methanation' : True
-  'helmeth' : True
+  'helmeth' : False
   'dac' : True
   'co2_vent' : True
   'SMR' : True
   'ccs': False
+  'process_emissions': False
   'ccs_fraction' : 0.9
   'hydrogen_underground_storage' : True
   'use_fischer_tropsch_waste_heat' : True
   'use_fuel_cell_waste_heat' : True
-  'electricity_distribution_grid' : False
+  'electricity_distribution_grid' : True
   'electricity_distribution_grid_cost_factor' : 1.0  #multiplies cost in data/costs.csv
+  'gas_distribution_grid' : True
+  'gas_distribution_grid_cost_factor' : 1.0  #multiplies cost in data/costs.csv
   'electricity_grid_connection' : True  # only applies to onshore wind and utility PV
 
 costs:
@@ -268,6 +272,16 @@ plotting:
     "solid biomass for industry co2 to stored": "#654321"
     "gas for industry co2 to atmosphere": "#654321"
     "gas for industry co2 to stored": "#654321"
+    "gas for transport": "#654321"
+    "gas for transport co2 to atmosphere": "#654321"
+    "gas for transport co2 to stored": "#654321"
+    "coal for industry co2 to atmosphere": "k"
+    "coal for industry co2 to stored": "k"
+    "oil for industry co2 to atmosphere": "#B5A642"
+    "oil for industry co2 to stored": "#B5A642"
+    "oil for transport": "#B5A642"
+    "oil for transport co2 to atmosphere": "#B5A642"
+    "oil for transport co2 to stored": "#B5A642"
     "Fischer-Tropsch" : "#44DD33"
     "kerosene for aviation": "#44BB11"
     "naphtha for industry" : "#44FF55"
@@ -299,8 +313,11 @@ plotting:
     "V2G" : "grey"
     "transport" : "grey"
     "electricity" : "k"
+    "electricity for shipping" : "k"
     "gas for industry" : "#333333"
     "solid biomass for industry" : "#555555"
+    "oil for industry" : "#B5A642"
+    "coal for industry" : "k"
     "industry new electricity" : "#222222"
     "process emissions to stored" : "#444444"
     "process emissions to atmosphere" : "#888888"
