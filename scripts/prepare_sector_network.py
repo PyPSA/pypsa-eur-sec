@@ -673,16 +673,27 @@ def insert_electricity_distribution_grid(network):
     hps = network.links.index[network.links.carrier.str.contains("heat pump")]
     network.links.loc[hps,"bus0"] += " low voltage"
 
+    rh = network.links.index[network.links.carrier.str.contains("resistive")]
+    network.links.loc[rh, "bus0"] += " low voltage"
+
+    mchp = network.links.index[network.links.carrier.str.contains("micro gas")]
+    network.links.loc[mchp, "bus1"] += " low voltage"
+
     #set existing solar to cost of utility cost rather the 50-50 rooftop-utility
     solar = network.generators.index[network.generators.carrier == "solar"]
     network.generators.loc[solar,"capital_cost"] = costs.at['solar-utility','fixed']
+
+        # add max solar rooftop potential assuming 1kW/person
+    potential = pd.concat([pop_layout.total.rename(index = lambda x: x + " solar"),
+                           network.generators.loc[solar, "p_nom_max"]],
+                          axis=1).min(axis=1)
 
     network.madd("Generator", solar,
                  suffix=" rooftop",
                  bus=network.generators.loc[solar,"bus"] + " low voltage",
                  carrier="solar rooftop",
                  p_nom_extendable=True,
-                 p_nom_max=network.generators.loc[solar,"p_nom_max"],
+                 p_nom_max=potential,
                  marginal_cost=network.generators.loc[solar, 'marginal_cost'],
                  capital_cost=costs.at['solar-rooftop','fixed'],
                  efficiency=network.generators.loc[solar, 'efficiency'],
@@ -727,6 +738,22 @@ def insert_electricity_distribution_grid(network):
                  p_nom_extendable=True,
                  lifetime=costs.at['battery inverter','lifetime'])
 
+
+def insert_gas_distribution_costs(network):
+    f_costs = options['gas_distribution_grid_cost_factor']
+    print("Inserting gas distribution grid with investment cost\
+          factor of", f_costs)
+
+    nodes = network.buses[network.buses.carrier=="gas"].index
+
+    # gas boilers
+    gas_b = network.links.index[network.links.carrier.str.contains("boiler")]
+    network.links.loc[gas_b, "capital_cost"] += costs.loc['electricity distribution grid']["fixed"]
+    # micro CHPs
+    mchp = network.links.index[network.links.carrier.str.contains("micro gas")]
+    network.links.loc[mchp,  "capital_cost"] += costs.loc['electricity distribution grid']["fixed"]
+
+
 def add_electricity_grid_connection(network):
 
     carriers = ["onwind","solar"]
@@ -734,6 +761,7 @@ def add_electricity_grid_connection(network):
     gens = network.generators.index[network.generators.carrier.isin(carriers)]
 
     network.generators.loc[gens,"capital_cost"] += costs.at['electricity grid connection','fixed']
+
 
 def add_storage(network):
     print("adding electricity storage")
@@ -2165,6 +2193,8 @@ if __name__ == "__main__":
 
     if snakemake.config["sector"]['electricity_distribution_grid']:
         insert_electricity_distribution_grid(n)
+    if snakemake.config["sector"]['gas_distribution_grid']:
+        insert_gas_distribution_grid(n)
     if snakemake.config["sector"]['electricity_grid_connection']:
         add_electricity_grid_connection(n)
 
