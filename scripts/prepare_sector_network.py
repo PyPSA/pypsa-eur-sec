@@ -2194,7 +2194,7 @@ if __name__ == "__main__":
     if snakemake.config["sector"]['electricity_distribution_grid']:
         insert_electricity_distribution_grid(n)
     if snakemake.config["sector"]['gas_distribution_grid']:
-        insert_gas_distribution_grid(n)
+        insert_gas_distribution_costs(n)
     if snakemake.config["sector"]['electricity_grid_connection']:
         add_electricity_grid_connection(n)
 
