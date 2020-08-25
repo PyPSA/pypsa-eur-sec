@@ -217,6 +217,7 @@ rule prepare_sector_network:
 	PAC_efficiencies="data/PAC_assumptions/supply/efficiencies.csv",
         PAC_dh_share="data/PAC_assumptions/demand/district_heating_share.csv",
         solar_thermal_rural="resources/solar_thermal_rural_{network}_s{simpl}_{clusters}.nc"
+	h2_cavern = "data/hydrogen_salt_cavern_potentials.csv",
     output: config['results_dir']  +  config['run'] + '/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{co2_budget_name}_{planning_horizons}.nc'
     threads: 1
     resources: mem_mb=2000
