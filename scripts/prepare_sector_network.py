@@ -795,7 +795,7 @@ def add_storage(network):
                  capital_cost=costs.at["fuel cell","fixed"]*costs.at["fuel cell","efficiency"], #NB: fixed cost is per MWel
                  lifetime=costs.at['fuel cell','lifetime'])
 
-     cavern_nodes = pd.DataFrame()
+    cavern_nodes = pd.DataFrame()
     if options['hydrogen_underground_storage']:
 
         h2_salt_cavern_potential = pd.read_csv(snakemake.input.h2_cavern,
