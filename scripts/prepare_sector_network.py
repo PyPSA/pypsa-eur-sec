@@ -2227,7 +2227,9 @@ if __name__ == "__main__":
     for fossil, carrier in zip(['coal', 'fossil oil products', 'fossil gas'], ["coal", "oil", "gas"]):
         if not options[fossil]:
             print("no ", fossil)
-            n.generators = n.generators[n.generators.carrier!=carrier]
-            n.loads =  n.loads[~n.loads.carrier.str.contains(carrier)]
+            n.generators = n.generators[~n.generators.index.str.contains(carrier) &
+                                        ~n.generators.index.str.contains("EU")]
+            # n.links = n.links[~n.links.carrier.str.contains(carrier + " for")]
+            # n.loads =  n.loads[~n.loads.carrier.str.contains(carrier)]
 
     n.export_to_netcdf(snakemake.output[0])
