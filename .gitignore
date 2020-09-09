@@ -29,6 +29,7 @@ gurobi.log
 *.org
 
 *.nc
+*#
 
 *~
 /scripts/old
