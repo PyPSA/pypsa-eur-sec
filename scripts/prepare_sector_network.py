@@ -1825,7 +1825,7 @@ def add_industry(network):
 
 
      # electricity industry ----------------------------------
-    industry_elec = pop_w * PAC_demand["industry"].loc["electricity", year] * 1e6 / 8760
+    industry_elec = pop_w * (PAC_demand["industry"].loc["electricity", year] - PAC_demand["industry"].loc["electricity", "2020"]) * 1e6 / 8760
     network.madd("Load",
                  nodes,
                  suffix=" industry new electricity",
@@ -1991,10 +1991,11 @@ def scale_to_PAC_demand(n):
     """
     print("scale demand to PAC assumptions")
 
-    # add residential and service electricity demand
+    # add residential and service and current industry electricity demand
     pypsa_elec = n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"].sum().sum()/1e6
     pac_elec = (PAC_demand["residential"].loc["electricity", year] +
-                PAC_demand["services"].loc["electricity", year])
+                PAC_demand["services"].loc["electricity", year] +
+                PAC_demand["industry"].loc["electricity", "2020"])
     scale_factor = pac_elec / pypsa_elec
     print("electricity scale factor: ", scale_factor)
     n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"] *= scale_factor
