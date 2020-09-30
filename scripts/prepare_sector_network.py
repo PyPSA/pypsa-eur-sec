@@ -42,6 +42,10 @@ override_component_attrs["Generator"].loc["lifetime"] = ["float","years",np.nan,
 override_component_attrs["Store"].loc["build_year"] = ["integer","year",np.nan,"build year","Input (optional)"]
 override_component_attrs["Store"].loc["lifetime"] = ["float","years",np.nan,"lifetime","Input (optional)"]
 
+eu28 = ['FR', 'DE', 'GB', 'IT', 'ES', 'PL', 'SE', 'NL', 'BE', 'FI', 'CZ',
+        'DK', 'PT', 'RO', 'AT', 'BG', 'EE', 'GR', 'LV',
+        'HU', 'IE', 'SK', 'LT', 'HR', 'LU', 'SI'] + ['CY', 'MT']
+
 def add_lifetime_wind_solar(n):
     """
     Add lifetime for solar and wind generators
@@ -1825,7 +1829,8 @@ def add_industry(network):
 
 
      # electricity industry ----------------------------------
-    industry_elec = pop_w * (PAC_demand["industry"].loc["electricity", year] - PAC_demand["industry"].loc["electricity", "2020"]) * 1e6 / 8760
+    industry_elec = pop_w * (PAC_demand["industry"].loc["electricity", year] -
+                             PAC_demand["industry"].loc["electricity", "2020"]) * 1e6 / 8760
     network.madd("Load",
                  nodes,
                  suffix=" industry new electricity",
@@ -1976,7 +1981,8 @@ def get_PAC_demand():
                                          index_col=0)
 
     # check for fossils (oil, coal, gas)
-    for fossil in ['coal', 'fossil oil products', 'fossil gas']:
+    for fossil in ['coal', 'fossil oil products', 'fossil gas',
+                   'solid biomass heat (delivered energy)']:
         options[fossil] = pd.concat(PAC_demand, axis=1).loc[fossil].xs(year, level=1).sum() != 0
 
     PAC_demand["transport_share"] = pd.read_csv(snakemake.input.PAC_demand + "transport_share.csv",
@@ -1992,7 +1998,9 @@ def scale_to_PAC_demand(n):
     print("scale demand to PAC assumptions")
 
     # add residential and service and current industry electricity demand
-    pypsa_elec = n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"].sum().sum()/1e6
+    # take for scaling only the demand of the EU28 countries
+    nodes_eu28 = pop_layout[pop_layout.ct.isin(eu28)].index
+    pypsa_elec = n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"].sum().loc[nodes_eu28].sum()/1e6
     pac_elec = (PAC_demand["residential"].loc["electricity", year] +
                 PAC_demand["services"].loc["electricity", year] +
                 PAC_demand["industry"].loc["electricity", "2020"])
@@ -2000,10 +2008,10 @@ def scale_to_PAC_demand(n):
     print("electricity scale factor: ", scale_factor)
     n.loads_t.p_set.loc[:, n.loads.carrier=="electricity"] *= scale_factor
 
-    # scale heat demand
+    # scale heat demand, assuming hot water demand stays constant on pypsa level
     for sector in ["residential", "services"]:
-        pypsa_heat =  heat_demand[[sector + " water",
-                                   sector + " space"]].sum().sum() / 1e6
+        pypsa_heat = heat_demand[[sector + " space",
+                                  sector + " water"]].sum().unstack()[nodes_eu28].sum().sum()/1e6
         pac_heat = PAC_demand[sector].sum() - PAC_demand[sector].loc["electricity"]
         scale_factor = pac_heat[year] / pypsa_heat
         heat_demand[sector + " water"] *= scale_factor
@@ -2067,6 +2075,7 @@ if __name__ == "__main__":
                        co2_totals_name='pypsa-eur-sec-PAC/data/co2_totals.csv',
                        biomass_potentials='pypsa-eur-sec-PAC/data/biomass_potentials.csv',
                        PAC_demand="pypsa-eur-sec-PAC/data/PAC_assumptions/demand/",
+                       h2_cavern = "pypsa-eur-sec-PAC/data/hydrogen_salt_cavern_potentials.csv",
                        PAC_efficiencies="pypsa-eur-sec-PAC/data/PAC_assumptions/supply/efficiencies.csv",
                        PAC_dh_share="pypsa-eur-sec-PAC/data/PAC_assumptions/demand/district_heating_share.csv",
                        industrial_demand='pypsa-eur-sec-PAC/resources/industrial_demand_{network}_s{simpl}_{clusters}.csv',),
