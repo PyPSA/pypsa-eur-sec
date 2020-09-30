@@ -2241,6 +2241,7 @@ if __name__ == "__main__":
                                         ~n.generators.index.str.contains("EU")]
 
     if not options['solid biomass heat (delivered energy)']:
+        print("no solid biomass CHPs")
         n.links = n.links[~n.links.carrier.str.contains("solid biomass CHP")]
 
 
