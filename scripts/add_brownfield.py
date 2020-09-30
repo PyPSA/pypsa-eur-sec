@@ -18,7 +18,9 @@ import yaml
 
 import pytz
 
-from add_existing_baseyear import add_build_year_to_new_assets
+from add_existing_baseyear import add_build_year_to_new_assets, add_conventional_PAC
+
+from prepare_sector_network import prepare_costs
 
 #First tell PyPSA that links can have multiple outputs by
 #overriding the component_attrs. This can be done for
@@ -115,5 +117,12 @@ if __name__ == "__main__":
                       override_component_attrs=override_component_attrs)
 #%%
     add_brownfield(n, n_p, year)
+
+    costs = prepare_costs(snakemake.input.costs,
+                          snakemake.config['costs']['USD2013_to_EUR2013'],
+                          snakemake.config['costs']['discountrate'],
+                          1)
+
+    add_conventional_PAC(n, year, snakemake.input.PAC_supply, snakemake.input.clustered_pop_layout, costs)
 
     n.export_to_netcdf(snakemake.output[0])

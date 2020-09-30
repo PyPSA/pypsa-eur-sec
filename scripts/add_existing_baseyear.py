@@ -405,6 +405,50 @@ def add_heating_capacities_installed_before_baseyear(n, baseyear, grouping_years
             n.mremove("Link", [index for index in n.links.index.to_list() if str(grouping_year) in index and n.links.p_nom[index]<snakemake.config['existing_capacities']['threshold_capacity']])
 
 
+def add_conventional_PAC(n, year, data_path, pop_path, costs):
+    """
+    take PAC capacity assumptions for nuclear, coal and lignite
+    """
+     # distribute technologies to nodes
+    pop_layout = pd.read_csv(pop_path,
+                             index_col=0)
+    pop_layout["ct"] = pop_layout.index.str[:2]
+
+    # dictionary ct -> node
+    node_dict = pop_layout.reset_index().set_index("ct")["name"].to_dict()
+    PAC_names = {"coal": "Hard coal (incl. oil shale)",
+                 "lignite": "Lignite",
+                 "nuclear": "Nuclear"}
+    carrier_EU = {"lignite": "lignite",
+                  "nuclear": "uranium",
+                  "coal": "coal"}
+
+    for carrier in ["nuclear", "lignite", "coal"]:
+        PAC_conv = pd.read_csv(data_path +
+                                        "{}.csv".format(PAC_names[carrier]),
+                                        index_col=0)[str(year)].fillna(0)
+        PAC_conv = PAC_conv.loc[node_dict.keys()].rename(index=node_dict)
+        # only keep non-zero capacities
+        PAC_conv = PAC_conv[PAC_conv!=0]
+
+        # remove pypsa-eur-sec assumptions
+        n.links = n.links[n.links.carrier!=carrier]
+        # add PAC assumptions
+        n.madd("Link",
+               PAC_conv.index,
+               suffix= " " + carrier,
+               bus0="EU " + carrier_EU[carrier],
+               bus1=PAC_conv.index,
+               bus2="co2 atmosphere",
+               carrier=carrier,
+               marginal_cost=costs.at[carrier,'efficiency']*costs.at[carrier,'VOM'], #NB: VOM is per MWel
+               capital_cost=costs.at[carrier,'efficiency']*costs.at[carrier,'fixed'], #NB: fixed cost is per MWel
+               p_nom=PAC_conv,
+               efficiency=costs.at[carrier,'efficiency'],
+               efficiency2=costs.at[carrier,'CO2 intensity'])
+
+
+#%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
@@ -419,13 +463,14 @@ if __name__ == "__main__":
                        clustermaps='pypsa-eur/resources/clustermaps_{network}_s{simpl}_{clusters}.h5',
                        clustered_pop_layout="pypsa-eur-sec-PAC/resources/pop_layout_{network}_s{simpl}_{clusters}.csv",
                        costs='technology-data/outputs/costs_{planning_horizons}.csv',
+                       PAC_supply='pypsa-eur-sec-PAC/data/PAC_assumptions/supply/installed_capacity_MW/',
                        cop_air_total="pypsa-eur-sec-PAC/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc",
                        cop_soil_total="pypsa-eur-sec-PAC/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc"),
             output=['pypsa-eur-sec-PAC/results/test/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc'],
         )
         import yaml
         with open('config.yaml') as f:
-            snakemake.config = yaml.load(f)
+            snakemake.config = yaml.safe_load(f)
 
 
     logging.basicConfig(level=snakemake.config['logging_level'])
@@ -448,6 +493,9 @@ if __name__ == "__main__":
 
     grouping_years=snakemake.config['existing_capacities']['grouping_years']
     add_power_capacities_installed_before_baseyear(n, grouping_years, costs, baseyear)
+
+    add_conventional_PAC(n, baseyear, snakemake.input.PAC_supply,
+                         snakemake.input.clustered_pop_layout, costs)
 
     if "H" in opts:
         time_dep_hp_cop = options["time_dep_hp_cop"]
