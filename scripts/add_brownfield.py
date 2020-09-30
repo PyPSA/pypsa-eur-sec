@@ -80,7 +80,7 @@ def add_brownfield(n, n_p, year):
                                            c.name,
                                            tattr)
 
-
+#%%
 if __name__ == "__main__":
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
@@ -90,16 +90,16 @@ if __name__ == "__main__":
                            sector_opts='Co2L0-120H-T-H-B-I-solar3-dist1',
                            co2_budget_name='PAC',
                            planning_horizons='2020'),
-            input=dict(network='pypsa-eur-sec-PAC/results/test/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc',
-                       network_p='pypsa-eur-sec-PAC/results/test/postnetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_2020.nc',
-                       costs='pypsa-eur-sec-PAC/data/costs/costs_{planning_horizons}.csv',
+            input=dict(network='pypsa-eur-sec-PAC/results/PAC_myopic/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc',
+                       network_p='pypsa-eur-sec-PAC/results/PAC_myopic/postnetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_2020.nc',
+                       costs='technology-data/outputs/costs_{planning_horizons}.csv',
                        cop_air_total="pypsa-eur-sec-PAC/resources/cop_air_total_{network}_s{simpl}_{clusters}.nc",
                        cop_soil_total="pypsa-eur-sec-PAC/resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc"),
-            output=['pypsa-eur-sec-PAC/results/test/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
+            output=['pypsa-eur-sec-PAC/results/PAC_myopic/prenetworks_brownfield/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
         )
         import yaml
         with open('config.yaml') as f:
-            snakemake.config = yaml.load(f)
+            snakemake.config = yaml.safe_load(f)
 
     print(snakemake.input.network_p)
     logging.basicConfig(level=snakemake.config['logging_level'])
