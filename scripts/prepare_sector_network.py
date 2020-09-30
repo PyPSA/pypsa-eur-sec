@@ -2239,7 +2239,9 @@ if __name__ == "__main__":
             print("no ", fossil)
             n.generators = n.generators[~n.generators.index.str.contains(carrier) &
                                         ~n.generators.index.str.contains("EU")]
-            # n.links = n.links[~n.links.carrier.str.contains(carrier + " for")]
-            # n.loads =  n.loads[~n.loads.carrier.str.contains(carrier)]
+
+    if not options['solid biomass heat (delivered energy)']:
+        n.links = n.links[~n.links.carrier.str.contains("solid biomass CHP")]
+
 
     n.export_to_netcdf(snakemake.output[0])
