@@ -1073,7 +1073,7 @@ def add_transport(network):
                  ["gas for transport"],
                  bus="gas for transport",
                  carrier="gas for transport",
-                 p_set=PAC_demand["industry"].loc[["fossil gas"], year].sum() * 1e6 /8760.)
+                 p_set=PAC_demand["transport"].loc[["fossil gas"], year].sum() * 1e6 /8760.)
 
     network.madd("Link",
                  ["gas for transport"],
