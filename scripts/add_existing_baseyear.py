@@ -432,7 +432,8 @@ def add_conventional_PAC(n, year, data_path, pop_path, costs):
         PAC_conv = PAC_conv[PAC_conv!=0]
 
         # remove pypsa-eur-sec assumptions
-        n.links = n.links[n.links.carrier!=carrier]
+        n.links = n.links[(n.links.carrier!=carrier) |
+                          (n.links.index.str.contains("EU"))]
         # add PAC assumptions
         n.madd("Link",
                PAC_conv.index,
@@ -443,7 +444,7 @@ def add_conventional_PAC(n, year, data_path, pop_path, costs):
                carrier=carrier,
                marginal_cost=costs.at[carrier,'efficiency']*costs.at[carrier,'VOM'], #NB: VOM is per MWel
                capital_cost=costs.at[carrier,'efficiency']*costs.at[carrier,'fixed'], #NB: fixed cost is per MWel
-               p_nom=PAC_conv,
+               p_nom=PAC_conv/costs.at[carrier,'efficiency'],
                efficiency=costs.at[carrier,'efficiency'],
                efficiency2=costs.at[carrier,'CO2 intensity'])
 
