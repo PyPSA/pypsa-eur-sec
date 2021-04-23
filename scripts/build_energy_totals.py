@@ -543,7 +543,7 @@ if __name__ == "__main__":
     build_energy_totals(eurostat, swiss, idees)
 
 
-	base_year_emissions = 1990
+    base_year_emissions = 1990
     eea_co2 = build_eea_co2(base_year_emissions)
     eurostat_co2 = build_eurostat_co2(base_year_emissions)
 	
