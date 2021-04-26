@@ -147,7 +147,7 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
         n.links.carrier != "B2B")], inplace=True)
 
     # drop non-bus
-    to_drop = costs.index.levels[0] ^ n.buses.index
+    to_drop = costs.index.levels[0].symmetric_difference(n.buses.index)
     if len(to_drop) != 0:
         print("dropping non-buses", to_drop)
         costs.drop(to_drop, level=0, inplace=True, axis=0)
