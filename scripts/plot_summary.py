@@ -82,7 +82,7 @@ def plot_costs():
 
     print(df.sum())
 
-    new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
+    new_index = preferred_order.intersection(df.index).append(df.index.difference(preferred_order))
 
     new_columns = df.sum().sort_values().index
 
@@ -136,7 +136,7 @@ def plot_energy():
 
     print(df)
 
-    new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
+    new_index = preferred_order.intersection(df.index).append(df.index.difference(preferred_order))
 
     new_columns = df.columns.sort_values()
     #new_columns = df.sum().sort_values().index
@@ -205,7 +205,7 @@ def plot_balances():
         if df.empty:
             continue
 
-        new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
+        new_index = preferred_order.intersection(df.index).append(df.index.difference(preferred_order))
 
         new_columns = df.columns.sort_values()
 
