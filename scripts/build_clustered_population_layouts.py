@@ -6,8 +6,7 @@ import atlite
 import helper
 
 
-cutout = atlite.Cutout(snakemake.config['atlite']['cutout_name'],
-                       cutout_dir=snakemake.config['atlite']['cutout_dir'])
+cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
 
 
 clustered_busregions_as_geopd = gpd.read_file(snakemake.input.regions_onshore).set_index('name', drop=True)

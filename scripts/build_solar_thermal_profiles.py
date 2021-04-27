@@ -20,9 +20,7 @@ params = dict(years=slice(*time.year[[0, -1]]), months=slice(*time.month[[0, -1]
 
 
 
-cutout = atlite.Cutout(snakemake.config['atlite']['cutout_name'],
-                       cutout_dir=snakemake.config['atlite']['cutout_dir'],
-                       **params)
+cutout = atlite.Cutout(snakemake.config['atlite']['cutout'], **params)
 
 clustered_busregions_as_geopd = gpd.read_file(snakemake.input.regions_onshore).set_index('name', drop=True)
 
