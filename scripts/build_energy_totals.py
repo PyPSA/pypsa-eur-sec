@@ -125,14 +125,17 @@ def build_eurostat(year):
 
 
 def build_swiss(year):
-    fn = "data/switzerland-sfoe/switzerland-new_format.csv"
+    """Return a pd.Series of Swiss energy data in TWh/a"""
+    # TODO handle in Snakefile
+    fn = "../../data/switzerland-sfoe/switzerland-new_format.csv"
+
+    df = pd.read_csv(fn, index_col=[0,1]).loc["CH", str(year)]
 
     # convert PJ/a to TWh/a
-    return (pd.read_csv(fn, index_col=list(range(2))) / 3.6).loc["CH", str(year)]
+    df /= 3.6
 
+    return df
 
-def build_idees(year):
-    base_dir = "data/jrc-idees-2015"
 
     totals = pd.DataFrame()
 
