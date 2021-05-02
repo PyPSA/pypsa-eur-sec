@@ -1,10 +1,17 @@
 import pandas as pd
 import geopandas as gpd
+import multiprocessing as mp
+from itertools import repeat
+import numpy as np
 
 idx = pd.IndexSlice
 
+def cartesian(s1, s2):
+    """Cartesian product of two pd.Series"""
+    return pd.DataFrame(np.outer(s1, s2), index=s1.index, columns=s2.index)
+
 # translations for Eurostat
-country_to_code = {
+eurostat_country_to_alpha2 = {
     "EU28": "EU",
     "EA19": "EA",
     "Belgium": "BE",
@@ -53,7 +60,7 @@ country_to_code = {
 
 non_EU = ["NO", "CH", "ME", "MK", "RS", "BA", "AL"]
 
-rename = {"GR": "EL", "GB": "UK"}
+idees_rename = {"GR": "EL", "GB": "UK"}
 
 eu28 = [
     "FR",
