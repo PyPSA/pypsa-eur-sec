@@ -10,6 +10,12 @@ def cartesian(s1, s2):
     """Cartesian product of two pd.Series"""
     return pd.DataFrame(np.outer(s1, s2), index=s1.index, columns=s2.index)
 
+
+def reverse(dictionary):
+    """reverses a keys and values of a dictionary"""
+    return {v: k for k, v in dictionary.items()}
+
+
 # translations for Eurostat
 eurostat_country_to_alpha2 = {
     "EU28": "EU",
@@ -94,6 +100,28 @@ eu28 = [
 eu28_eea = eu28.copy()
 eu28_eea.remove("GB")
 eu28_eea.append("UK")
+
+
+to_ipcc = {
+    "electricity": "1.A.1.a - Public Electricity and Heat Production",
+    "residential non-elec": "1.A.4.b - Residential",
+    "services non-elec": "1.A.4.a - Commercial/Institutional",
+    "rail non-elec": "1.A.3.c - Railways",
+    "road non-elec": "1.A.3.b - Road Transportation",
+    "domestic navigation": "1.A.3.d - Domestic Navigation",
+    "international navigation": "1.D.1.b - International Navigation",
+    "domestic aviation": "1.A.3.a - Domestic Aviation",
+    "international aviation": "1.D.1.a - International Aviation",
+    "total energy": "1 - Energy",
+    "industrial processes": "2 - Industrial Processes and Product Use",
+    "agriculture": "3 - Agriculture",
+    "LULUCF": "4 - Land Use, Land-Use Change and Forestry",
+    "waste management": "5 - Waste management",
+    "other": "6 - Other Sector",
+    "indirect": "ind_CO2 - Indirect CO2",
+    "total wL": "Total (with LULUCF)",
+    "total woL": "Total (without LULUCF)",
+}
 
 
 def build_eurostat(countries, year):
@@ -479,70 +507,49 @@ def build_energy_totals(countries, eurostat, swiss, idees):
 
 
 def build_eea_co2(year=1990):
-    # see ../notebooks/compute_1990_Europe_emissions_for_targets.ipynb
 
     # https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-16
     # downloaded 201228 (modified by EEA last on 201221)
-    fn = "data/eea/UNFCCC_v23.csv"
-    df = pd.read_csv(fn, encoding="latin-1")
-    df.loc[df["Year"] == "1985-1987", "Year"] = 1986
-    df["Year"] = df["Year"].astype(int)
-    df = df.set_index(
-        ["Country_code", "Pollutant_name", "Year", "Sector_name"]
-    ).sort_index()
+    # TODO handle via Snakefile
+    df = pd.read_csv("data/eea/UNFCCC_v23.csv", encoding="latin-1")
 
-    e = pd.Series()
-    e["electricity"] = "1.A.1.a - Public Electricity and Heat Production"
-    e["residential non-elec"] = "1.A.4.b - Residential"
-    e["services non-elec"] = "1.A.4.a - Commercial/Institutional"
-    e["rail non-elec"] = "1.A.3.c - Railways"
-    e["road non-elec"] = "1.A.3.b - Road Transportation"
-    e["domestic navigation"] = "1.A.3.d - Domestic Navigation"
-    e["international navigation"] = "1.D.1.b - International Navigation"
-    e["domestic aviation"] = "1.A.3.a - Domestic Aviation"
-    e["international aviation"] = "1.D.1.a - International Aviation"
-    e["total energy"] = "1 - Energy"
-    e["industrial processes"] = "2 - Industrial Processes and Product Use"
-    e["agriculture"] = "3 - Agriculture"
-    e["LULUCF"] = "4 - Land Use, Land-Use Change and Forestry"
-    e["waste management"] = "5 - Waste management"
-    e["other"] = "6 - Other Sector"
-    e["indirect"] = "ind_CO2 - Indirect CO2"
-    e["total wL"] = "Total (with LULUCF)"
-    e["total woL"] = "Total (without LULUCF)"
+    df.replace(dict(Year="1985-1987"), 1986, inplace=True)
+    df.Year = df.Year.astype(int)
+    index_col = ["Country_code", "Pollutant_name", "Year", "Sector_name"]
+    df = df.set_index(index_col).sort_index().drop_duplicates()
 
-    pol = "CO2"  # ["All greenhouse gases - (CO2 equivalent)","CO2"]
+    # TODO make config option
+    pol = "CO2"  # ["All greenhouse gases - (CO2 equivalent)", "CO2"]
 
     cts = ["CH", "EUA", "NO"] + eu28_eea
 
+    slicer = idx[cts, pol, year, to_ipcc.values()]
     emissions = (
-        df.loc[idx[cts, pol, year, e.values], "emissions"]
+        df.loc[slicer, "emissions"]
         .unstack("Sector_name")
-        .rename(columns=pd.Series(e.index, e.values))
-        .rename(index={"All greenhouse gases - (CO2 equivalent)": "GHG"}, level=1)
+        .rename(columns=reverse(to_ipcc))
+        .droplevel([1,2])
     )
-
-    # only take level 0, since level 1 (pol) and level 2 (year) are trivial
-    emissions = emissions.groupby(level=0, axis=0).sum()
 
     emissions.rename(index={"EUA": "EU28", "UK": "GB"}, inplace=True)
 
-    emissions["industrial non-elec"] = emissions["total energy"] - emissions[
-        [
-            "electricity",
-            "services non-elec",
-            "residential non-elec",
-            "road non-elec",
-            "rail non-elec",
-            "domestic aviation",
-            "international aviation",
-            "domestic navigation",
-            "international navigation",
-        ]
-    ].sum(axis=1)
+    to_subtract = [
+        "electricity",
+        "services non-elec",
+        "residential non-elec",
+        "road non-elec",
+        "rail non-elec",
+        "domestic aviation",
+        "international aviation",
+        "domestic navigation",
+        "international navigation",
+    ]
+    emissions["industrial non-elec"] = emissions["total energy"] - emissions[to_subtract].sum(axis=1)
 
-    emissions.drop(columns=["total energy", "total wL", "total woL"], inplace=True)
+    to_drop = ["total energy", "total wL", "total woL"]
+    emissions.drop(columns=to_drop, inplace=True)
 
+    # convert from Gg to Mt
     return emissions / 1e3
 
 
