@@ -572,36 +572,30 @@ def build_eurostat_co2(countries, year=1990):
     return eurostat.multiply(specific_emissions).sum(axis=1)
 
 
-def build_co2_totals(eea_co2, eurostat_co2):
+def build_co2_totals(countries, eea_co2, eurostat_co2):
 
-    co2 = eea_co2.reindex(["EU28", "NO", "CH", "BA", "RS", "AL", "ME", "MK"] + eu28)
+    co2 = eea_co2.reindex(countries)
 
-    for ct in ["BA", "RS", "AL", "ME", "MK"]:
-        co2.loc[ct, "electricity"] = eurostat_co2[
-            ct, "+", "Conventional Thermal Power Stations", "of which From Coal"
-        ].sum()
-        co2.loc[ct, "residential non-elec"] = eurostat_co2[
-            ct, "+", "+", "Residential"
-        ].sum()
-        co2.loc[ct, "services non-elec"] = eurostat_co2[ct, "+", "+", "Services"].sum()
-        co2.loc[ct, "road non-elec"] = eurostat_co2[ct, "+", "+", "Road"].sum()
-        co2.loc[ct, "rail non-elec"] = eurostat_co2[ct, "+", "+", "Rail"].sum()
-        co2.loc[ct, "domestic navigation"] = eurostat_co2[
-            ct, "+", "+", "Domestic Navigation"
-        ].sum()
-        co2.loc[ct, "international navigation"] = eurostat_co2[ct, "-", "Bunkers"].sum()
-        co2.loc[ct, "domestic aviation"] = eurostat_co2[
-            ct, "+", "+", "Domestic aviation"
-        ].sum()
-        co2.loc[ct, "international aviation"] = eurostat_co2[
-            ct, "+", "+", "International aviation"
-        ].sum()
-        # doesn't include industrial process emissions or fuel processing/refining
-        co2.loc[ct, "industrial non-elec"] = eurostat_co2[ct, "+", "Industry"].sum()
-        # doesn't include non-energy emissions
-        co2.loc[ct, "agriculture"] = eurostat_co2[
-            ct, "+", "+", "Agriculture / Forestry"
-        ].sum()
+    for ct in countries.intersection(["BA", "RS", "AL", "ME", "MK"]):
+
+        mappings = {
+            "electricity": (ct, "+", "Conventional Thermal Power Stations", "of which From Coal"),
+            "residential non-elec": (ct, "+", "+", "Residential"),
+            "services non-elec": (ct, "+", "+", "Services"),
+            "road non-elec": (ct, "+", "+", "Road"),
+            "rail non-elec": (ct, "+", "+", "Rail"),
+            "domestic navigation": (ct, "+", "+", "Domestic Navigation"),
+            "international navigation": (ct, "-", "Bunkers"),
+            "domestic aviation": (ct, "+", "+", "Domestic aviation"),
+            "international aviation": (ct, "+", "+", "International aviation"),
+            # does not include industrial process emissions or fuel processing/refining
+            "industrial non-elec": (ct, "+", "Industry"),
+            # does not include non-energy emissions
+            "agriculture": (ct, "+", "+", "Agriculture / Forestry"),
+        }
+
+        for i, mi in mappings.items():
+            co2.at[ct, i] = eurostat_co2.loc[mi].sum(axis=1)
 
     return co2
 
