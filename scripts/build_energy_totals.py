@@ -553,25 +553,23 @@ def build_eea_co2(year=1990):
     return emissions / 1e3
 
 
-def build_eurostat_co2(year=1990):
+def build_eurostat_co2(countries, year=1990):
 
-    eurostat_for_co2 = build_eurostat(year)
+    eurostat = build_eurostat(countries, year)
 
-    se = pd.Series(index=eurostat_for_co2.columns, dtype=float)
+    specific_emissions = pd.Series(index=eurostat.columns, dtype=float)
 
     # emissions in tCO2_equiv per MWh_th
-    se["Solid fuels"] = 0.36  # Approximates coal
-    se["Oil (total)"] = 0.285  # Average of distillate and residue
-    se["Gas"] = 0.2  # For natural gas
+    specific_emissions["Solid fuels"] = 0.36  # Approximates coal
+    specific_emissions["Oil (total)"] = 0.285  # Average of distillate and residue
+    specific_emissions["Gas"] = 0.2  # For natural gas
 
     # oil values from https://www.eia.gov/tools/faqs/faq.cfm?id=74&t=11
     # Distillate oil (No. 2)  0.276
     # Residual oil (No. 6)  0.298
     # https://www.eia.gov/electricity/annual/html/epa_a_03.html
 
-    eurostat_co2 = eurostat_for_co2.multiply(se).sum(axis=1)
-
-    return eurostat_co2
+    return eurostat.multiply(specific_emissions).sum(axis=1)
 
 
 def build_co2_totals(eea_co2, eurostat_co2):
