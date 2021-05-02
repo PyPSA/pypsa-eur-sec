@@ -96,32 +96,45 @@ eu28_eea.remove("GB")
 eu28_eea.append("UK")
 
 
-def build_eurostat(year):
+def build_eurostat(countries, year):
     """Return multi-index for all countries' energy data in TWh/a."""
 
-    stats_from_year = 2016
-
+    # TODO: handle in Snakefile
+    # 2016 includes BA, 2017 does not
+    publication_year = 2016
     fns = {
-        2016: "data/eurostat-energy_balances-june_2016_edition/{year}-Energy-Balances-June2016edition.xlsx",
-        2017: "data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx",
+        2016: f"data/eurostat-energy_balances-june_2016_edition/{year}-Energy-Balances-June2016edition.xlsx",
+        2017: f"data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx",
     }
-    # 2016 includes BA, 2017 doesn't
-
-    # with sheet as None, an ordered dictionary of all sheets is returned
+    
     dfs = pd.read_excel(
-        fns[stats_from_year].format(year=year),
-        None,
+        fns[publication_year],
+        sheet_name=None,
         skiprows=1,
         index_col=list(range(4)),
     )
 
     # sorted_index necessary for slicing
-    df = pd.concat(
-        {country_to_code[df.columns[0]]: df for ct, df in dfs.items()}, sort=True
-    ).sort_index()
+    lookup = eurostat_country_to_alpha2
+    labelled_dfs = {lookup[df.columns[0]]: df
+                    for df in dfs.values()
+                    if lookup[df.columns[0]] in countries}
+    df = pd.concat(labelled_dfs, sort=True).sort_index()
+    
+    # drop non-numeric and country columns 
+    non_numeric_cols = df.columns[df.dtypes != float]
+    country_cols = df.columns.intersection(lookup.keys())
+    to_drop = non_numeric_cols.union(country_cols)                             
+    df.drop(to_drop, axis=1, inplace=True)
+    
+    # drop countries not included
+    #include = df.index.get_level_values(0).isin(countries)
+    #df = df.loc[include]
 
-    # drop non-numeric columns; convert ktoe/a to TWh/a
-    return df.drop(df.columns[df.dtypes != float], axis=1) * 11.63 / 1e3
+    # convert ktoe/a to TWh/a
+    df *= 11.63 / 1e3
+
+    return df
 
 
 def build_swiss(year):
