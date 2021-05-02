@@ -326,93 +326,67 @@ def build_idees(countries, year):
 
     return totals.T
 
-    return totals
 
+def build_energy_totals(countries, eurostat, swiss, idees):
 
-def build_energy_totals(eurostat, swiss, idees):
+    eurostat_fuels = {"electricity": "Electricity",
+                      "total": "Total all products"}
 
-    clean_df = idees.reindex(population.index).drop(
-        ["passenger cars", "passenger car efficiency"], axis=1
-    )
+    to_drop = ["passenger cars", "passenger car efficiency"]
+    df = idees.reindex(countries).drop(to_drop, axis=1)
 
-    print("International navigation")
-    in_eurostat = clean_df.index.intersection(eurostat.index.levels[0])
-    clean_df.loc[in_eurostat, "total international navigation"] = (
-        eurostat.loc[idx[in_eurostat, :, "Bunkers", :], "Total all products"]
-        .groupby(level=0)
-        .sum()
-    )
+    eurostat_countries = eurostat.index.levels[0]
+    in_eurostat = df.index.intersection(eurostat_countries)
 
-    clean_df.loc["CH"] = swiss
+    # add international navigation
+
+    slicer = idx[in_eurostat, :, "Bunkers", :]
+    fill_values = eurostat.loc[slicer, "Total all products"].groupby(level=0).sum()
+    df.loc[in_eurostat, "total international navigation"] = fill_values
+
+    # add swiss energy data
+
+    df.loc["CH"] = swiss
 
     # get values for missing countries based on Eurostat EnergyBalances
     # divide cooking/space/water according to averages in EU28
 
-    missing = clean_df.index[clean_df["total residential"].isnull()]
-    missing_in_eurostat = missing.intersection(eurostat.index.levels[0])
+    missing = df.index[df["total residential"].isna()]
+    to_fill = missing.intersection(eurostat_countries)
     uses = ["space", "cooking", "water"]
 
-    for sector, eurostat_sector in [
-        ("residential", "Residential"),
-        ("services", "Services"),
-        ("road", "Road"),
-        ("rail", "Rail"),
-    ]:
-        for fuel, eurostat_fuel in [
-            ("electricity", "Electricity"),
-            ("total", "Total all products"),
-        ]:
-            clean_df.loc[missing_in_eurostat, "{} {}".format(fuel, sector)] = (
-                eurostat.loc[
-                    idx[missing_in_eurostat, :, :, eurostat_sector], eurostat_fuel
-                ]
-                .groupby(level=0)
-                .sum()
-            )
+    for sector in ["residential", "services", "road", "rail"]:
 
-        if sector in ["road", "rail"]:
-            continue
+        eurostat_sector = sector.capitalize()
 
-        fuel = "electricity"
+        # fuel use
+
+        for fuel in ["electricity", "total"]:
+            slicer = idx[to_fill, :, :, eurostat_sector]
+            fill_values = eurostat.loc[slicer, eurostat_fuels[fuel]].groupby(level=0).sum()
+            df.loc[to_fill, f"{fuel} {sector}"] = fill_values
+
+    for sector in ["residential", "services"]:
+
+        # electric use
+
         for use in uses:
-            avg = (
-                clean_df["{} {} {}".format(fuel, sector, use)]
-                / clean_df["{} {}".format(fuel, sector)]
-            ).mean()
-            print(
-                "{}: average fraction of {} for {} is {}".format(sector, fuel, use, avg)
-            )
-            clean_df.loc[missing_in_eurostat, "{} {} {}".format(fuel, sector, use)] = (
-                avg * clean_df.loc[missing_in_eurostat, "{} {}".format(fuel, sector)]
-            )
+            fuel_use = df[f"electricity {sector} {use}"]
+            fuel = df[f"electricity {sector}"]
+            avg = fuel_use.div(fuel).mean()
+            print(f"{sector}: average fraction of electricity for {use} is {avg}")
+            df.loc[to_fill, f"electricity {sector} {use}"] = avg * df.loc[to_fill, f"electricity {sector}"]
 
-        fuel = "total"
+        # non-electric use
+
         for use in uses:
-            avg = (
-                (
-                    clean_df["{} {} {}".format("total", sector, use)]
-                    - clean_df["{} {} {}".format("electricity", sector, use)]
-                )
-                / (
-                    clean_df["{} {}".format("total", sector)]
-                    - clean_df["{} {}".format("electricity", sector)]
-                )
-            ).mean()
-            print(
-                "{}: average fraction of non-electric for {} is {}".format(
-                    sector, use, avg
-                )
-            )
-            clean_df.loc[
-                missing_in_eurostat, "{} {} {}".format(fuel, sector, use)
-            ] = clean_df.loc[
-                missing_in_eurostat, "{} {} {}".format("electricity", sector, use)
-            ] + avg * (
-                clean_df.loc[missing_in_eurostat, "{} {}".format("total", sector)]
-                - clean_df.loc[
-                    missing_in_eurostat, "{} {}".format("electricity", sector)
-                ]
-            )
+            nonelectric_use = df[f"total {sector} {use}"] - df[f"electricity {sector} {use}"]
+            nonelectric = df[f"total {sector}"] - df[f"electricity {sector}"]
+            avg = nonelectric_use.div(nonelectric).mean()
+            print(f"{sector}: average fraction of non-electric for {use} is {avg}")
+            electric_use = df.loc[to_fill, f"electricity {sector} {use}"]
+            nonelectric = df.loc[to_fill, f"total {sector}"] - df.loc[to_fill, f"electricity {sector}"]
+            df.loc[to_fill, f"total {sector} {use}"] = electric_use + avg * nonelectric
 
     # Fix Norway space and water heating fractions
     # http://www.ssb.no/en/energi-og-industri/statistikker/husenergi/hvert-3-aar/2014-07-14
@@ -420,128 +394,88 @@ def build_energy_totals(eurostat, swiss, idees):
     # => 26% is non-electric
     elec_fraction = 0.73
 
-    without_norway = clean_df.drop("NO")
+    no_norway = df.drop("NO")
 
     for sector in ["residential", "services"]:
 
         # assume non-electric is heating
-        total_heating = (
-            clean_df.loc["NO", "{} {}".format("total", sector)]
-            - clean_df.loc["NO", "{} {}".format("electricity", sector)]
-        ) / (1 - elec_fraction)
+        nonelectric = df.loc["NO", f"total {sector}"] - df.loc["NO", f"electricity {sector}"]
+        total_heating = nonelectric / (1 - elec_fraction)
 
         for use in uses:
-            fraction = (
-                (
-                    without_norway["{} {} {}".format("total", sector, use)]
-                    - without_norway["{} {} {}".format("electricity", sector, use)]
-                )
-                / (
-                    without_norway["{} {}".format("total", sector)]
-                    - without_norway["{} {}".format("electricity", sector)]
-                )
-            ).mean()
-            clean_df.loc["NO", "{} {} {}".format("total", sector, use)] = (
-                total_heating * fraction
-            )
-            clean_df.loc["NO", "{} {} {}".format("electricity", sector, use)] = (
-                total_heating * fraction * elec_fraction
-            )
+            nonelectric_use = no_norway[f"total {sector} {use}"] - no_norway[f"electricity {sector} {use}"]
+            nonelectric = no_norway[f"total {sector}"] - no_norway[f"electricity {sector}"]
+            fraction = nonelectric_use.div(nonelectric).mean()
+            df.loc["NO", f"total {sector} {use}"] = total_heating * fraction
+            df.loc["NO", f"electricity {sector} {use}"] = total_heating * fraction * elec_fraction
 
     # Missing aviation
-    print("Aviation")
-    clean_df.loc[missing_in_eurostat, "total domestic aviation"] = (
-        eurostat.loc[
-            idx[missing_in_eurostat, :, :, "Domestic aviation"], "Total all products"
-        ]
-        .groupby(level=0)
-        .sum()
-    )
-    clean_df.loc[missing_in_eurostat, "total international aviation"] = (
-        eurostat.loc[
-            idx[missing_in_eurostat, :, :, "International aviation"],
-            "Total all products",
-        ]
-        .groupby(level=0)
-        .sum()
-    )
 
-    print("Domestic navigation")
-    clean_df.loc[missing_in_eurostat, "total domestic navigation"] = (
-        eurostat.loc[
-            idx[missing_in_eurostat, :, :, "Domestic Navigation"], "Total all products"
-        ]
-        .groupby(level=0)
-        .sum()
-    )
+    slicer = idx[to_fill, :, :, "Domestic aviation"]
+    fill_values = eurostat.loc[slicer, "Total all products"].groupby(level=0).sum()
+    df.loc[to_fill, "total domestic aviation"] = fill_values
+
+    slicer = idx[to_fill, :, :, "International aviation"]
+    fill_values = eurostat.loc[slicer, "Total all products"].groupby(level=0).sum()
+    df.loc[to_fill, "total international aviation"] = fill_values
+
+    # missing domestic navigation
+
+    slicer = idx[to_fill, :, :, "Domestic Navigation"]
+    fill_values = eurostat.loc[slicer, "Total all products"].groupby(level=0).sum()
+    df.loc[to_fill, "total domestic navigation"] = fill_values
 
     # split road traffic for non-IDEES
-    missing = clean_df.index[clean_df["total passenger cars"].isnull()]
+    missing = df.index[df["total passenger cars"].isna()]
     for fuel in ["total", "electricity"]:
         selection = [
-            fuel + " passenger cars",
-            fuel + " other road passenger",
-            fuel + " light duty road freight",
+            f"{fuel} passenger cars",
+            f"{fuel} other road passenger",
+            f"{fuel} light duty road freight",
         ]
         if fuel == "total":
-            selection = (
-                [fuel + " two-wheel"] + selection + [fuel + " heavy duty road freight"]
-            )
-        road = clean_df[selection].sum()
+            selection.extend([
+                f"{fuel} two-wheel",
+                f"{fuel} heavy duty road freight"
+            ])
+        road = df[selection].sum()
         road_fraction = road / road.sum()
-        for i in road_fraction.index:
-            clean_df.loc[missing, i] = (
-                road_fraction[i] * clean_df.loc[missing, fuel + " road"]
-            )
+        fill_values = cartesian(df.loc[missing, f"{fuel} road"], road_fraction)
+        df.loc[missing, road_fraction.index] = fill_values
 
     # split rail traffic for non-IDEES
-    missing = clean_df.index[clean_df["total rail passenger"].isnull()]
+    missing = df.index[df["total rail passenger"].isna()]
     for fuel in ["total", "electricity"]:
-        selection = [fuel + " rail passenger", fuel + " rail freight"]
-        rail = clean_df[selection].sum()
+        selection = [f"{fuel} rail passenger", f"{fuel} rail freight"]
+        rail = df[selection].sum()
         rail_fraction = rail / rail.sum()
-        for i in rail_fraction.index:
-            clean_df.loc[missing, i] = (
-                rail_fraction[i] * clean_df.loc[missing, fuel + " rail"].values
-            )
+        fill_values = cartesian(df.loc[missing, f"{fuel} rail"], rail_fraction)
+        df.loc[missing, rail_fraction.index] = fill_values
 
     # split aviation traffic for non-IDEES
-    missing = clean_df.index[clean_df["total domestic aviation passenger"].isnull()]
+    missing = df.index[df["total domestic aviation passenger"].isna()]
     for destination in ["domestic", "international"]:
         selection = [
-            "total " + destination + " aviation passenger",
-            "total " + destination + " aviation freight",
+            f"total {destination} aviation passenger",
+            f"total {destination} aviation freight",
         ]
-        aviation = clean_df[selection].sum()
+        aviation = df[selection].sum()
         aviation_fraction = aviation / aviation.sum()
-        for i in aviation_fraction.index:
-            clean_df.loc[missing, i] = (
-                aviation_fraction[i]
-                * clean_df.loc[missing, "total " + destination + " aviation"].values
-            )
-    clean_df.loc[missing, "total aviation passenger"] = clean_df.loc[
-        missing,
-        ["total domestic aviation passenger", "total international aviation passenger"],
-    ].sum(axis=1)
-    clean_df.loc[missing, "total aviation freight"] = clean_df.loc[
-        missing,
-        ["total domestic aviation freight", "total international aviation freight"],
-    ].sum(axis=1)
+        fill_values = cartesian(df.loc[missing, f"total {destination} aviation"], aviation_fraction)
+        df.loc[missing, aviation_fraction.index] = fill_values
 
-    if "BA" in clean_df.index:
-        # fix missing data for BA (services and road energy data)
-        missing = clean_df.loc["BA"] == 0.0
+    for purpose in ["passenger", "freight"]:
+        attrs = [f"total domestic aviation {purpose}", f"total international aviation {purpose}"]
+        df.loc[missing, f"total aviation {purpose}"] = df.loc[missing, attrs].sum(axis=1)   
 
-        # add back in proportional to RS with ratio of total residential demand
-        clean_df.loc["BA", missing] = (
-            clean_df.loc["BA", "total residential"]
-            / clean_df.loc["RS", "total residential"]
-            * clean_df.loc["RS", missing]
-        )
+    if "BA" in df.index:
+        # fill missing data for BA (services and road energy data)
+        # proportional to RS with ratio of total residential demand
+        missing = df.loc["BA"] == 0.0
+        ratio = df.at["BA", "total residential"] / df.at["RS", "total residential"]
+        df.loc['BA', missing] = ratio * df.loc["RS", missing]
 
-    clean_df.to_csv(snakemake.output.energy_name)
-
-    return clean_df
+    return df
 
 
 def build_eea_co2(year=1990):
