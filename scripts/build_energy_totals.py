@@ -1,8 +1,9 @@
 import pandas as pd
 import geopandas as gpd
 import multiprocessing as mp
-from itertools import repeat
 import numpy as np
+from tqdm import tqdm
+from functools import partial
 
 idx = pd.IndexSlice
 
@@ -337,11 +338,12 @@ def idees_per_country(ct, year):
 
 def build_idees(countries, year):
 
-    nprocesses = mp.cpu_count()
-    chunksize = max(1, int(len(countries) / nprocesses))
-    args = zip(countries, repeat(2011))
+    nprocesses = snakemake.threads
+    func = partial(idees_per_country, year=year)
+    tqdm_kwargs = dict(ascii=False, unit=' country', total=len(countries),
+                       desc='Build from IDEES database')
     with mp.Pool(processes=nprocesses) as pool:
-        totals_list = pool.starmap(idees_per_country, args, chunksize)
+        totals_list = list(tqdm(pool.imap(func, countries), **tqdm_kwargs))
 
     totals = pd.concat(totals_list, axis=1)
 
