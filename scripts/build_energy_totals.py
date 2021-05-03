@@ -514,7 +514,7 @@ def build_eea_co2(year=1990):
     df.replace(dict(Year="1985-1987"), 1986, inplace=True)
     df.Year = df.Year.astype(int)
     index_col = ["Country_code", "Pollutant_name", "Year", "Sector_name"]
-    df = df.set_index(index_col).sort_index().drop_duplicates()
+    df = df.set_index(index_col).sort_index()
 
     # TODO make config option
     pol = "CO2"  # ["All greenhouse gases - (CO2 equivalent)", "CO2"]
