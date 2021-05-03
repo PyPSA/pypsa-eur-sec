@@ -600,44 +600,32 @@ def build_co2_totals(countries, eea_co2, eurostat_co2):
     return co2
 
 
-def build_transport_data():
+def build_transport_data(countries, population, idees):
 
-    transport_data = pd.DataFrame(
-        columns=["number cars", "average fuel efficiency"], index=population.index
-    )
+    transport_data = pd.DataFrame(index=countries)
 
     # collect number of cars
 
     transport_data["number cars"] = idees["passenger cars"]
 
     # CH from http://ec.europa.eu/eurostat/statistics-explained/index.php/Passenger_cars_in_the_EU#Luxembourg_has_the_highest_number_of_passenger_cars_per_inhabitant
-    transport_data.loc["CH", "number cars"] = 4.136e6
+    transport_data.at["CH", "number cars"] = 4.136e6
 
-    missing = transport_data.index[transport_data["number cars"].isnull()]
-
-    print("Missing data on cars from:")
-
-    print(missing)
+    missing = transport_data.index[transport_data["number cars"].isna()]
+    print(f"Missing data on cars from:\n{list(missing)}")
 
     cars_pp = transport_data["number cars"] / population
-
     transport_data.loc[missing, "number cars"] = cars_pp.mean() * population
 
     # collect average fuel efficiency in kWh/km
 
     transport_data["average fuel efficiency"] = idees["passenger car efficiency"]
 
-    missing = transport_data.index[transport_data["average fuel efficiency"].isnull()]
+    missing = transport_data.index[transport_data["average fuel efficiency"].isna()]
+    print(f"Missing data on fuel efficiency from:\n{list(missing)}")
 
-    print("Missing data on fuel efficiency from:")
-
-    print(missing)
-
-    transport_data.loc[missing, "average fuel efficiency"] = transport_data[
-        "average fuel efficiency"
-    ].mean()
-
-    transport_data.to_csv(snakemake.output.transport_name)
+    fill_values = transport_data["average fuel efficiency"].mean()
+    transport_data.loc[missing, "average fuel efficiency"] = fill_values
 
     return transport_data
 
