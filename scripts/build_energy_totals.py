@@ -637,13 +637,15 @@ if __name__ == "__main__":
         snakemake.input = Dict()
         snakemake.input["nuts3_shapes"] = "../pypsa-eur/resources/nuts3_shapes.geojson"
 
+    config = snakemake.config["energy"]
+
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index("index")
     population = nuts3["pop"].groupby(nuts3.country).sum()
 
     countries = population.index
     idees_countries = countries.intersection(eu28)
 
-    data_year = 2011
+    data_year = config["energy_totals_year"]
     eurostat = build_eurostat(countries, data_year)
     swiss = build_swiss(data_year)
     idees = build_idees(idees_countries, data_year)
@@ -651,7 +653,7 @@ if __name__ == "__main__":
     energy = build_energy_totals(countries, eurostat, swiss, idees)
     energy.to_csv(snakemake.output.energy_name)
 
-    base_year_emissions = 1990
+    base_year_emissions = config["base_emissions_year"]
     eea_co2 = build_eea_co2(base_year_emissions)
     eurostat_co2 = build_eurostat_co2(countries, base_year_emissions)
 
