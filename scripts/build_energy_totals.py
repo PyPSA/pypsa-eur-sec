@@ -650,18 +650,23 @@ if __name__ == "__main__":
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index("index")
     population = nuts3["pop"].groupby(nuts3.country).sum()
 
-    data_year = 2011
-    eurostat = build_eurostat(data_year)
-    swiss = build_swiss(data_year)
-    idees = build_idees(data_year)
+    countries = population.index
+    idees_countries = countries.intersection(eu28)
 
-    build_energy_totals(eurostat, swiss, idees)
+    data_year = 2011
+    eurostat = build_eurostat(countries, data_year)
+    swiss = build_swiss(data_year)
+    idees = build_idees(idees_countries, data_year)
+
+    energy = build_energy_totals(countries, eurostat, swiss, idees)
+    energy.to_csv(snakemake.output.energy_name)
 
     base_year_emissions = 1990
     eea_co2 = build_eea_co2(base_year_emissions)
-    eurostat_co2 = build_eurostat_co2(base_year_emissions)
+    eurostat_co2 = build_eurostat_co2(countries, base_year_emissions)
 
-    co2 = build_co2_totals(eea_co2, eurostat_co2)
+    co2 = build_co2_totals(countries, eea_co2, eurostat_co2)
     co2.to_csv(snakemake.output.co2_name)
 
-    build_transport_data()
+    transport = build_transport_data(countries, population, idees)
+    transport.to_csv(snakemake.output.transport_name)
