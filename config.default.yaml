@@ -73,6 +73,11 @@ pypsa_eur:
   "StorageUnit": ["PHS","hydro"]
   "Store": []
 
+energy:
+  energy_totals_year: 2011
+  base_emissions_year: 1990
+  eurostat_report_year: 2016
+
 biomass:
   year: 2030
   scenario: "Med"

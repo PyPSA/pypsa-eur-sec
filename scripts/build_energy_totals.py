@@ -1,9 +1,10 @@
+from functools import partial
+from tqdm import tqdm
+
+import multiprocessing as mp
 import pandas as pd
 import geopandas as gpd
-import multiprocessing as mp
 import numpy as np
-from tqdm import tqdm
-from functools import partial
 
 idx = pd.IndexSlice
 
@@ -128,16 +129,8 @@ to_ipcc = {
 def build_eurostat(countries, year):
     """Return multi-index for all countries' energy data in TWh/a."""
 
-    # TODO: handle in Snakefile
-    # 2016 includes BA, 2017 does not
-    publication_year = 2016
-    fns = {
-        2016: f"data/eurostat-energy_balances-june_2016_edition/{year}-Energy-Balances-June2016edition.xlsx",
-        2017: f"data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx",
-    }
-    
     dfs = pd.read_excel(
-        fns[publication_year],
+        snakemake.input.eurostat,
         sheet_name=None,
         skiprows=1,
         index_col=list(range(4)),
@@ -149,16 +142,12 @@ def build_eurostat(countries, year):
                     for df in dfs.values()
                     if lookup[df.columns[0]] in countries}
     df = pd.concat(labelled_dfs, sort=True).sort_index()
-    
+
     # drop non-numeric and country columns 
     non_numeric_cols = df.columns[df.dtypes != float]
     country_cols = df.columns.intersection(lookup.keys())
     to_drop = non_numeric_cols.union(country_cols)                             
     df.drop(to_drop, axis=1, inplace=True)
-    
-    # drop countries not included
-    #include = df.index.get_level_values(0).isin(countries)
-    #df = df.loc[include]
 
     # convert ktoe/a to TWh/a
     df *= 11.63 / 1e3
@@ -168,8 +157,8 @@ def build_eurostat(countries, year):
 
 def build_swiss(year):
     """Return a pd.Series of Swiss energy data in TWh/a"""
-    # TODO handle in Snakefile
-    fn = "../../data/switzerland-sfoe/switzerland-new_format.csv"
+
+    fn = snakemake.input.swiss
 
     df = pd.read_csv(fn, index_col=[0,1]).loc["CH", str(year)]
 
@@ -181,15 +170,17 @@ def build_swiss(year):
 
 def idees_per_country(ct, year):
 
+    base_dir = snakemake.input.idees
+
     ct_totals = {}
 
     ct_idees = idees_rename.get(ct, ct)
-    fn_residential = f"data/jrc-idees-2015/JRC-IDEES-2015_Residential_{ct_idees}.xlsx"
-    fn_services = f"data/jrc-idees-2015/JRC-IDEES-2015_Tertiary_{ct_idees}.xlsx"
-    fn_transport = f"data/jrc-idees-2015/JRC-IDEES-2015_Transport_{ct_idees}.xlsx"
+    fn_residential = f"{base_dir}/JRC-IDEES-2015_Residential_{ct_idees}.xlsx"
+    fn_services = f"{base_dir}/JRC-IDEES-2015_Tertiary_{ct_idees}.xlsx"
+    fn_transport = f"{base_dir}/JRC-IDEES-2015_Transport_{ct_idees}.xlsx"
 
     # residential
-    
+
     df = pd.read_excel(fn_residential, "RES_hh_fec", index_col=0)[year]
 
     ct_totals["total residential space"] = df["Space heating"]
@@ -214,7 +205,7 @@ def idees_per_country(ct, year):
 
     assert df.index[47] == "Electricity"
     ct_totals["electricity residential"] = df[47]
-    
+
     # services
 
     df = pd.read_excel(fn_services, "SER_hh_fec", index_col=0)[year]
@@ -241,7 +232,7 @@ def idees_per_country(ct, year):
 
     assert df.index[50] == "Electricity"
     ct_totals["electricity services"] = df[50]
-    
+
     # transport
 
     df = pd.read_excel(fn_transport, "TrRoad_ene", index_col=0)[year]
@@ -332,7 +323,7 @@ def idees_per_country(ct, year):
 
     assert df.index[85] == "Passenger cars"
     ct_totals["passenger cars"] = df[85]
-    
+
     return pd.Series(ct_totals, name=ct)
 
 
@@ -404,7 +395,7 @@ def build_energy_totals(countries, eurostat, swiss, idees):
             fuel_use = df[f"electricity {sector} {use}"]
             fuel = df[f"electricity {sector}"]
             avg = fuel_use.div(fuel).mean()
-            print(f"{sector}: average fraction of electricity for {use} is {avg}")
+            print(f"{sector}: average fraction of electricity for {use} is {avg:.3f}")
             df.loc[to_fill, f"electricity {sector} {use}"] = avg * df.loc[to_fill, f"electricity {sector}"]
 
         # non-electric use
@@ -413,7 +404,7 @@ def build_energy_totals(countries, eurostat, swiss, idees):
             nonelectric_use = df[f"total {sector} {use}"] - df[f"electricity {sector} {use}"]
             nonelectric = df[f"total {sector}"] - df[f"electricity {sector}"]
             avg = nonelectric_use.div(nonelectric).mean()
-            print(f"{sector}: average fraction of non-electric for {use} is {avg}")
+            print(f"{sector}: average fraction of non-electric for {use} is {avg:.3f}")
             electric_use = df.loc[to_fill, f"electricity {sector} {use}"]
             nonelectric = df.loc[to_fill, f"total {sector}"] - df.loc[to_fill, f"electricity {sector}"]
             df.loc[to_fill, f"total {sector} {use}"] = electric_use + avg * nonelectric
@@ -512,8 +503,7 @@ def build_eea_co2(year=1990):
 
     # https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-16
     # downloaded 201228 (modified by EEA last on 201221)
-    # TODO handle via Snakefile
-    df = pd.read_csv("data/eea/UNFCCC_v23.csv", encoding="latin-1")
+    df = pd.read_csv(snakemake.input.co2, encoding="latin-1")
 
     df.replace(dict(Year="1985-1987"), 1986, inplace=True)
     df.Year = df.Year.astype(int)
@@ -597,7 +587,7 @@ def build_co2_totals(countries, eea_co2, eurostat_co2):
         }
 
         for i, mi in mappings.items():
-            co2.at[ct, i] = eurostat_co2.loc[mi].sum(axis=1)
+            co2.at[ct, i] = eurostat_co2.loc[mi].sum()
 
     return co2
 
@@ -614,7 +604,7 @@ def build_transport_data(countries, population, idees):
     transport_data.at["CH", "number cars"] = 4.136e6
 
     missing = transport_data.index[transport_data["number cars"].isna()]
-    print(f"Missing data on cars from:\n{list(missing)}")
+    print(f"Missing data on cars from:\n{list(missing)}\nFilling gaps with averaged data.")
 
     cars_pp = transport_data["number cars"] / population
     transport_data.loc[missing, "number cars"] = cars_pp.mean() * population
@@ -624,7 +614,7 @@ def build_transport_data(countries, population, idees):
     transport_data["average fuel efficiency"] = idees["passenger car efficiency"]
 
     missing = transport_data.index[transport_data["average fuel efficiency"].isna()]
-    print(f"Missing data on fuel efficiency from:\n{list(missing)}")
+    print(f"Missing data on fuel efficiency from:\n{list(missing)}\nFilling gapswith averaged data.")
 
     fill_values = transport_data["average fuel efficiency"].mean()
     transport_data.loc[missing, "average fuel efficiency"] = fill_values
