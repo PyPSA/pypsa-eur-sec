@@ -135,10 +135,8 @@ rule build_solar_thermal_profiles:
 
 def input_eurostat(w):
     # 2016 includes BA, 2017 does not
-    when = config["energy"]["eurostat_report_year"]
-    year = config["energy"]["energy_totals_year"]
-    eb = {2016: "Energy-Balances", 2017: "ENERGY-BALANCES"}
-    return f"data/eurostat-energy_balances-june_{when}_edition/{year}-{eb[when]}-June{when}edition.xlsx"
+    report_year = config["energy"]["eurostat_report_year"]
+    return f"data/eurostat-energy_balances-june_{report_year}_edition"
 
 
 rule build_energy_totals:

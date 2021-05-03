@@ -129,8 +129,14 @@ to_ipcc = {
 def build_eurostat(countries, year):
     """Return multi-index for all countries' energy data in TWh/a."""
 
+    report_year = snakemake.config["energy"]["eurostat_report_year"]
+    filenames = {
+        2016: f"/{year}-Energy-Balances-June2016edition.xlsx",
+        2017: f"/{year}-ENERGY-BALANCES-June2017edition.xlsx"
+    }
+
     dfs = pd.read_excel(
-        snakemake.input.eurostat,
+        snakemake.input.eurostat + filenames[report_year],
         sheet_name=None,
         skiprows=1,
         index_col=list(range(4)),
@@ -143,10 +149,10 @@ def build_eurostat(countries, year):
                     if lookup[df.columns[0]] in countries}
     df = pd.concat(labelled_dfs, sort=True).sort_index()
 
-    # drop non-numeric and country columns 
+    # drop non-numeric and country columns
     non_numeric_cols = df.columns[df.dtypes != float]
     country_cols = df.columns.intersection(lookup.keys())
-    to_drop = non_numeric_cols.union(country_cols)                             
+    to_drop = non_numeric_cols.union(country_cols)
     df.drop(to_drop, axis=1, inplace=True)
 
     # convert ktoe/a to TWh/a
