@@ -516,12 +516,11 @@ def build_eea_co2(year=1990):
     index_col = ["Country_code", "Pollutant_name", "Year", "Sector_name"]
     df = df.set_index(index_col).sort_index()
 
-    # TODO make config option
-    pol = "CO2"  # ["All greenhouse gases - (CO2 equivalent)", "CO2"]
+    emissions_scope = snakemake.config["energy"]["emissions"]
 
     cts = ["CH", "EUA", "NO"] + eu28_eea
 
-    slicer = idx[cts, pol, year, to_ipcc.values()]
+    slicer = idx[cts, emissions_scope, year, to_ipcc.values()]
     emissions = (
         df.loc[slicer, "emissions"]
         .unstack("Sector_name")
