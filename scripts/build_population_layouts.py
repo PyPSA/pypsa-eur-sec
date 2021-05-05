@@ -75,7 +75,7 @@ if __name__ == '__main__':
         pop_cells_ct = indicator_cells_ct * pop_cells
 
         # correct for imprecision of Iinv*I
-        pop_ct = nuts3['pop'].filter(like=ct).sum()
+        pop_ct = nuts3.loc[nuts3.country==ct,'pop'].sum()
         pop_cells_ct *= pop_ct / pop_cells_ct.sum()
 
         # The first low density grid cells to reach rural fraction are rural
