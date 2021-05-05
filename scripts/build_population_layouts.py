@@ -2,6 +2,7 @@
 
 import multiprocessing as mp
 import atlite
+import numpy as np
 import pandas as pd
 import xarray as xr
 import geopandas as gpd
@@ -36,7 +37,7 @@ if __name__ == '__main__':
     # but imprecisions mean not perfect
     Iinv = cutout.indicatormatrix(nuts3.geometry)
 
-    countries = nuts3.country.unique()
+    countries = np.sort(nuts3.country.unique())
 
     urban_fraction = pd.read_csv(snakemake.input.urban_percent,
                                 header=None, index_col=0,
