@@ -1,5 +1,6 @@
 """Build mapping between grid cells and population (total, urban, rural)"""
 
+import multiprocessing as mp
 import atlite
 import pandas as pd
 import xarray as xr
@@ -35,23 +36,25 @@ if __name__ == '__main__':
     # but imprecisions mean not perfect
     Iinv = cutout.indicatormatrix(nuts3.geometry)
 
-    countries = nuts3.country.value_counts().index.sort_values()
+    countries = nuts3.country.unique()
 
     urban_fraction = pd.read_csv(snakemake.input.urban_percent,
-                                 header=None, index_col=0, squeeze=True) / 100.
+                                header=None, index_col=0,
+                                names=['fraction'], squeeze=True) / 100.
 
     # fill missing Balkans values
     missing = ["AL", "ME", "MK"]
     reference = ["RS", "BA"]
-    urban_fraction = urban_fraction.reindex(
-        urban_fraction.index.union(missing))
-    urban_fraction.loc[missing] = urban_fraction[reference].mean()
+    average = urban_fraction[reference].mean()
+    fill_values = pd.Series({ct: average for ct in missing})
+    urban_fraction.append(fill_values)
 
     # population in each grid cell
     pop_cells = pd.Series(I.dot(nuts3['pop']))
 
     # in km^2
-    cell_areas = pd.Series(cutout.grid_cells()).map(vshapes.area) / 1e6
+    with mp.Pool(processes=snakemake.threads) as pool:
+        cell_areas = pd.Series(pool.map(vshapes.area, grid_cells)) / 1e6
 
     # pop per km^2
     density_cells = pop_cells / cell_areas
@@ -63,8 +66,7 @@ if __name__ == '__main__':
     for ct in countries:
         print(ct, urban_fraction[ct])
 
-        indicator_nuts3_ct = pd.Series(0., nuts3.index)
-        indicator_nuts3_ct[nuts3.index[nuts3.country == ct]] = 1.
+        indicator_nuts3_ct = nuts3.country.apply(lambda x: 1. if x == ct else 0.)
 
         indicator_cells_ct = pd.Series(Iinv.T.dot(indicator_nuts3_ct))
 
@@ -73,13 +75,14 @@ if __name__ == '__main__':
         pop_cells_ct = indicator_cells_ct * pop_cells
 
         # correct for imprecision of Iinv*I
-        pop_ct = nuts3['pop'][indicator_nuts3_ct.index[indicator_nuts3_ct == 1.]].sum()
-        pop_cells_ct = pop_cells_ct * pop_ct / pop_cells_ct.sum()
+        pop_ct = nuts3['pop'].filter(like=ct).sum()
+        pop_cells_ct *= pop_ct / pop_cells_ct.sum()
 
         # The first low density grid cells to reach rural fraction are rural
-        index_from_low_d_to_high_d = density_cells_ct.sort_values().index
-        pop_ct_rural_b = pop_cells_ct[index_from_low_d_to_high_d].cumsum(
-        ) / pop_cells_ct.sum() < (1 - urban_fraction[ct])
+        asc_density_i = density_cells_ct.sort_values().index
+        asc_density_cumsum = pop_cells_ct[asc_density_i].cumsum() / pop_cells_ct.sum()
+        rural_fraction_ct = 1 - urban_fraction[ct]
+        pop_ct_rural_b = asc_density_cumsum < rural_fraction_ct
         pop_ct_urban_b = ~pop_ct_rural_b
 
         pop_ct_rural_b[indicator_cells_ct == 0.] = False
@@ -89,12 +92,14 @@ if __name__ == '__main__':
         pop_urban += pop_cells_ct.where(pop_ct_urban_b, 0.)
 
     pop_cells = {"total": pop_cells}
-
     pop_cells["rural"] = pop_rural
     pop_cells["urban"] = pop_urban
 
-    for key in pop_cells.keys():
-        layout = xr.DataArray(pop_cells[key].values.reshape(cutout.shape),
-                              [('y', cutout.coords['y']), ('x', cutout.coords['x'])])
+    for key, pop in pop_cells.items():
 
-        layout.to_netcdf(snakemake.output["pop_layout_"+key])
+        ycoords = ('y', cutout.coords['y'])
+        xcoords = ('x', cutout.coords['x'])
+        values = pop.values.reshape(cutout.shape)
+        layout = xr.DataArray(values, [ycoords, xcoords])
+
+        layout.to_netcdf(snakemake.output[f"pop_layout_{key}"])
