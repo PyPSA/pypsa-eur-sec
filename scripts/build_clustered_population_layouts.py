@@ -4,32 +4,25 @@ import geopandas as gpd
 import xarray as xr
 import pandas as pd
 import atlite
-import helper
+from helper import clean_invalid_geometries
 
 
 if __name__ == '__main__':
 
     cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
 
-    clustered_busregions_as_geopd = gpd.read_file(
-        snakemake.input.regions_onshore).set_index('name', drop=True)
+    clustered_regions = gpd.read_file(
+        snakemake.input.regions_onshore).set_index('name').squeeze()
 
-    clustered_busregions = pd.Series(
-        clustered_busregions_as_geopd.geometry, index=clustered_busregions_as_geopd.index)
+    clean_invalid_geometries(clustered_regions)
 
-    helper.clean_invalid_geometries(clustered_busregions)
+    I = cutout.indicatormatrix(clustered_regions)
 
-    I = cutout.indicatormatrix(clustered_busregions)
-
-
-    items = ["total", "urban", "rural"]
-
-    pop = pd.DataFrame(columns=items,
-                    index=clustered_busregions.index)
-
-
-    for item in items:
-        pop_layout = xr.open_dataarray(snakemake.input['pop_layout_'+item])
+    pop = {}
+    for item in ["total", "urban", "rural"]:
+        pop_layout = xr.open_dataarray(snakemake.input[f'pop_layout_{item}'])
         pop[item] = I.dot(pop_layout.stack(spatial=('y', 'x')))
+
+    pop = pd.DataFrame(pop, index=clustered_regions.index)
 
     pop.to_csv(snakemake.output.clustered_pop_layout)
