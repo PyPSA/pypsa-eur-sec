@@ -5,7 +5,6 @@ import atlite
 import pandas as pd
 import xarray as xr
 import numpy as np
-from helper import clean_invalid_geometries
 
 if __name__ == '__main__':
 
@@ -23,9 +22,7 @@ if __name__ == '__main__':
     cutout = atlite.Cutout(cutout_config).sel(time=time)
 
     clustered_regions = gpd.read_file(
-        snakemake.input.regions_onshore).set_index('name').squeeze()
-
-    clean_invalid_geometries(clustered_regions)
+        snakemake.input.regions_onshore).set_index('name').squeeze().buffer(0)
 
     I = cutout.indicatormatrix(clustered_regions)
 
