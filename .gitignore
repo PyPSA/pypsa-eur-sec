@@ -26,6 +26,8 @@ gurobi.log
 /data/switzerland*
 /data/.nfs*
 /data/bundle*
+/data/Industrial_Database.csv
+/data/retro/tabula-calculator-calcsetbuilding.csv
 
 *.org
 
@@ -42,3 +44,7 @@ gurobi.log
 *.xlsx
 
 config.yaml
+
+doc/_build
+
+*.xls

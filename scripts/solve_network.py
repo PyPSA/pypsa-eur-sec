@@ -28,10 +28,13 @@ from vresutils.benchmark import memory_logger
 override_component_attrs = pypsa.descriptors.Dict({k : v.copy() for k,v in pypsa.components.component_attrs.items()})
 override_component_attrs["Link"].loc["bus2"] = ["string",np.nan,np.nan,"2nd bus","Input (optional)"]
 override_component_attrs["Link"].loc["bus3"] = ["string",np.nan,np.nan,"3rd bus","Input (optional)"]
+override_component_attrs["Link"].loc["bus4"] = ["string",np.nan,np.nan,"4th bus","Input (optional)"]
 override_component_attrs["Link"].loc["efficiency2"] = ["static or series","per unit",1.,"2nd bus efficiency","Input (optional)"]
 override_component_attrs["Link"].loc["efficiency3"] = ["static or series","per unit",1.,"3rd bus efficiency","Input (optional)"]
+override_component_attrs["Link"].loc["efficiency4"] = ["static or series","per unit",1.,"4th bus efficiency","Input (optional)"]
 override_component_attrs["Link"].loc["p2"] = ["series","MW",0.,"2nd bus output","Output"]
 override_component_attrs["Link"].loc["p3"] = ["series","MW",0.,"3rd bus output","Output"]
+override_component_attrs["Link"].loc["p4"] = ["series","MW",0.,"4th bus output","Output"]
 
 
 
@@ -81,6 +84,9 @@ def prepare_network(n, solve_opts=None):
         n.set_snapshots(n.snapshots[:nhours])
         n.snapshot_weightings[:] = 8760./nhours
 
+    if snakemake.config['foresight']=='myopic':
+        add_land_use_constraint(n)
+
     return n
 
 def add_opts_constraints(n, opts=None):
@@ -109,33 +115,49 @@ def add_eps_storage_constraint(n):
 
 def add_battery_constraints(n):
 
-    nodes = n.buses.index[n.buses.carrier.isin(["battery","home battery"])]
+    chargers = n.links.index[n.links.carrier.str.contains("battery charger") & n.links.p_nom_extendable]
+    dischargers = chargers.str.replace("charger","discharger")
 
     link_p_nom = get_var(n, "Link", "p_nom")
 
-    lhs = linexpr((1,link_p_nom[nodes + " charger"]),
-                  (-n.links.loc[nodes + " discharger", "efficiency"].values,
-                   link_p_nom[nodes + " discharger"].values))
+    lhs = linexpr((1,link_p_nom[chargers]),
+                  (-n.links.loc[dischargers, "efficiency"].values,
+                   link_p_nom[dischargers].values))
 
     define_constraints(n, lhs, "=", 0, 'Link', 'charger_ratio')
 
 
 def add_chp_constraints(n):
 
-    electric = n.links.index[n.links.index.str.contains("urban central") & n.links.index.str.contains("CHP") & n.links.index.str.contains("electric")]
-    heat = n.links.index[n.links.index.str.contains("urban central") & n.links.index.str.contains("CHP") & n.links.index.str.contains("heat")]
+    electric_bool = (n.links.index.str.contains("urban central")
+                     & n.links.index.str.contains("CHP")
+                     & n.links.index.str.contains("electric"))
+    heat_bool = (n.links.index.str.contains("urban central")
+                 & n.links.index.str.contains("CHP")
+                 & n.links.index.str.contains("heat"))
 
-    if not electric.empty:
+    electric = n.links.index[electric_bool]
+    heat = n.links.index[heat_bool]
+    electric_ext = n.links.index[electric_bool & n.links.p_nom_extendable]
+    heat_ext = n.links.index[heat_bool & n.links.p_nom_extendable]
+    electric_fix = n.links.index[electric_bool & ~n.links.p_nom_extendable]
+    heat_fix = n.links.index[heat_bool & ~n.links.p_nom_extendable]
+
+
+    if not electric_ext.empty:
 
         link_p_nom = get_var(n, "Link", "p_nom")
 
         #ratio of output heat to electricity set by p_nom_ratio
-        lhs = linexpr((n.links.loc[electric,"efficiency"]
-                       *n.links.loc[electric,'p_nom_ratio'],
-                       link_p_nom[electric]),
-                      (-n.links.loc[heat,"efficiency"].values,
-                       link_p_nom[heat].values))
+        lhs = linexpr((n.links.loc[electric_ext,"efficiency"]
+                       *n.links.loc[electric_ext,'p_nom_ratio'],
+                       link_p_nom[electric_ext]),
+                      (-n.links.loc[heat_ext,"efficiency"].values,
+                       link_p_nom[heat_ext].values))
         define_constraints(n, lhs, "=", 0, 'chplink', 'fix_p_nom_ratio')
+
+
+    if not electric.empty:
 
         link_p = get_var(n, "Link", "p")
 
@@ -148,19 +170,45 @@ def add_chp_constraints(n):
 
         define_constraints(n, lhs, "<=", 0, 'chplink', 'backpressure')
 
-        #top_iso_fuel_line
-        lhs = linexpr((1,link_p[heat]),
-                      (1,link_p[electric].values),
-                      (-1,link_p_nom[electric].values))
 
-        define_constraints(n, lhs, "<=", 0, 'chplink', 'top_iso_fuel_line')
+    if not electric_ext.empty:
+
+        link_p_nom = get_var(n, "Link", "p_nom")
+        link_p = get_var(n, "Link", "p")
+
+        #top_iso_fuel_line for extendable
+        lhs = linexpr((1,link_p[heat_ext]),
+                      (1,link_p[electric_ext].values),
+                      (-1,link_p_nom[electric_ext].values))
+
+        define_constraints(n, lhs, "<=", 0, 'chplink', 'top_iso_fuel_line_ext')
+
+
+    if not electric_fix.empty:
+
+        link_p = get_var(n, "Link", "p")
+
+        #top_iso_fuel_line for fixed
+        lhs = linexpr((1,link_p[heat_fix]),
+                      (1,link_p[electric_fix].values))
+
+        define_constraints(n, lhs, "<=", n.links.loc[electric_fix,"p_nom"].values, 'chplink', 'top_iso_fuel_line_fix')
+
+def add_land_use_constraint(n):
+
+    #warning: this will miss existing offwind which is not classed AC-DC and has carrier 'offwind'
+    for carrier in ['solar', 'onwind', 'offwind-ac', 'offwind-dc']:
+        existing_capacities = n.generators.loc[n.generators.carrier==carrier,"p_nom"].groupby(n.generators.bus.map(n.buses.location)).sum()
+        existing_capacities.index += " " + carrier + "-" + snakemake.wildcards.planning_horizons
+        n.generators.loc[existing_capacities.index,"p_nom_max"] -= existing_capacities
+
+    n.generators.p_nom_max[n.generators.p_nom_max<0]=0.
 
 def extra_functionality(n, snapshots):
     #add_opts_constraints(n, opts)
     #add_eps_storage_constraint(n)
     add_chp_constraints(n)
     add_battery_constraints(n)
-
 
 
 def fix_branches(n, lines_s_nom=None, links_p_nom=None):
@@ -224,6 +272,7 @@ def solve_network(n, config=None, solver_log=None, opts=None):
                                                solver_name=solver_name,
                                                solver_logfile=solver_log,
                                                solver_options=solver_options,
+                                               solver_dir=tmpdir, 
                                                extra_functionality=extra_functionality,
                                                formulation=solve_opts['formulation'])
                                                #extra_postprocessing=extra_postprocessing
@@ -306,7 +355,7 @@ def solve_network(n, config=None, solver_log=None, opts=None):
         #     fn = os.path.basename(snakemake.output[0])
         #     n.export_to_netcdf('/home/vres/data/jonas/playground/pypsa-eur/' + fn)
 
-    status, termination_condition = run_lopf(n, fix_ext_lines=True)
+    status, termination_condition = run_lopf(n, allow_warning_status=True, fix_ext_lines=True)
 
     # Drop zero lines from network
     # zero_lines_i = n.lines.index[(n.lines.s_nom_opt == 0.) & n.lines.s_nom_extendable]
@@ -324,14 +373,17 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from vresutils.snakemake import MockSnakemake, Dict
         snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='45', lv='1.25', opts='Co2L-3H-T-H'),
-            input=dict(network="networks/{network}_s{simpl}_{clusters}_lv{lv}_{opts}.nc"),
-            output=["results/networks/s{simpl}_{clusters}_lv{lv}_{opts}-test.nc"],
-            log=dict(gurobi="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_gurobi-test.log",
-                     python="logs/{network}_s{simpl}_{clusters}_lv{lv}_{opts}_python-test.log")
+            wildcards=dict(network='elec', simpl='', clusters='39', lv='1.0',
+                           sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+                           co2_budget_name='b30b3', planning_horizons='2050'),
+            input=dict(network="pypsa-eur-sec/results/test/prenetworks_brownfield/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc"),
+            output=["results/networks/s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}-test.nc"],
+            log=dict(gurobi="logs/elec_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_gurobi-test.log",
+                     python="logs/elec_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_python-test.log")
         )
-
-
+        import yaml
+        with open('config.yaml', encoding='utf8') as f:
+            snakemake.config = yaml.safe_load(f)
     tmpdir = snakemake.config['solving'].get('tmpdir')
     if tmpdir is not None:
         patch_pyomo_tmpdir(tmpdir)
@@ -340,10 +392,12 @@ if __name__ == "__main__":
                         level=snakemake.config['logging_level'])
 
     with memory_logger(filename=getattr(snakemake.log, 'memory', None), interval=30.) as mem:
+
         n = pypsa.Network(snakemake.input.network,
                           override_component_attrs=override_component_attrs)
 
         n = prepare_network(n)
+
         n = solve_network(n)
 
         n.export_to_netcdf(snakemake.output[0])

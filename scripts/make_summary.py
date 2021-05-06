@@ -3,8 +3,6 @@ from six import iteritems
 
 import sys
 
-sys.path.append("../pypsa-eur/scripts")
-
 import pandas as pd
 
 import numpy as np
@@ -13,9 +11,7 @@ import pypsa
 
 from vresutils.costdata import annuity
 
-from prepare_sector_network import generate_periodic_profiles
-
-from add_electricity import load_costs
+from prepare_sector_network import generate_periodic_profiles, prepare_costs
 
 import yaml
 
@@ -32,10 +28,13 @@ opt_name = {"Store": "e", "Line" : "s", "Transformer" : "s"}
 override_component_attrs = pypsa.descriptors.Dict({k : v.copy() for k,v in pypsa.components.component_attrs.items()})
 override_component_attrs["Link"].loc["bus2"] = ["string",np.nan,np.nan,"2nd bus","Input (optional)"]
 override_component_attrs["Link"].loc["bus3"] = ["string",np.nan,np.nan,"3rd bus","Input (optional)"]
+override_component_attrs["Link"].loc["bus4"] = ["string",np.nan,np.nan,"4th bus","Input (optional)"]
 override_component_attrs["Link"].loc["efficiency2"] = ["static or series","per unit",1.,"2nd bus efficiency","Input (optional)"]
 override_component_attrs["Link"].loc["efficiency3"] = ["static or series","per unit",1.,"3rd bus efficiency","Input (optional)"]
+override_component_attrs["Link"].loc["efficiency4"] = ["static or series","per unit",1.,"4th bus efficiency","Input (optional)"]
 override_component_attrs["Link"].loc["p2"] = ["series","MW",0.,"2nd bus output","Output"]
 override_component_attrs["Link"].loc["p3"] = ["series","MW",0.,"3rd bus output","Output"]
+override_component_attrs["Link"].loc["p4"] = ["series","MW",0.,"4th bus output","Output"]
 override_component_attrs["StorageUnit"].loc["p_dispatch"] = ["series","MW",0.,"Storage discharging.","Output"]
 override_component_attrs["StorageUnit"].loc["p_store"] = ["series","MW",0.,"Storage charging.","Output"]
 
@@ -80,7 +79,7 @@ def calculate_nodal_cfs(n,label,nodal_cfs):
         cf_c = p_c/capacities_c
 
         index = pd.MultiIndex.from_tuples([(c.list_name,) + t for t in cf_c.index.to_list()])
-        nodal_cfs = nodal_cfs.reindex(index|nodal_cfs.index)
+        nodal_cfs = nodal_cfs.reindex(index.union(nodal_cfs.index))
         nodal_cfs.loc[index,label] = cf_c.values
 
     return nodal_cfs
@@ -107,7 +106,7 @@ def calculate_cfs(n,label,cfs):
 
         cf_c = pd.concat([cf_c], keys=[c.list_name])
 
-        cfs = cfs.reindex(cf_c.index|cfs.index)
+        cfs = cfs.reindex(cf_c.index.union(cfs.index))
 
         cfs.loc[cf_c.index,label] = cf_c
 
@@ -122,7 +121,7 @@ def calculate_nodal_costs(n,label,nodal_costs):
         c.df["capital_costs"] = c.df.capital_cost*c.df[opt_name.get(c.name,"p") + "_nom_opt"]
         capital_costs = c.df.groupby(["location","carrier"])["capital_costs"].sum()
         index = pd.MultiIndex.from_tuples([(c.list_name,"capital") + t for t in capital_costs.index.to_list()])
-        nodal_costs = nodal_costs.reindex(index|nodal_costs.index)
+        nodal_costs = nodal_costs.reindex(index.union(nodal_costs.index))
         nodal_costs.loc[index,label] = capital_costs.values
 
         if c.name == "Link":
@@ -144,7 +143,7 @@ def calculate_nodal_costs(n,label,nodal_costs):
         c.df["marginal_costs"] = p*c.df.marginal_cost
         marginal_costs = c.df.groupby(["location","carrier"])["marginal_costs"].sum()
         index = pd.MultiIndex.from_tuples([(c.list_name,"marginal") + t for t in marginal_costs.index.to_list()])
-        nodal_costs = nodal_costs.reindex(index|nodal_costs.index)
+        nodal_costs = nodal_costs.reindex(index.union(nodal_costs.index))
         nodal_costs.loc[index,label] = marginal_costs.values
 
     return nodal_costs
@@ -159,7 +158,7 @@ def calculate_costs(n,label,costs):
         capital_costs_grouped = pd.concat([capital_costs_grouped], keys=["capital"])
         capital_costs_grouped = pd.concat([capital_costs_grouped], keys=[c.list_name])
 
-        costs = costs.reindex(capital_costs_grouped.index|costs.index)
+        costs = costs.reindex(capital_costs_grouped.index.union(costs.index))
 
         costs.loc[capital_costs_grouped.index,label] = capital_costs_grouped
 
@@ -186,17 +185,9 @@ def calculate_costs(n,label,costs):
         marginal_costs_grouped = pd.concat([marginal_costs_grouped], keys=["marginal"])
         marginal_costs_grouped = pd.concat([marginal_costs_grouped], keys=[c.list_name])
 
-        costs = costs.reindex(marginal_costs_grouped.index|costs.index)
+        costs = costs.reindex(marginal_costs_grouped.index.union(costs.index))
 
         costs.loc[marginal_costs_grouped.index,label] = marginal_costs_grouped
-
-    #add back in costs of links if there is a line volume limit
-    if label[1] != "opt":
-        costs.loc[("links-added","capital","transmission lines"),label] = ((costs_db.at['HVDC overhead', 'capital_cost']*n.links.length + costs_db.at['HVDC inverter pair', 'capital_cost'])*n.links.p_nom_opt)[n.links.carrier == "DC"].sum()
-        costs.loc[("lines-added","capital","transmission lines"),label] = costs_db.at["HVAC overhead", "capital_cost"]*(n.lines.length*n.lines.s_nom_opt).sum()
-    else:
-        costs.loc[("links-added","capital","transmission lines"),label] = (costs_db.at['HVDC inverter pair', 'capital_cost']*n.links.p_nom_opt)[n.links.carrier == "DC"].sum()
-
 
     #add back in all hydro
     #costs.loc[("storage_units","capital","hydro"),label] = (0.01)*2e6*n.storage_units.loc[n.storage_units.group=="hydro","p_nom"].sum()
@@ -205,13 +196,31 @@ def calculate_costs(n,label,costs):
 
     return costs
 
+def calculate_cumulative_cost():
+    planning_horizons = snakemake.config['scenario']['planning_horizons']
+
+    cumulative_cost = pd.DataFrame(index = df["costs"].sum().index,
+                                  columns=pd.Series(data=np.arange(0,0.1, 0.01), name='social discount rate'))
+
+    #discount cost and express them in money value of planning_horizons[0]
+    for r in cumulative_cost.columns:
+        cumulative_cost[r]=[df["costs"].sum()[index]/((1+r)**(index[-1]-planning_horizons[0])) for index in cumulative_cost.index]
+
+    #integrate cost throughout the transition path
+    for r in cumulative_cost.columns:
+        for cluster in cumulative_cost.index.get_level_values(level=0).unique():
+            for lv in cumulative_cost.index.get_level_values(level=1).unique():
+                for sector_opts in cumulative_cost.index.get_level_values(level=2).unique():
+                    cumulative_cost.loc[(cluster, lv, sector_opts,'cumulative cost'),r] = np.trapz(cumulative_cost.loc[idx[cluster, lv, sector_opts,planning_horizons],r].values, x=planning_horizons)
+
+    return cumulative_cost
 
 def calculate_nodal_capacities(n,label,nodal_capacities):
     #Beware this also has extraneous locations for country (e.g. biomass) or continent-wide (e.g. fossil gas/oil) stuff
     for c in n.iterate_components(n.branch_components|n.controllable_one_port_components^{"Load"}):
         nodal_capacities_c = c.df.groupby(["location","carrier"])[opt_name.get(c.name,"p") + "_nom_opt"].sum()
         index = pd.MultiIndex.from_tuples([(c.list_name,) + t for t in nodal_capacities_c.index.to_list()])
-        nodal_capacities = nodal_capacities.reindex(index|nodal_capacities.index)
+        nodal_capacities = nodal_capacities.reindex(index.union(nodal_capacities.index))
         nodal_capacities.loc[index,label] = nodal_capacities_c.values
 
     return nodal_capacities
@@ -225,7 +234,7 @@ def calculate_capacities(n,label,capacities):
         capacities_grouped = c.df[opt_name.get(c.name,"p") + "_nom_opt"].groupby(c.df.carrier).sum()
         capacities_grouped = pd.concat([capacities_grouped], keys=[c.list_name])
 
-        capacities = capacities.reindex(capacities_grouped.index|capacities.index)
+        capacities = capacities.reindex(capacities_grouped.index.union(capacities.index))
 
         capacities.loc[capacities_grouped.index,label] = capacities_grouped
 
@@ -250,11 +259,15 @@ def calculate_energy(n,label,energy):
         else:
             c_energies = pd.Series(0.,c.df.carrier.unique())
             for port in [col[3:] for col in c.df.columns if col[:3] == "bus"]:
-                c_energies -= c.pnl["p"+port].multiply(n.snapshot_weightings,axis=0).sum().groupby(c.df.carrier).sum()
+                totals = c.pnl["p"+port].multiply(n.snapshot_weightings,axis=0).sum()
+                #remove values where bus is missing (bug in nomopyomo)
+                no_bus = c.df.index[c.df["bus"+port] == ""]
+                totals.loc[no_bus] = n.component_attrs[c.name].loc["p"+port,"default"]
+                c_energies -= totals.groupby(c.df.carrier).sum()
 
         c_energies = pd.concat([c_energies], keys=[c.list_name])
 
-        energy = energy.reindex(c_energies.index|energy.index)
+        energy = energy.reindex(c_energies.index.union(energy.index))
 
         energy.loc[c_energies.index,label] = c_energies
 
@@ -272,7 +285,7 @@ def calculate_supply(n,label,supply):
 
         for c in n.iterate_components(n.one_port_components):
 
-            items = c.df.index[c.df.bus.map(bus_map)]
+            items = c.df.index[c.df.bus.map(bus_map).fillna(False)]
 
             if len(items) == 0:
                 continue
@@ -281,7 +294,7 @@ def calculate_supply(n,label,supply):
             s = pd.concat([s], keys=[c.list_name])
             s = pd.concat([s], keys=[i])
 
-            supply = supply.reindex(s.index|supply.index)
+            supply = supply.reindex(s.index.union(supply.index))
             supply.loc[s.index,label] = s
 
 
@@ -300,7 +313,7 @@ def calculate_supply(n,label,supply):
                 s = pd.concat([s], keys=[c.list_name])
                 s = pd.concat([s], keys=[i])
 
-                supply = supply.reindex(s.index|supply.index)
+                supply = supply.reindex(s.index.union(supply.index))
                 supply.loc[s.index,label] = s
 
     return supply
@@ -317,7 +330,7 @@ def calculate_supply_energy(n,label,supply_energy):
 
         for c in n.iterate_components(n.one_port_components):
 
-            items = c.df.index[c.df.bus.map(bus_map)]
+            items = c.df.index[c.df.bus.map(bus_map).fillna(False)]
 
             if len(items) == 0:
                 continue
@@ -326,7 +339,7 @@ def calculate_supply_energy(n,label,supply_energy):
             s = pd.concat([s], keys=[c.list_name])
             s = pd.concat([s], keys=[i])
 
-            supply_energy = supply_energy.reindex(s.index|supply_energy.index)
+            supply_energy = supply_energy.reindex(s.index.union(supply_energy.index))
             supply_energy.loc[s.index,label] = s
 
 
@@ -344,7 +357,7 @@ def calculate_supply_energy(n,label,supply_energy):
                 s = pd.concat([s], keys=[c.list_name])
                 s = pd.concat([s], keys=[i])
 
-                supply_energy = supply_energy.reindex(s.index|supply_energy.index)
+                supply_energy = supply_energy.reindex(s.index.union(supply_energy.index))
 
                 supply_energy.loc[s.index,label] = s
 
@@ -353,7 +366,7 @@ def calculate_supply_energy(n,label,supply_energy):
 
 def calculate_metrics(n,label,metrics):
 
-    metrics = metrics.reindex(pd.Index(["line_volume","line_volume_limit","line_volume_AC","line_volume_DC","line_volume_shadow","co2_shadow"])|metrics.index)
+    metrics = metrics.reindex(pd.Index(["line_volume","line_volume_limit","line_volume_AC","line_volume_DC","line_volume_shadow","co2_shadow"]).union(metrics.index))
 
     metrics.at["line_volume_DC",label] = (n.links.length*n.links.p_nom_opt)[n.links.carrier == "DC"].sum()
     metrics.at["line_volume_AC",label] = (n.lines.length*n.lines.s_nom_opt).sum()
@@ -371,7 +384,7 @@ def calculate_metrics(n,label,metrics):
 
 def calculate_prices(n,label,prices):
 
-    prices = prices.reindex(prices.index|n.buses.carrier.unique())
+    prices = prices.reindex(prices.index.union(n.buses.carrier.unique()))
 
     #WARNING: this is time-averaged, see weighted_prices for load-weighted average
     prices[label] = n.buses_t.marginal_price.mean().groupby(n.buses.carrier).mean()
@@ -454,7 +467,7 @@ def calculate_market_values(n, label, market_values):
 
     techs = n.generators.loc[generators,"carrier"].value_counts().index
 
-    market_values = market_values.reindex(market_values.index | techs)
+    market_values = market_values.reindex(market_values.index.union(techs))
 
 
     for tech in techs:
@@ -475,7 +488,7 @@ def calculate_market_values(n, label, market_values):
 
         techs = n.links.loc[all_links,"carrier"].value_counts().index
 
-        market_values = market_values.reindex(market_values.index | techs)
+        market_values = market_values.reindex(market_values.index.union(techs))
 
         for tech in techs:
             links = all_links[n.links.loc[all_links,"carrier"] == tech]
@@ -492,7 +505,7 @@ def calculate_market_values(n, label, market_values):
 def calculate_price_statistics(n, label, price_statistics):
 
 
-    price_statistics = price_statistics.reindex(price_statistics.index|pd.Index(["zero_hours","mean","standard_deviation"]))
+    price_statistics = price_statistics.reindex(price_statistics.index.union(pd.Index(["zero_hours","mean","standard_deviation"])))
 
     buses = n.buses.index[n.buses.carrier == "AC"]
 
@@ -530,7 +543,7 @@ outputs = ["nodal_costs",
 
 def make_summaries(networks_dict):
 
-    columns = pd.MultiIndex.from_tuples(networks_dict.keys(),names=["cluster","lv","opt"])
+    columns = pd.MultiIndex.from_tuples(networks_dict.keys(),names=["cluster","lv","opt","planning_horizon"])
 
     df = {}
 
@@ -565,37 +578,54 @@ if __name__ == "__main__":
         from vresutils import Dict
         import yaml
         snakemake = Dict()
-        with open('config.yaml') as f:
-            snakemake.config = yaml.load(f)
+        with open('config.yaml', encoding='utf8') as f:
+            snakemake.config = yaml.safe_load(f)
 
         #overwrite some options
-        snakemake.config["run"] = "190418-test-rebase"
-        snakemake.config["scenario"]["lv"] = [1.0, 1.25]
-        snakemake.config["scenario"]["sector_opts"] = ["Co2L0-3H-T-H-B-I","Co2L0-3H-T-H-B-I-onwind0","Co2L0p1-3H-T-H-B-I","Co2L0-3H-T-H-B-I-onwind0-solar2-offwind2"]
+        snakemake.config["run"] = "version-8"
+        snakemake.config["scenario"]["lv"] = [1.0]
+        snakemake.config["scenario"]["sector_opts"] = ["3H-T-H-B-I-solar3-dist1"]
+        snakemake.config["planning_horizons"] = ['2020', '2030', '2040', '2050']
         snakemake.input = Dict()
         snakemake.input['heat_demand_name'] = 'data/heating/daily_heat_demand.h5'
+        snakemake.input['costs'] = snakemake.config['costs_dir'] + "costs_{}.csv".format(snakemake.config['scenario']['planning_horizons'][0])
         snakemake.output = Dict()
         for item in outputs:
             snakemake.output[item] = snakemake.config['summary_dir'] + '/{name}/csvs/{item}.csv'.format(name=snakemake.config['run'],item=item)
-
-    networks_dict = {(cluster,lv,opt+sector_opt) :
-                     snakemake.config['results_dir'] + snakemake.config['run'] + '/postnetworks/elec_s{simpl}_{cluster}_lv{lv}_{opt}_{sector_opt}.nc'\
+        snakemake.output['cumulative_cost'] = snakemake.config['summary_dir'] + '/{name}/csvs/cumulative_cost.csv'.format(name=snakemake.config['run'])
+    networks_dict = {(cluster, lv, opt+sector_opt, planning_horizon) :
+                     snakemake.config['results_dir'] + snakemake.config['run'] + '/postnetworks/elec_s{simpl}_{cluster}_lv{lv}_{opt}_{sector_opt}_{planning_horizon}.nc'\
                      .format(simpl=simpl,
                              cluster=cluster,
                              opt=opt,
                              lv=lv,
-                             sector_opt=sector_opt)\
+                             sector_opt=sector_opt,
+                             planning_horizon=planning_horizon)\
                      for simpl in snakemake.config['scenario']['simpl'] \
                      for cluster in snakemake.config['scenario']['clusters'] \
                      for opt in snakemake.config['scenario']['opts'] \
                      for sector_opt in snakemake.config['scenario']['sector_opts'] \
-                     for lv in snakemake.config['scenario']['lv']}
+                     for lv in snakemake.config['scenario']['lv'] \
+                     for planning_horizon in snakemake.config['scenario']['planning_horizons']}
+
     print(networks_dict)
 
-    costs_db = load_costs(Nyears=1.,tech_costs="data/costs.csv",config=snakemake.config["costs"],elec_config=snakemake.config['electricity'])
+    Nyears = 1
+
+    costs_db = prepare_costs(snakemake.input.costs,
+                             snakemake.config['costs']['USD2013_to_EUR2013'],
+                             snakemake.config['costs']['discountrate'],
+                             Nyears,
+                             snakemake.config['costs']['lifetime'])
 
     df = make_summaries(networks_dict)
 
     df["metrics"].loc["total costs"] =  df["costs"].sum()
 
     to_csv(df)
+
+    if snakemake.config["foresight"]=='myopic':
+        cumulative_cost=calculate_cumulative_cost()
+        cumulative_cost.to_csv(snakemake.config['summary_dir'] + '/' + snakemake.config['run'] + '/csvs/cumulative_cost.csv')
+
+

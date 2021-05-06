@@ -1,4 +1,3 @@
-
 import pandas as pd
 import geopandas as gpd
 
@@ -51,7 +50,6 @@ country_to_code = {
 'Switzerland' : 'CH',
 }
 
-
 non_EU = ['NO', 'CH', 'ME', 'MK', 'RS', 'BA', 'AL']
 
 rename = {"GR" : "EL",
@@ -73,7 +71,6 @@ def build_eurostat(year):
 
     fns = {2016: "data/eurostat-energy_balances-june_2016_edition/{year}-Energy-Balances-June2016edition.xlsx",
            2017: "data/eurostat-energy_balances-june_2017_edition/{year}-ENERGY-BALANCES-June2017edition.xlsx"}
-
     #2016 includes BA, 2017 doesn't
 
     #with sheet as None, an ordered dictionary of all sheets is returned
@@ -81,7 +78,6 @@ def build_eurostat(year):
                         None,
                         skiprows=1,
                         index_col=list(range(4)))
-
 
     #sorted_index necessary for slicing
     df = pd.concat({country_to_code[df.columns[0]] : df for ct,df in dfs.items()},sort=True).sort_index()
@@ -91,13 +87,10 @@ def build_eurostat(year):
 
 
 def build_swiss(year):
-
     fn = "data/switzerland-sfoe/switzerland-new_format.csv"
 
     #convert PJ/a to TWh/a
     return (pd.read_csv(fn,index_col=list(range(2)))/3.6).loc["CH",str(year)]
-
-
 
 
 def build_idees(year):
@@ -275,7 +268,7 @@ def build_idees(year):
     return totals
 
 
-def build_energy_totals():
+def build_energy_totals(eurostat, swiss, idees):
 
     clean_df = idees.reindex(population.index).drop(["passenger cars","passenger car efficiency"],axis=1)
 
@@ -314,7 +307,6 @@ def build_energy_totals():
             clean_df.loc[missing_in_eurostat,"{} {} {}".format(fuel,sector,use)] = \
                    clean_df.loc[missing_in_eurostat,"{} {} {}".format("electricity",sector,use)] \
                    + avg*(clean_df.loc[missing_in_eurostat,"{} {}".format("total",sector)] - clean_df.loc[missing_in_eurostat,"{} {}".format("electricity",sector)])
-
 
 
     #Fix Norway space and water heating fractions
@@ -378,24 +370,24 @@ def build_energy_totals():
     clean_df.loc[missing,"total aviation passenger"] = clean_df.loc[missing,["total domestic aviation passenger","total international aviation passenger"]].sum(axis=1)
     clean_df.loc[missing,"total aviation freight"] = clean_df.loc[missing,["total domestic aviation freight","total international aviation freight"]].sum(axis=1)
 
+    if "BA" in clean_df.index:
+        #fix missing data for BA (services and road energy data)
+        missing = (clean_df.loc["BA"] == 0.)
 
-    #fix missing data for BA (services and road energy data)
-    missing = (clean_df.loc["BA"] == 0.)
-
-    #add back in proportional to RS with ratio of total residential demand
-    clean_df.loc["BA",missing] = clean_df.loc["BA","total residential"]/clean_df.loc["RS","total residential"]*clean_df.loc["RS",missing]
+        #add back in proportional to RS with ratio of total residential demand
+        clean_df.loc["BA",missing] = clean_df.loc["BA","total residential"]/clean_df.loc["RS","total residential"]*clean_df.loc["RS",missing]
 
     clean_df.to_csv(snakemake.output.energy_name)
 
     return clean_df
 
 
-def build_eea_co2():
+def build_eea_co2(year=1990):
     # see ../notebooks/compute_1990_Europe_emissions_for_targets.ipynb
 
-    #https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-14
-    #downloaded 190222 (modified by EEA last on 181130)
-    fn = "data/eea/UNFCCC_v21.csv"
+    #https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-16
+    #downloaded 201228 (modified by EEA last on 201221)
+    fn = "data/eea/UNFCCC_v23.csv"
     df = pd.read_csv(fn, encoding="latin-1")
     df.loc[df["Year"] == "1985-1987","Year"] = 1986
     df["Year"] = df["Year"].astype(int)
@@ -418,15 +410,13 @@ def build_eea_co2():
     e['waste management'] = '5 - Waste management'
     e['other'] = '6 - Other Sector'
     e['indirect'] = 'ind_CO2 - Indirect CO2'
-    e["total wL"] = "Total (with LULUCF, with indirect CO2)"
-    e["total woL"] = "Total (without LULUCF, with indirect CO2)"
+    e["total wL"] = "Total (with LULUCF)"
+    e["total woL"] = "Total (without LULUCF)"
 
 
     pol = "CO2" #["All greenhouse gases - (CO2 equivalent)","CO2"]
 
     cts = ["CH","EUA","NO"] + eu28_eea
-
-    year = 1990
 
     emissions = df.loc[idx[cts,pol,year,e.values],"emissions"].unstack("Sector_name").rename(columns=pd.Series(e.index,e.values)).rename(index={"All greenhouse gases - (CO2 equivalent)" : "GHG"},level=1)
 
@@ -460,14 +450,12 @@ def build_eurostat_co2(year=1990):
     #Residual oil (No. 6)  0.298
     #https://www.eia.gov/electricity/annual/html/epa_a_03.html
 
-
-
     eurostat_co2 = eurostat_for_co2.multiply(se).sum(axis=1)
 
     return eurostat_co2
 
 
-def build_co2_totals(year=1990):
+def build_co2_totals(eea_co2, eurostat_co2):
 
     co2 = eea_co2.reindex(["EU28","NO","CH","BA","RS","AL","ME","MK"] + eu28)
 
@@ -485,10 +473,6 @@ def build_co2_totals(year=1990):
         co2.loc[ct,'industrial non-elec'] = eurostat_co2[ct,"+","Industry"].sum()
         #doesn't include non-energy emissions
         co2.loc[ct,'agriculture'] = eurostat_co2[ct,"+","+","Agriculture / Forestry"].sum()
-
-
-
-    co2.to_csv(snakemake.output.co2_name)
 
     return co2
 
@@ -536,7 +520,6 @@ def build_transport_data():
 
 if __name__ == "__main__":
 
-
     # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
         from vresutils import Dict
@@ -547,25 +530,24 @@ if __name__ == "__main__":
         snakemake.output['transport_name'] = "data/transport_data.csv"
 
         snakemake.input = Dict()
-        snakemake.input['nuts3_shapes'] = 'resources/nuts3_shapes.geojson'
+        snakemake.input['nuts3_shapes'] = '../pypsa-eur/resources/nuts3_shapes.geojson'
 
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index('index')
     population = nuts3['pop'].groupby(nuts3.country).sum()
 
-    year = 2011
+    data_year = 2011
+    eurostat = build_eurostat(data_year)
+    swiss = build_swiss(data_year)
+    idees = build_idees(data_year)
 
-    eurostat = build_eurostat(year)
+    build_energy_totals(eurostat, swiss, idees)
 
-    swiss = build_swiss(year)
 
-    idees = build_idees(year)
-
-    build_energy_totals()
-
-    eea_co2 = build_eea_co2()
-
-    eurostat_co2 = build_eurostat_co2()
-
-    build_co2_totals()
-
+    base_year_emissions = 1990
+    eea_co2 = build_eea_co2(base_year_emissions)
+    eurostat_co2 = build_eurostat_co2(base_year_emissions)
+	
+    co2 = build_co2_totals(eea_co2, eurostat_co2)
+    co2.to_csv(snakemake.output.co2_name)
+    
     build_transport_data()
