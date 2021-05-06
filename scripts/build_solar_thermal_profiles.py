@@ -24,8 +24,6 @@ if __name__ == '__main__':
     cutout_config = snakemake.config['atlite']['cutout']
     cutout = atlite.Cutout(cutout_config).sel(time=time)
 
-    cutout = atlite.Cutout(snakemake.config['atlite']['cutout'], **params)
-
     clustered_regions = gpd.read_file(
         snakemake.input.regions_onshore).set_index('name').squeeze()
 
