@@ -81,6 +81,12 @@ biomass:
     not included: ['Bioethanol sugar beet biomass', 'Rapeseeds for biodiesel', 'sunflower and soya for Biodiesel', 'Starchy crops biomass', 'Grassy crops biomass', 'Willow biomass', 'Poplar biomass potential', 'Roundwood fuelwood', 'Roundwood Chips & Pellets']
     biogas: ['Manure biomass potential', 'Sludge biomass']
 
+solar_thermal:
+  clearsky_model: simple  # should be "simple" or "enhanced"?
+  orientation:
+    slope: 45.
+    azimuth: 180.
+
 # only relevant for foresight = myopic or perfect
 existing_capacities:
   grouping_years: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019]
