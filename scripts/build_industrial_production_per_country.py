@@ -9,10 +9,6 @@ from tqdm import tqdm
 tj_to_ktoe = 0.0238845
 ktoe_to_twh = 0.01163
 
-# TODO: this should be config!
-# year for which data is retrieved
-year = 2015
-
 sub_sheet_name_dict = {'Iron and steel': 'ISI',
                        'Chemicals Industry': 'CHI',
                        'Non-metallic mineral products': 'NMM',
@@ -209,6 +205,8 @@ def add_ammonia_demand_separately(demand):
 if __name__ == '__main__':
 
     countries = non_EU + eu28
+
+    year = snakemake.config['industry']['reference_year']
 
     jrc_dir = snakemake.input.jrc
     eurostat_dir = snakemake.input.eurostat
