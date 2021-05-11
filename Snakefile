@@ -199,10 +199,9 @@ rule build_industrial_production_per_country_tomorrow:
 
 rule build_industrial_distribution_key:
     input:
+        regions_onshore=pypsaeur('resources/regions_onshore_elec_s{simpl}_{clusters}.geojson')
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        europe_shape=pypsaeur('resources/europe_shape.geojson'),
         hotmaps_industrial_database="data/Industrial_Database.csv",
-        network=pypsaeur('networks/elec_s{simpl}_{clusters}.nc')
     output:
         industrial_distribution_key="resources/industrial_distribution_key_elec_s{simpl}_{clusters}.csv"
     threads: 1
