@@ -6,6 +6,8 @@ import pandas as pd
 raw_year = 2015
 year = raw_year - 2016
 
+config = snakemake.config["industry"]
+
 # GWh/ktoe OR MWh/toe
 conv_factor = 11.630
 
@@ -40,7 +42,7 @@ eu28 = [
     "MT",
 ]
 
-sub_sheet_name_dict = {
+sheet_names = {
     "Iron and steel": "ISI",
     "Chemicals Industry": "CHI",
     "Non-metallic mineral products": "NMM",
@@ -54,6 +56,33 @@ sub_sheet_name_dict = {
     "Other Industrial Sectors": "OIS",
 }
 
+def load_jrc_data(sector, country='EU28'):
+    
+    suffixes = {
+        "out": "",
+        "fec": "_fec",
+        "ued": "_ued",
+        "emi": "_emi"
+    }
+    sheets = {k: sheet_names[sector] + v for k, v in suffixes.items()}
+
+    def usecols(x):
+        return isinstance(x, str) or x == year
+
+    jrc = pd.read_excel(
+        f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_{country}.xlsx",
+        sheet_name=list(sheets.values()),
+        index_col=0,
+        header=0,
+        squeeze=True,
+        usecols=usecols
+    )
+
+    for k, v in sheets.items():
+        jrc[k] = jrc.pop(v)
+        
+    return jrc
+
 index = [
     "elec",
     "coal",
@@ -66,11 +95,7 @@ index = [
     "process emission",
     "process emission from feedstock",
 ]
-
-config = snakemake.config["industry"]
-
-df = pd.DataFrame(index=index)
-
+df = pd.DataFrame(0, index=index)
 
 ##- Iron and steel
 
@@ -80,46 +105,13 @@ df = pd.DataFrame(index=index)
 
 sector = "Iron and steel"
 
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)  # the summary sheet
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)  # the final energy consumption sheet
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)  # the used energy sheet
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)  # the emissions sheet
+jrc = load_jrc_data(sector)
 
 ### Electric arc
 
 sector = "Electric arc"
 
-df[sector] = 0.0
-
-
-s_fec = excel_fec.iloc[51:57, year]
+s_fec = jrc['fec'][51:57]
 
 assert s_fec.index[0] == sector
 
@@ -135,13 +127,12 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Steel: Smelters"
 
+s_fec = jrc['fec'][61:67]
 
-s_fec = excel_fec.iloc[61:67, year]
-
-s_ued = excel_ued.iloc[61:67, year]
+s_ued = jrc['ued'][61:67]
 
 assert s_fec.index[0] == subsector
-
+ 
 # Efficiency changes due to transforming all the smelters into methane
 eff_met = s_ued["Natural gas (incl. biogas)"] / s_fec["Natural gas (incl. biogas)"]
 
@@ -151,8 +142,7 @@ df.loc["methane", sector] += s_ued[subsector] / eff_met
 
 subsector = "Steel: Electric arc"
 
-
-s_fec = excel_fec.iloc[67:68, year]
+s_fec = jrc['fec'][67:68]
 
 assert s_fec.index[0] == subsector
 
@@ -165,10 +155,9 @@ df.loc["elec", sector] += s_fec[subsector]
 
 subsector = "Steel: Furnaces, Refining and Rolling"
 
+s_fec = jrc['fec'][68:75]
 
-s_fec = excel_fec.iloc[68:75, year]
-
-s_ued = excel_ued.iloc[68:75, year]
+s_ued = jrc['ued'][68:75]
 
 assert s_fec.index[0] == subsector
 
@@ -185,10 +174,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Steel: Products finishing"
 
+s_fec = jrc['fec'][75:92]
 
-s_fec = excel_fec.iloc[75:92, year]
-
-s_ued = excel_ued.iloc[75:92, year]
+s_ued = jrc['ued'][75:92]
 
 assert s_fec.index[0] == subsector
 
@@ -202,11 +190,11 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 #### Process emissions (per physical output)
 
-s_emi = excel_emi.iloc[51:93, year]
+s_emi = jrc['emi'][51:93]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[7:8, year]
+s_out = jrc['out'][7:8]
 
 assert sector in str(s_out.index)
 
@@ -228,7 +216,6 @@ df.loc["hydrogen", "DRI + Electric arc"] = config["H2_DRI"]
 # add electricity consumption in DRI shaft (0.322 MWh/tSl)
 df.loc["elec", "DRI + Electric arc"] += config["elec_DRI"]
 
-
 ### Integrated steelworks (could be used in combination with CCS)
 ### Assume existing fuels are kept, except for furnaces, refining, rolling, finishing
 ### Ignore 'derived gases' since these are top gases from furnaces
@@ -237,8 +224,7 @@ sector = "Integrated steelworks"
 
 df["Integrated steelworks"] = 0.0
 
-
-s_fec = excel_fec.iloc[3:9, year]
+s_fec = jrc['fec'][3:9]
 
 assert s_fec.index[0] == sector
 
@@ -250,15 +236,13 @@ df.loc["elec", sector] += s_fec[
 # Low enthalpy heat
 df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
-
 #### Steel: Sinter/Pellet making
 
 subsector = "Steel: Sinter/Pellet making"
 
+s_fec = jrc['fec'][13:19]
 
-s_fec = excel_fec.iloc[13:19, year]
-
-s_ued = excel_ued.iloc[13:19, year]
+s_ued = jrc['ued'][13:19]
 
 assert s_fec.index[0] == subsector
 
@@ -267,15 +251,13 @@ df.loc["methane", sector] += s_fec["Natural gas (incl. biogas)"]
 df.loc["methane", sector] += s_fec["Residual fuel oil"]
 df.loc["coal", sector] += s_fec["Solids"]
 
-
 #### Steel: Blast / Basic Oxygen Furnace
 
 subsector = "Steel: Blast /Basic oxygen furnace"
 
+s_fec = jrc['fec'][19:25]
 
-s_fec = excel_fec.iloc[19:25, year]
-
-s_ued = excel_ued.iloc[19:25, year]
+s_ued = jrc['ued'][19:25]
 
 assert s_fec.index[0] == subsector
 
@@ -284,17 +266,15 @@ df.loc["methane", sector] += s_fec["Residual fuel oil"]
 df.loc["coal", sector] += s_fec["Solids"]
 df.loc["coke", sector] += s_fec["Coke"]
 
-
 #### Steel: Furnaces, Refining and Rolling
 # assume fully electrified
 # other processes are scaled by the used energy
 
 subsector = "Steel: Furnaces, Refining and Rolling"
 
+s_fec = jrc['fec'][25:32]
 
-s_fec = excel_fec.iloc[25:32, year]
-
-s_ued = excel_ued.iloc[25:32, year]
+s_ued = jrc['ued'][25:32]
 
 assert s_fec.index[0] == subsector
 
@@ -311,10 +291,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Steel: Products finishing"
 
+s_fec = jrc['fec'][32:49]
 
-s_fec = excel_fec.iloc[32:49, year]
-
-s_ued = excel_ued.iloc[32:49, year]
+s_ued = jrc['ued'][32:49]
 
 assert s_fec.index[0] == subsector
 
@@ -326,14 +305,13 @@ eff = (
 
 df.loc["elec", sector] += s_ued[subsector] / eff
 
-
 #### Process emissions (per physical output)
 
-s_emi = excel_emi.iloc[3:50, year]
+s_emi = jrc['emi'][3:50]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[6:7, year]
+s_out = jrc['out'][6:7]
 
 assert sector in str(s_out.index)
 
@@ -348,43 +326,11 @@ df.loc[["elec", "heat", "methane", "coke", "coal"], sector] = (
     / s_out[sector]
 )  # unit MWh/t material
 
-
 ##- Chemicals Industry
 
 sector = "Chemicals Industry"
 
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
+jrc = load_jrc_data(sector)
 
 ### Basic chemicals
 
@@ -392,10 +338,8 @@ excel_emi = pd.read_excel(
 
 sector = "Basic chemicals"
 
-df[sector] = 0
 
-
-s_fec = excel_fec.iloc[3:9, year]
+s_fec = jrc['fec'][3:9]
 
 assert s_fec.index[0] == sector
 
@@ -413,8 +357,7 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: Feedstock (energy used as raw material)"
 
-
-s_fec = excel_fec.iloc[13:22, year]
+s_fec = jrc['fec'][13:22]
 
 assert s_fec.index[0] == subsector
 
@@ -440,10 +383,9 @@ df.loc["naphtha", sector] += (
 
 subsector = "Chemicals: Steam processing"
 
+s_fec = jrc['fec'][22:33]
 
-s_fec = excel_fec.iloc[22:33, year]
-
-s_ued = excel_ued.iloc[22:33, year]
+s_ued = jrc['ued'][22:33]
 
 assert s_fec.index[0] == subsector
 
@@ -458,10 +400,9 @@ df.loc["methane", sector] += s_ued[subsector] / eff_ch4
 
 subsector = "Chemicals: Furnaces"
 
+s_fec = jrc['fec'][33:41]
 
-s_fec = excel_fec.iloc[33:41, year]
-
-s_ued = excel_ued.iloc[33:41, year]
+s_ued = jrc['ued'][33:41]
 
 assert s_fec.index[0] == subsector
 
@@ -477,10 +418,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Process cooling"
 
+s_fec = jrc['fec'][41:55]
 
-s_fec = excel_fec.iloc[41:55, year]
-
-s_ued = excel_ued.iloc[41:55, year]
+s_ued = jrc['ued'][41:55]
 
 assert s_fec.index[0] == subsector
 
@@ -495,8 +435,7 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Generic electric process"
 
-
-s_fec = excel_fec.iloc[55:56, year]
+s_fec = jrc['fec'][55:56]
 
 assert s_fec.index[0] == subsector
 
@@ -504,13 +443,13 @@ df.loc["elec", sector] += s_fec[subsector]
 
 #### Process emissions
 
-s_emi = excel_emi.iloc[3:57, year]
+s_emi = jrc['emi'][3:57]
 
 assert s_emi.index[0] == sector
 
 ## Correct everything by subtracting 2015's ammonia demand and putting in ammonia demand for H2 and electricity separately
 
-s_out = excel_out.iloc[8:9, year]
+s_out = jrc['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -547,19 +486,14 @@ df.rename(columns={sector: sector + " (without ammonia)"}, inplace=True)
 
 sector = "Ammonia"
 
-df[sector] = 0.0
-
 df.loc["hydrogen", sector] = config["MWh_H2_per_tNH3_electrolysis"]
 df.loc["elec", sector] = config["MWh_elec_per_tNH3_electrolysis"]
-
 
 ### Other chemicals
 
 sector = "Other chemicals"
 
-df[sector] = 0
-
-s_fec = excel_fec.iloc[58:64, year]
+s_fec = jrc['fec'][58:64]
 
 # check the position
 assert s_fec.index[0] == sector
@@ -577,10 +511,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: High enthalpy heat  processing"
 
+s_fec = jrc['fec'][68:81]
 
-s_fec = excel_fec.iloc[68:81, year]
-
-s_ued = excel_ued.iloc[68:81, year]
+s_ued = jrc['ued'][68:81]
 
 assert s_fec.index[0] == subsector
 
@@ -596,10 +529,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Furnaces"
 
+s_fec = jrc['fec'][81:89]
 
-s_fec = excel_fec.iloc[81:89, year]
-
-s_ued = excel_ued.iloc[81:89, year]
+s_ued = jrc['ued'][81:89]
 
 assert s_fec.index[0] == subsector
 
@@ -614,10 +546,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Process cooling"
 
+s_fec = jrc['fec'][89:103]
 
-s_fec = excel_fec.iloc[89:103, year]
-
-s_ued = excel_ued.iloc[89:103, year]
+s_ued = jrc['ued'][89:103]
 
 assert s_fec.index[0] == subsector
 
@@ -632,8 +563,7 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Chemicals: Generic electric process"
 
-
-s_fec = excel_fec.iloc[103:104, year]
+s_fec = jrc['fec'][103:104]
 
 assert s_fec.index[0] == subsector
 
@@ -641,11 +571,11 @@ df.loc["elec", sector] += s_fec[subsector]
 
 #### Process emissions
 
-s_emi = excel_emi.iloc[58:105, year]
+s_emi = jrc['emi'][58:105]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[9:10, year]
+s_out = jrc['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -660,14 +590,11 @@ df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out.values
 )  # unit MWh/t material
 
-
 ### Pharmaceutical products etc.
 
 sector = "Pharmaceutical products etc."
 
-df[sector] = 0
-
-s_fec = excel_fec.iloc[106:112, year]
+s_fec = jrc['fec'][106:112]
 
 assert s_fec.index[0] == sector
 
@@ -684,10 +611,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: High enthalpy heat  processing"
 
+s_fec = jrc['fec'][116:129]
 
-s_fec = excel_fec.iloc[116:129, year]
-
-s_ued = excel_ued.iloc[116:129, year]
+s_ued = jrc['ued'][116:129]
 
 assert s_fec.index[0] == subsector
 
@@ -703,10 +629,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Furnaces"
 
+s_fec = jrc['fec'][129:137]
 
-s_fec = excel_fec.iloc[129:137, year]
-
-s_ued = excel_ued.iloc[129:137, year]
+s_ued = jrc['ued'][129:137]
 
 assert s_fec.index[0] == subsector
 
@@ -719,10 +644,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Chemicals: Process cooling"
 
+s_fec = jrc['fec'][137:151]
 
-s_fec = excel_fec.iloc[137:151, year]
-
-s_ued = excel_ued.iloc[137:151, year]
+s_ued = jrc['ued'][137:151]
 
 assert s_fec.index[0] == subsector
 
@@ -737,15 +661,13 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Generic electric process"
 
-
-s_fec = excel_fec.iloc[151:152, year]
+s_fec = jrc['fec'][151:152]
 
 assert s_fec.index[0] == subsector
 
 df.loc["elec", sector] += s_fec[subsector]
 
-
-s_out = excel_out.iloc[10:11, year]
+s_out = jrc['out'][10:11]
 
 # check the position
 assert sector in str(s_out.index)
@@ -759,7 +681,6 @@ df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out.values
 )  # unit MWh/t material
 
-
 ##- Non-metallic mineral products
 
 # This includes cement, ceramic and glass production.
@@ -767,38 +688,7 @@ df.loc[sources, sector] = (
 
 sector = "Non-metallic mineral products"
 
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
+jrc = load_jrc_data(sector)
 
 ### Cement
 #
@@ -812,12 +702,10 @@ excel_emi = pd.read_excel(
 
 sector = "Cement"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][3:25]
 
-s_fec = excel_fec.iloc[3:25, year]
-
-s_ued = excel_ued.iloc[3:25, year]
+s_ued = jrc['ued'][3:25]
 
 assert s_fec.index[0] == sector
 
@@ -836,15 +724,13 @@ df.loc["methane", sector] += (
     s_fec["Cement: Pre-heating and pre-calcination"] - s_fec["Biomass"]
 )
 
-
 #### Cement: Clinker production (kilns)
 
 subsector = "Cement: Clinker production (kilns)"
 
+s_fec = jrc['fec'][34:43]
 
-s_fec = excel_fec.iloc[34:43, year]
-
-s_ued = excel_ued.iloc[34:43, year]
+s_ued = jrc['ued'][34:43]
 
 assert s_fec.index[0] == subsector
 
@@ -854,17 +740,16 @@ df.loc["methane", sector] += (
 )
 df.loc["elec", sector] += s_fec["Cement: Grinding, packaging"]
 
-
 #### Process-emission came from the calcination of limestone to chemically reactive calcium oxide (lime).
 #  Calcium carbonate -> lime + CO2
 #
 #  CaCO3  -> CaO + CO2
 
-s_emi = excel_emi.iloc[3:44, year]
+s_emi = jrc['emi'][3:44]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[7:8, year]
+s_out = jrc['out'][7:8]
 
 assert sector in str(s_out.index)
 
@@ -889,12 +774,10 @@ df.loc[sources, sector] = (
 
 sector = "Ceramics & other NMM"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][45:94]
 
-s_fec = excel_fec.iloc[45:94, year]
-
-s_ued = excel_ued.iloc[45:94, year]
+s_ued = jrc['ued'][45:94]
 
 assert s_fec.index[0] == sector
 
@@ -927,11 +810,11 @@ df.loc["elec", sector] += s_ued["Ceramics: Primary production process"] / eff_el
 eff_elec = s_ued["Ceramics: Electric furnace"] / s_fec["Ceramics: Electric furnace"]
 df.loc["elec", sector] += s_ued["Ceramics: Product finishing"] / eff_elec
 
-s_emi = excel_emi.iloc[45:94, year]
+s_emi = jrc['emi'][45:94]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[8:9, year]
+s_out = jrc['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -946,7 +829,6 @@ df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out.values
 )  # unit MWh/t material
 
-
 ### Glass production
 #
 #  This sector has process emissions.
@@ -957,12 +839,10 @@ df.loc[sources, sector] = (
 
 sector = "Glass production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][95:123]
 
-s_fec = excel_fec.iloc[95:123, year]
-
-s_ued = excel_ued.iloc[95:123, year]
+s_ued = jrc['ued'][95:123]
 
 assert s_fec.index[0] == sector
 
@@ -984,11 +864,11 @@ df.loc["elec", sector] += (
     / eff_elec
 )
 
-s_emi = excel_emi.iloc[95:124, year]
+s_emi = jrc['emi'][95:124]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[9:10, year]
+s_out = jrc['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -1010,30 +890,7 @@ df.loc[sources, sector] = (
 
 sector = "Pulp, paper and printing"
 
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
+jrc = load_jrc_data(sector)
 
 ### Pulp production
 #
@@ -1045,12 +902,10 @@ excel_out = pd.read_excel(
 
 sector = "Pulp production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][3:28]
 
-s_fec = excel_fec.iloc[3:28, year]
-
-s_ued = excel_ued.iloc[3:28, year]
+s_ued = jrc['ued'][3:28]
 
 assert s_fec.index[0] == sector
 
@@ -1071,7 +926,7 @@ df.loc["elec", sector] += s_fec[
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Pulp: Pulping thermal"] / eff_bio
 
-s_out = excel_out.iloc[8:9, year]
+s_out = jrc['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -1092,12 +947,10 @@ df.loc[sources, sector] = (
 
 sector = "Paper production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][29:78]
 
-s_fec = excel_fec.iloc[29:78, year]
-
-s_ued = excel_ued.iloc[29:78, year]
+s_ued = jrc['ued'][29:78]
 
 assert s_fec.index[0] == sector
 
@@ -1118,10 +971,9 @@ df.loc["elec", sector] += s_fec["Paper: Paper machine - Electricity"]
 # add electricity from process that is already electrified
 df.loc["elec", sector] += s_fec["Paper: Product finishing - Electricity"]
 
+s_fec = jrc['fec'][53:64]
 
-s_fec = excel_fec.iloc[53:64, year]
-
-s_ued = excel_ued.iloc[53:64, year]
+s_ued = jrc['ued'][53:64]
 
 assert s_fec.index[0] == "Paper: Paper machine - Steam use"
 
@@ -1129,10 +981,9 @@ assert s_fec.index[0] == "Paper: Paper machine - Steam use"
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Paper: Paper machine - Steam use"] / eff_bio
 
+s_fec = jrc['fec'][66:77]
 
-s_fec = excel_fec.iloc[66:77, year]
-
-s_ued = excel_ued.iloc[66:77, year]
+s_ued = jrc['ued'][66:77]
 
 assert s_fec.index[0] == "Paper: Product finishing - Steam use"
 
@@ -1140,8 +991,7 @@ assert s_fec.index[0] == "Paper: Product finishing - Steam use"
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Paper: Product finishing - Steam use"] / eff_bio
 
-
-s_out = excel_out.iloc[9:10, year]
+s_out = jrc['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -1158,12 +1008,10 @@ df.loc[sources, sector] = (
 
 sector = "Printing and media reproduction"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][79:90]
 
-s_fec = excel_fec.iloc[79:90, year]
-
-s_ued = excel_ued.iloc[79:90, year]
+s_ued = jrc['ued'][79:90]
 
 assert s_fec.index[0] == sector
 
@@ -1183,8 +1031,7 @@ df.loc["heat", sector] += s_ued["Low enthalpy heat"]
 df.loc["elec", sector] += s_fec["Printing and publishing"]
 df.loc["elec", sector] += s_ued["Printing and publishing"]
 
-
-s_out = excel_out.iloc[10:11, year]
+s_out = jrc['out'][10:11]
 
 assert sector in str(s_out.index)
 
@@ -1202,37 +1049,12 @@ df.loc[sources, sector] = (
 
 sector = "Food, beverages and tobacco"
 
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
+jrc = load_jrc_data(sector)
 
 
-s_fec = excel_fec.iloc[3:78, year]
+s_fec = jrc['fec'][3:78]
 
-s_ued = excel_ued.iloc[3:78, year]
+s_ued = jrc['ued'][3:78]
 
 assert s_fec.index[0] == sector
 
@@ -1265,8 +1087,7 @@ df.loc["biomass", sector] += s_fec["Food: Steam processing"]
 # add electricity from process that is already electrified
 df.loc["elec", sector] += s_fec["Food: Electric machinery"]
 
-
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1279,38 +1100,7 @@ df.loc[sources, sector] = (
 
 sector = "Non Ferrous Metals"
 
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
+jrc = load_jrc_data(sector)
 
 ### Alumina
 #
@@ -1322,12 +1112,10 @@ excel_emi = pd.read_excel(
 
 sector = "Alumina production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][3:31]
 
-s_fec = excel_fec.iloc[3:31, year]
-
-s_ued = excel_ued.iloc[3:31, year]
+s_ued = jrc['ued'][3:31]
 
 assert s_fec.index[0] == sector
 
@@ -1340,9 +1128,9 @@ df.loc["elec", sector] += s_fec[
 df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 # High-enthalpy heat is transformed into methane
-s_fec = excel_fec.iloc[13:24, year]
+s_fec = jrc['fec'][13:24]
 
-s_ued = excel_ued.iloc[13:24, year]
+s_ued = jrc['ued'][13:24]
 
 assert s_fec.index[0] == "Alumina production: High enthalpy heat"
 
@@ -1350,17 +1138,16 @@ eff_met = s_ued["Natural gas (incl. biogas)"] / s_fec["Natural gas (incl. biogas
 df.loc["methane", sector] += s_fec["Alumina production: High enthalpy heat"] / eff_met
 
 # Efficiency changes due to electrification
-s_fec = excel_fec.iloc[24:30, year]
+s_fec = jrc['fec'][24:30]
 
-s_ued = excel_ued.iloc[24:30, year]
+s_ued = jrc['ued'][24:30]
 
 assert s_fec.index[0] == "Alumina production: Refining"
 
 eff_elec = s_ued["Electricity"] / s_fec["Electricity"]
 df.loc["elec", sector] += s_ued["Alumina production: Refining"] / eff_elec
 
-
-s_out = excel_out.iloc[9:10, year]
+s_out = jrc['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -1376,12 +1163,10 @@ df.loc[sources, sector] = (
 
 sector = "Aluminium - primary production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][31:66]
 
-s_fec = excel_fec.iloc[31:66, year]
-
-s_ued = excel_ued.iloc[31:66, year]
+s_ued = jrc['ued'][31:66]
 
 assert s_fec.index[0] == sector
 
@@ -1410,11 +1195,11 @@ eff_elec = (
 )
 df.loc["elec", sector] += s_ued["Aluminium finishing"] / eff_elec
 
-s_emi = excel_emi.iloc[31:67, year]
+s_emi = jrc['emi'][31:67]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[11:12, year]
+s_out = jrc['out'][11:12]
 
 assert sector in str(s_out.index)
 
@@ -1434,12 +1219,10 @@ df.loc[sources, sector] = (
 
 sector = "Aluminium - secondary production"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][68:109]
 
-s_fec = excel_fec.iloc[68:109, year]
-
-s_ued = excel_ued.iloc[68:109, year]
+s_ued = jrc['ued'][68:109]
 
 assert s_fec.index[0] == sector
 
@@ -1473,8 +1256,7 @@ eff_elec = (
 )
 df.loc["elec", sector] += s_ued["Aluminium finishing"] / eff_elec
 
-
-s_out = excel_out.iloc[12:13, year]
+s_out = jrc['out'][12:13]
 
 assert sector in str(s_out.index)
 
@@ -1484,17 +1266,14 @@ df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out["Aluminium - secondary production"]
 )  # unit MWh/t material
 
-
 ### Other non-ferrous metals
 
 sector = "Other non-ferrous metals"
 
-df[sector] = 0
 
+s_fec = jrc['fec'][110:152]
 
-s_fec = excel_fec.iloc[110:152, year]
-
-s_ued = excel_ued.iloc[110:152, year]
+s_ued = jrc['ued'][110:152]
 
 assert s_fec.index[0] == sector
 
@@ -1520,11 +1299,11 @@ df.loc["elec", sector] += (
 eff_elec = s_ued["Metal finishing - Electric"] / s_fec["Metal finishing - Electric"]
 df.loc["elec", sector] += s_ued["Metal finishing"] / eff_elec
 
-s_emi = excel_emi.iloc[110:153, year]
+s_emi = jrc['emi'][110:153]
 
 assert s_emi.index[0] == sector
 
-s_out = excel_out.iloc[13:14, year]
+s_out = jrc['out'][13:14]
 
 assert sector in str(s_out.index)
 
@@ -1544,44 +1323,12 @@ df.loc[sources, sector] = (
 
 sector = "Transport Equipment"
 
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
+jrc = load_jrc_data(sector)
 
 
-s_fec = excel_fec.iloc[3:45, year]
+s_fec = jrc['fec'][3:45]
 
-s_ued = excel_ued.iloc[3:45, year]
+s_ued = jrc['ued'][3:45]
 
 assert s_fec.index[0] == sector
 
@@ -1619,58 +1366,23 @@ df.loc["elec", sector] += s_fec["Trans. Eq.: Product finishing"]
 eff_biomass = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Trans. Eq.: Steam processing"] / eff_biomass
 
-
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
-
 ##- Machinery Equipment
 
 sector = "Machinery Equipment"
 
-
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
+jrc = load_jrc_data(sector)
 
 
-s_fec = excel_fec.iloc[3:45, year]
+s_fec = jrc['fec'][3:45]
 
-s_ued = excel_ued.iloc[3:45, year]
+s_ued = jrc['ued'][3:45]
 
 assert s_fec.index[0] == sector
 
@@ -1708,8 +1420,7 @@ df.loc["elec", sector] += s_fec["Mach. Eq.: Product finishing"]
 eff_biomass = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Mach. Eq.: Steam processing"] / eff_biomass
 
-
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1721,44 +1432,12 @@ df.loc[sources, sector] = (
 
 sector = "Textiles and leather"
 
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
+jrc = load_jrc_data(sector)
 
 
-s_fec = excel_fec.iloc[3:57, year]
+s_fec = jrc['fec'][3:57]
 
-s_ued = excel_ued.iloc[3:57, year]
+s_ued = jrc['ued'][3:57]
 
 assert s_fec.index[0] == sector
 
@@ -1782,8 +1461,7 @@ eff_biomass = s_ued[15:26]["Biomass"] / s_fec[15:26]["Biomass"]
 df.loc["biomass", sector] += s_ued["Textiles: Pretreatment with steam"] / eff_biomass
 df.loc["biomass", sector] += s_ued["Textiles: Wet processing with steam"] / eff_biomass
 
-
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1795,44 +1473,12 @@ df.loc[sources, sector] = (
 
 sector = "Wood and wood products"
 
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
+jrc = load_jrc_data(sector)
 
 
-s_fec = excel_fec.iloc[3:46, year]
+s_fec = jrc['fec'][3:46]
 
-s_ued = excel_ued.iloc[3:46, year]
+s_ued = jrc['ued'][3:46]
 
 assert s_fec.index[0] == sector
 
@@ -1855,8 +1501,7 @@ df.loc["elec", sector] += s_fec["Wood: Finishing Electric"]
 eff_biomass = s_ued[15:25]["Biomass"] / s_fec[15:25]["Biomass"]
 df.loc["biomass", sector] += s_ued["Wood: Specific processes with steam"] / eff_biomass
 
-
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1868,44 +1513,11 @@ df.loc[sources, sector] = (
 
 sector = "Other Industrial Sectors"
 
+jrc = load_jrc_data(sector)
 
-excel_fec = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_fec",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
+s_fec = jrc['fec'][3:67]
 
-excel_ued = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_ued",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_out = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector],
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-excel_emi = pd.read_excel(
-    f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_EU28.xlsx",
-    sheet_name=sub_sheet_name_dict[sector] + "_emi",
-    index_col=0,
-    header=0,
-    squeeze=True,
-)
-
-df[sector] = 0
-
-s_fec = excel_fec.iloc[3:67, year]
-
-s_ued = excel_ued.iloc[3:67, year]
+s_ued = jrc['ued'][3:67]
 
 assert s_fec.index[0] == sector
 
@@ -1948,14 +1560,13 @@ df.loc["biomass", sector] += (
     s_ued["Other Industrial sectors: Steam processing"] / eff_biomass
 )
 
-s_out = excel_out.iloc[3:4, year]
+s_out = jrc['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
     df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
 )  # unit MWh/t material
-
 
 df.index.name = "MWh/tMaterial"
 df.to_csv("resources/industry_sector_ratios.csv")
