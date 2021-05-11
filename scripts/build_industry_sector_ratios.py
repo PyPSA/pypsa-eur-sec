@@ -2,9 +2,8 @@
 
 import pandas as pd
 
-# year for which data is retrieved
-raw_year = 2015
-year = raw_year - 2016
+# TODO make config option
+year = 2015
 
 config = snakemake.config["industry"]
 
@@ -56,7 +55,7 @@ sheet_names = {
     "Other Industrial Sectors": "OIS",
 }
 
-def load_jrc_data(sector, country='EU28'):
+def load_idees_data(sector, country='EU28'):
     
     suffixes = {
         "out": "",
@@ -69,8 +68,8 @@ def load_jrc_data(sector, country='EU28'):
     def usecols(x):
         return isinstance(x, str) or x == year
 
-    jrc = pd.read_excel(
-        f"{snakemake.input.jrc}/JRC-IDEES-2015_Industry_{country}.xlsx",
+    idees = pd.read_excel(
+        f"{snakemake.input.idees}/JRC-IDEES-2015_Industry_{country}.xlsx",
         sheet_name=list(sheets.values()),
         index_col=0,
         header=0,
@@ -79,9 +78,9 @@ def load_jrc_data(sector, country='EU28'):
     )
 
     for k, v in sheets.items():
-        jrc[k] = jrc.pop(v)
+        idees[k] = idees.pop(v)
         
-    return jrc
+    return idees
 
 index = [
     "elec",
@@ -105,13 +104,13 @@ df = pd.DataFrame(0, index=index)
 
 sector = "Iron and steel"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 ### Electric arc
 
 sector = "Electric arc"
 
-s_fec = jrc['fec'][51:57]
+s_fec = idees['fec'][51:57]
 
 assert s_fec.index[0] == sector
 
@@ -127,9 +126,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Steel: Smelters"
 
-s_fec = jrc['fec'][61:67]
+s_fec = idees['fec'][61:67]
 
-s_ued = jrc['ued'][61:67]
+s_ued = idees['ued'][61:67]
 
 assert s_fec.index[0] == subsector
  
@@ -142,7 +141,7 @@ df.loc["methane", sector] += s_ued[subsector] / eff_met
 
 subsector = "Steel: Electric arc"
 
-s_fec = jrc['fec'][67:68]
+s_fec = idees['fec'][67:68]
 
 assert s_fec.index[0] == subsector
 
@@ -155,9 +154,9 @@ df.loc["elec", sector] += s_fec[subsector]
 
 subsector = "Steel: Furnaces, Refining and Rolling"
 
-s_fec = jrc['fec'][68:75]
+s_fec = idees['fec'][68:75]
 
-s_ued = jrc['ued'][68:75]
+s_ued = idees['ued'][68:75]
 
 assert s_fec.index[0] == subsector
 
@@ -174,9 +173,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Steel: Products finishing"
 
-s_fec = jrc['fec'][75:92]
+s_fec = idees['fec'][75:92]
 
-s_ued = jrc['ued'][75:92]
+s_ued = idees['ued'][75:92]
 
 assert s_fec.index[0] == subsector
 
@@ -190,11 +189,11 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 #### Process emissions (per physical output)
 
-s_emi = jrc['emi'][51:93]
+s_emi = idees['emi'][51:93]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][7:8]
+s_out = idees['out'][7:8]
 
 assert sector in str(s_out.index)
 
@@ -224,7 +223,7 @@ sector = "Integrated steelworks"
 
 df["Integrated steelworks"] = 0.0
 
-s_fec = jrc['fec'][3:9]
+s_fec = idees['fec'][3:9]
 
 assert s_fec.index[0] == sector
 
@@ -240,9 +239,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Steel: Sinter/Pellet making"
 
-s_fec = jrc['fec'][13:19]
+s_fec = idees['fec'][13:19]
 
-s_ued = jrc['ued'][13:19]
+s_ued = idees['ued'][13:19]
 
 assert s_fec.index[0] == subsector
 
@@ -255,9 +254,9 @@ df.loc["coal", sector] += s_fec["Solids"]
 
 subsector = "Steel: Blast /Basic oxygen furnace"
 
-s_fec = jrc['fec'][19:25]
+s_fec = idees['fec'][19:25]
 
-s_ued = jrc['ued'][19:25]
+s_ued = idees['ued'][19:25]
 
 assert s_fec.index[0] == subsector
 
@@ -272,9 +271,9 @@ df.loc["coke", sector] += s_fec["Coke"]
 
 subsector = "Steel: Furnaces, Refining and Rolling"
 
-s_fec = jrc['fec'][25:32]
+s_fec = idees['fec'][25:32]
 
-s_ued = jrc['ued'][25:32]
+s_ued = idees['ued'][25:32]
 
 assert s_fec.index[0] == subsector
 
@@ -291,9 +290,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Steel: Products finishing"
 
-s_fec = jrc['fec'][32:49]
+s_fec = idees['fec'][32:49]
 
-s_ued = jrc['ued'][32:49]
+s_ued = idees['ued'][32:49]
 
 assert s_fec.index[0] == subsector
 
@@ -307,11 +306,11 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 #### Process emissions (per physical output)
 
-s_emi = jrc['emi'][3:50]
+s_emi = idees['emi'][3:50]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][6:7]
+s_out = idees['out'][6:7]
 
 assert sector in str(s_out.index)
 
@@ -330,7 +329,7 @@ df.loc[["elec", "heat", "methane", "coke", "coal"], sector] = (
 
 sector = "Chemicals Industry"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 ### Basic chemicals
 
@@ -339,7 +338,7 @@ jrc = load_jrc_data(sector)
 sector = "Basic chemicals"
 
 
-s_fec = jrc['fec'][3:9]
+s_fec = idees['fec'][3:9]
 
 assert s_fec.index[0] == sector
 
@@ -357,7 +356,7 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: Feedstock (energy used as raw material)"
 
-s_fec = jrc['fec'][13:22]
+s_fec = idees['fec'][13:22]
 
 assert s_fec.index[0] == subsector
 
@@ -383,9 +382,9 @@ df.loc["naphtha", sector] += (
 
 subsector = "Chemicals: Steam processing"
 
-s_fec = jrc['fec'][22:33]
+s_fec = idees['fec'][22:33]
 
-s_ued = jrc['ued'][22:33]
+s_ued = idees['ued'][22:33]
 
 assert s_fec.index[0] == subsector
 
@@ -400,9 +399,9 @@ df.loc["methane", sector] += s_ued[subsector] / eff_ch4
 
 subsector = "Chemicals: Furnaces"
 
-s_fec = jrc['fec'][33:41]
+s_fec = idees['fec'][33:41]
 
-s_ued = jrc['ued'][33:41]
+s_ued = idees['ued'][33:41]
 
 assert s_fec.index[0] == subsector
 
@@ -418,9 +417,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Process cooling"
 
-s_fec = jrc['fec'][41:55]
+s_fec = idees['fec'][41:55]
 
-s_ued = jrc['ued'][41:55]
+s_ued = idees['ued'][41:55]
 
 assert s_fec.index[0] == subsector
 
@@ -435,7 +434,7 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Generic electric process"
 
-s_fec = jrc['fec'][55:56]
+s_fec = idees['fec'][55:56]
 
 assert s_fec.index[0] == subsector
 
@@ -443,13 +442,13 @@ df.loc["elec", sector] += s_fec[subsector]
 
 #### Process emissions
 
-s_emi = jrc['emi'][3:57]
+s_emi = idees['emi'][3:57]
 
 assert s_emi.index[0] == sector
 
 ## Correct everything by subtracting 2015's ammonia demand and putting in ammonia demand for H2 and electricity separately
 
-s_out = jrc['out'][8:9]
+s_out = idees['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -493,7 +492,7 @@ df.loc["elec", sector] = config["MWh_elec_per_tNH3_electrolysis"]
 
 sector = "Other chemicals"
 
-s_fec = jrc['fec'][58:64]
+s_fec = idees['fec'][58:64]
 
 # check the position
 assert s_fec.index[0] == sector
@@ -511,9 +510,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: High enthalpy heat  processing"
 
-s_fec = jrc['fec'][68:81]
+s_fec = idees['fec'][68:81]
 
-s_ued = jrc['ued'][68:81]
+s_ued = idees['ued'][68:81]
 
 assert s_fec.index[0] == subsector
 
@@ -529,9 +528,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Furnaces"
 
-s_fec = jrc['fec'][81:89]
+s_fec = idees['fec'][81:89]
 
-s_ued = jrc['ued'][81:89]
+s_ued = idees['ued'][81:89]
 
 assert s_fec.index[0] == subsector
 
@@ -546,9 +545,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Process cooling"
 
-s_fec = jrc['fec'][89:103]
+s_fec = idees['fec'][89:103]
 
-s_ued = jrc['ued'][89:103]
+s_ued = idees['ued'][89:103]
 
 assert s_fec.index[0] == subsector
 
@@ -563,7 +562,7 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Chemicals: Generic electric process"
 
-s_fec = jrc['fec'][103:104]
+s_fec = idees['fec'][103:104]
 
 assert s_fec.index[0] == subsector
 
@@ -571,11 +570,11 @@ df.loc["elec", sector] += s_fec[subsector]
 
 #### Process emissions
 
-s_emi = jrc['emi'][58:105]
+s_emi = idees['emi'][58:105]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][9:10]
+s_out = idees['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -594,7 +593,7 @@ df.loc[sources, sector] = (
 
 sector = "Pharmaceutical products etc."
 
-s_fec = jrc['fec'][106:112]
+s_fec = idees['fec'][106:112]
 
 assert s_fec.index[0] == sector
 
@@ -611,9 +610,9 @@ df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 subsector = "Chemicals: High enthalpy heat  processing"
 
-s_fec = jrc['fec'][116:129]
+s_fec = idees['fec'][116:129]
 
-s_ued = jrc['ued'][116:129]
+s_ued = idees['ued'][116:129]
 
 assert s_fec.index[0] == subsector
 
@@ -629,9 +628,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Furnaces"
 
-s_fec = jrc['fec'][129:137]
+s_fec = idees['fec'][129:137]
 
-s_ued = jrc['ued'][129:137]
+s_ued = idees['ued'][129:137]
 
 assert s_fec.index[0] == subsector
 
@@ -644,9 +643,9 @@ df.loc["elec", sector] += s_ued[subsector] / eff
 
 subsector = "Chemicals: Process cooling"
 
-s_fec = jrc['fec'][137:151]
+s_fec = idees['fec'][137:151]
 
-s_ued = jrc['ued'][137:151]
+s_ued = idees['ued'][137:151]
 
 assert s_fec.index[0] == subsector
 
@@ -661,13 +660,13 @@ df.loc["elec", sector] += s_ued[subsector] / eff_elec
 
 subsector = "Chemicals: Generic electric process"
 
-s_fec = jrc['fec'][151:152]
+s_fec = idees['fec'][151:152]
 
 assert s_fec.index[0] == subsector
 
 df.loc["elec", sector] += s_fec[subsector]
 
-s_out = jrc['out'][10:11]
+s_out = idees['out'][10:11]
 
 # check the position
 assert sector in str(s_out.index)
@@ -688,24 +687,25 @@ df.loc[sources, sector] = (
 
 sector = "Non-metallic mineral products"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 ### Cement
-#
-#  This sector has process-emissions.
-#
-#  Includes three subcategories: (a) Grinding, milling of raw material, (b) Pre-heating and pre-calcination, (c) clinker production (kilns), (d) Grinding, packaging. (b)+(c) represent 94% of fec. So (a) is joined to (b) and (d) is joined to (c).
-#
-#  Temperatures above 1400C are required for procesing limestone and sand into clinker.
-#
-#  Everything (except current electricity and heat consumption and existing biomass) is transformed into methane for high T.
+
+# This sector has process-emissions.
+# Includes three subcategories:
+# (a) Grinding, milling of raw material,
+# (b) Pre-heating and pre-calcination,
+# (c) clinker production (kilns),
+# (d) Grinding, packaging.
+# (b)+(c) represent 94% of fec. So (a) is joined to (b) and (d) is joined to (c).
+# Temperatures above 1400C are required for procesing limestone and sand into clinker.
+# Everything (except current electricity and heat consumption and existing biomass) is transformed into methane for high T.
 
 sector = "Cement"
 
+s_fec = idees['fec'][3:25]
 
-s_fec = jrc['fec'][3:25]
-
-s_ued = jrc['ued'][3:25]
+s_ued = idees['ued'][3:25]
 
 assert s_fec.index[0] == sector
 
@@ -728,9 +728,9 @@ df.loc["methane", sector] += (
 
 subsector = "Cement: Clinker production (kilns)"
 
-s_fec = jrc['fec'][34:43]
+s_fec = idees['fec'][34:43]
 
-s_ued = jrc['ued'][34:43]
+s_ued = idees['ued'][34:43]
 
 assert s_fec.index[0] == subsector
 
@@ -745,11 +745,11 @@ df.loc["elec", sector] += s_fec["Cement: Grinding, packaging"]
 #
 #  CaCO3  -> CaO + CO2
 
-s_emi = jrc['emi'][3:44]
+s_emi = idees['emi'][3:44]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][7:8]
+s_out = idees['out'][7:8]
 
 assert sector in str(s_out.index)
 
@@ -775,9 +775,9 @@ df.loc[sources, sector] = (
 sector = "Ceramics & other NMM"
 
 
-s_fec = jrc['fec'][45:94]
+s_fec = idees['fec'][45:94]
 
-s_ued = jrc['ued'][45:94]
+s_ued = idees['ued'][45:94]
 
 assert s_fec.index[0] == sector
 
@@ -810,11 +810,11 @@ df.loc["elec", sector] += s_ued["Ceramics: Primary production process"] / eff_el
 eff_elec = s_ued["Ceramics: Electric furnace"] / s_fec["Ceramics: Electric furnace"]
 df.loc["elec", sector] += s_ued["Ceramics: Product finishing"] / eff_elec
 
-s_emi = jrc['emi'][45:94]
+s_emi = idees['emi'][45:94]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][8:9]
+s_out = idees['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -840,9 +840,9 @@ df.loc[sources, sector] = (
 sector = "Glass production"
 
 
-s_fec = jrc['fec'][95:123]
+s_fec = idees['fec'][95:123]
 
-s_ued = jrc['ued'][95:123]
+s_ued = idees['ued'][95:123]
 
 assert s_fec.index[0] == sector
 
@@ -864,11 +864,11 @@ df.loc["elec", sector] += (
     / eff_elec
 )
 
-s_emi = jrc['emi'][95:124]
+s_emi = idees['emi'][95:124]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][9:10]
+s_out = idees['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -890,7 +890,7 @@ df.loc[sources, sector] = (
 
 sector = "Pulp, paper and printing"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 ### Pulp production
 #
@@ -903,9 +903,9 @@ jrc = load_jrc_data(sector)
 sector = "Pulp production"
 
 
-s_fec = jrc['fec'][3:28]
+s_fec = idees['fec'][3:28]
 
-s_ued = jrc['ued'][3:28]
+s_ued = idees['ued'][3:28]
 
 assert s_fec.index[0] == sector
 
@@ -926,7 +926,7 @@ df.loc["elec", sector] += s_fec[
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Pulp: Pulping thermal"] / eff_bio
 
-s_out = jrc['out'][8:9]
+s_out = idees['out'][8:9]
 
 assert sector in str(s_out.index)
 
@@ -948,9 +948,9 @@ df.loc[sources, sector] = (
 sector = "Paper production"
 
 
-s_fec = jrc['fec'][29:78]
+s_fec = idees['fec'][29:78]
 
-s_ued = jrc['ued'][29:78]
+s_ued = idees['ued'][29:78]
 
 assert s_fec.index[0] == sector
 
@@ -971,9 +971,9 @@ df.loc["elec", sector] += s_fec["Paper: Paper machine - Electricity"]
 # add electricity from process that is already electrified
 df.loc["elec", sector] += s_fec["Paper: Product finishing - Electricity"]
 
-s_fec = jrc['fec'][53:64]
+s_fec = idees['fec'][53:64]
 
-s_ued = jrc['ued'][53:64]
+s_ued = idees['ued'][53:64]
 
 assert s_fec.index[0] == "Paper: Paper machine - Steam use"
 
@@ -981,9 +981,9 @@ assert s_fec.index[0] == "Paper: Paper machine - Steam use"
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Paper: Paper machine - Steam use"] / eff_bio
 
-s_fec = jrc['fec'][66:77]
+s_fec = idees['fec'][66:77]
 
-s_ued = jrc['ued'][66:77]
+s_ued = idees['ued'][66:77]
 
 assert s_fec.index[0] == "Paper: Product finishing - Steam use"
 
@@ -991,7 +991,7 @@ assert s_fec.index[0] == "Paper: Product finishing - Steam use"
 eff_bio = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Paper: Product finishing - Steam use"] / eff_bio
 
-s_out = jrc['out'][9:10]
+s_out = idees['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -1009,9 +1009,9 @@ df.loc[sources, sector] = (
 sector = "Printing and media reproduction"
 
 
-s_fec = jrc['fec'][79:90]
+s_fec = idees['fec'][79:90]
 
-s_ued = jrc['ued'][79:90]
+s_ued = idees['ued'][79:90]
 
 assert s_fec.index[0] == sector
 
@@ -1031,7 +1031,7 @@ df.loc["heat", sector] += s_ued["Low enthalpy heat"]
 df.loc["elec", sector] += s_fec["Printing and publishing"]
 df.loc["elec", sector] += s_ued["Printing and publishing"]
 
-s_out = jrc['out'][10:11]
+s_out = idees['out'][10:11]
 
 assert sector in str(s_out.index)
 
@@ -1049,12 +1049,12 @@ df.loc[sources, sector] = (
 
 sector = "Food, beverages and tobacco"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 
-s_fec = jrc['fec'][3:78]
+s_fec = idees['fec'][3:78]
 
-s_ued = jrc['ued'][3:78]
+s_ued = idees['ued'][3:78]
 
 assert s_fec.index[0] == sector
 
@@ -1087,7 +1087,7 @@ df.loc["biomass", sector] += s_fec["Food: Steam processing"]
 # add electricity from process that is already electrified
 df.loc["elec", sector] += s_fec["Food: Electric machinery"]
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1100,7 +1100,7 @@ df.loc[sources, sector] = (
 
 sector = "Non Ferrous Metals"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 ### Alumina
 #
@@ -1113,9 +1113,9 @@ jrc = load_jrc_data(sector)
 sector = "Alumina production"
 
 
-s_fec = jrc['fec'][3:31]
+s_fec = idees['fec'][3:31]
 
-s_ued = jrc['ued'][3:31]
+s_ued = idees['ued'][3:31]
 
 assert s_fec.index[0] == sector
 
@@ -1128,9 +1128,9 @@ df.loc["elec", sector] += s_fec[
 df.loc["heat", sector] += s_fec["Low enthalpy heat"]
 
 # High-enthalpy heat is transformed into methane
-s_fec = jrc['fec'][13:24]
+s_fec = idees['fec'][13:24]
 
-s_ued = jrc['ued'][13:24]
+s_ued = idees['ued'][13:24]
 
 assert s_fec.index[0] == "Alumina production: High enthalpy heat"
 
@@ -1138,16 +1138,16 @@ eff_met = s_ued["Natural gas (incl. biogas)"] / s_fec["Natural gas (incl. biogas
 df.loc["methane", sector] += s_fec["Alumina production: High enthalpy heat"] / eff_met
 
 # Efficiency changes due to electrification
-s_fec = jrc['fec'][24:30]
+s_fec = idees['fec'][24:30]
 
-s_ued = jrc['ued'][24:30]
+s_ued = idees['ued'][24:30]
 
 assert s_fec.index[0] == "Alumina production: Refining"
 
 eff_elec = s_ued["Electricity"] / s_fec["Electricity"]
 df.loc["elec", sector] += s_ued["Alumina production: Refining"] / eff_elec
 
-s_out = jrc['out'][9:10]
+s_out = idees['out'][9:10]
 
 assert sector in str(s_out.index)
 
@@ -1164,9 +1164,9 @@ df.loc[sources, sector] = (
 sector = "Aluminium - primary production"
 
 
-s_fec = jrc['fec'][31:66]
+s_fec = idees['fec'][31:66]
 
-s_ued = jrc['ued'][31:66]
+s_ued = idees['ued'][31:66]
 
 assert s_fec.index[0] == sector
 
@@ -1195,11 +1195,11 @@ eff_elec = (
 )
 df.loc["elec", sector] += s_ued["Aluminium finishing"] / eff_elec
 
-s_emi = jrc['emi'][31:67]
+s_emi = idees['emi'][31:67]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][11:12]
+s_out = idees['out'][11:12]
 
 assert sector in str(s_out.index)
 
@@ -1220,9 +1220,9 @@ df.loc[sources, sector] = (
 sector = "Aluminium - secondary production"
 
 
-s_fec = jrc['fec'][68:109]
+s_fec = idees['fec'][68:109]
 
-s_ued = jrc['ued'][68:109]
+s_ued = idees['ued'][68:109]
 
 assert s_fec.index[0] == sector
 
@@ -1256,7 +1256,7 @@ eff_elec = (
 )
 df.loc["elec", sector] += s_ued["Aluminium finishing"] / eff_elec
 
-s_out = jrc['out'][12:13]
+s_out = idees['out'][12:13]
 
 assert sector in str(s_out.index)
 
@@ -1271,9 +1271,9 @@ df.loc[sources, sector] = (
 sector = "Other non-ferrous metals"
 
 
-s_fec = jrc['fec'][110:152]
+s_fec = idees['fec'][110:152]
 
-s_ued = jrc['ued'][110:152]
+s_ued = idees['ued'][110:152]
 
 assert s_fec.index[0] == sector
 
@@ -1299,11 +1299,11 @@ df.loc["elec", sector] += (
 eff_elec = s_ued["Metal finishing - Electric"] / s_fec["Metal finishing - Electric"]
 df.loc["elec", sector] += s_ued["Metal finishing"] / eff_elec
 
-s_emi = jrc['emi'][110:153]
+s_emi = idees['emi'][110:153]
 
 assert s_emi.index[0] == sector
 
-s_out = jrc['out'][13:14]
+s_out = idees['out'][13:14]
 
 assert sector in str(s_out.index)
 
@@ -1323,12 +1323,11 @@ df.loc[sources, sector] = (
 
 sector = "Transport Equipment"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
+s_fec = idees['fec'][3:45]
 
-s_fec = jrc['fec'][3:45]
-
-s_ued = jrc['ued'][3:45]
+s_ued = idees['ued'][3:45]
 
 assert s_fec.index[0] == sector
 
@@ -1366,7 +1365,7 @@ df.loc["elec", sector] += s_fec["Trans. Eq.: Product finishing"]
 eff_biomass = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Trans. Eq.: Steam processing"] / eff_biomass
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
@@ -1377,12 +1376,12 @@ df.loc[sources, sector] = (
 
 sector = "Machinery Equipment"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 
-s_fec = jrc['fec'][3:45]
+s_fec = idees['fec'][3:45]
 
-s_ued = jrc['ued'][3:45]
+s_ued = idees['ued'][3:45]
 
 assert s_fec.index[0] == sector
 
@@ -1420,7 +1419,7 @@ df.loc["elec", sector] += s_fec["Mach. Eq.: Product finishing"]
 eff_biomass = s_ued["Biomass"] / s_fec["Biomass"]
 df.loc["biomass", sector] += s_ued["Mach. Eq.: Steam processing"] / eff_biomass
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1432,12 +1431,12 @@ df.loc[sources, sector] = (
 
 sector = "Textiles and leather"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 
-s_fec = jrc['fec'][3:57]
+s_fec = idees['fec'][3:57]
 
-s_ued = jrc['ued'][3:57]
+s_ued = idees['ued'][3:57]
 
 assert s_fec.index[0] == sector
 
@@ -1461,7 +1460,7 @@ eff_biomass = s_ued[15:26]["Biomass"] / s_fec[15:26]["Biomass"]
 df.loc["biomass", sector] += s_ued["Textiles: Pretreatment with steam"] / eff_biomass
 df.loc["biomass", sector] += s_ued["Textiles: Wet processing with steam"] / eff_biomass
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1473,12 +1472,12 @@ df.loc[sources, sector] = (
 
 sector = "Wood and wood products"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
 
-s_fec = jrc['fec'][3:46]
+s_fec = idees['fec'][3:46]
 
-s_ued = jrc['ued'][3:46]
+s_ued = idees['ued'][3:46]
 
 assert s_fec.index[0] == sector
 
@@ -1501,7 +1500,7 @@ df.loc["elec", sector] += s_fec["Wood: Finishing Electric"]
 eff_biomass = s_ued[15:25]["Biomass"] / s_fec[15:25]["Biomass"]
 df.loc["biomass", sector] += s_ued["Wood: Specific processes with steam"] / eff_biomass
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
@@ -1513,11 +1512,11 @@ df.loc[sources, sector] = (
 
 sector = "Other Industrial Sectors"
 
-jrc = load_jrc_data(sector)
+idees = load_idees_data(sector)
 
-s_fec = jrc['fec'][3:67]
+s_fec = idees['fec'][3:67]
 
-s_ued = jrc['ued'][3:67]
+s_ued = idees['ued'][3:67]
 
 assert s_fec.index[0] == sector
 
@@ -1560,7 +1559,7 @@ df.loc["biomass", sector] += (
     s_ued["Other Industrial sectors: Steam processing"] / eff_biomass
 )
 
-s_out = jrc['out'][3:4]
+s_out = idees['out'][3:4]
 
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]

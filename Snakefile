@@ -168,7 +168,7 @@ rule build_ammonia_production:
 rule build_industry_sector_ratios:
     input:
         ammonia_production="resources/ammonia_production.csv",
-        jrc="data/jrc-idees-2015"
+        idees="data/jrc-idees-2015"
     output:
         industry_sector_ratios="resources/industry_sector_ratios.csv"
     threads: 1
