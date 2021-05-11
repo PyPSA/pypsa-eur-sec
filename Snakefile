@@ -231,7 +231,8 @@ rule build_industrial_energy_demand_per_node:
         industrial_energy_demand_per_node="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
-    script: 'scripts/build_industrial_energy_demand_per_node.py'
+    notebook: 'notebooks/build_industrial_energy_demand_per_node.py.ipynb'
+    # script: 'scripts/build_industrial_energy_demand_per_node.py'
 
 
 rule build_industrial_energy_demand_per_country_today:
