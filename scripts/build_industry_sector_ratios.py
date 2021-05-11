@@ -8,7 +8,7 @@ year = 2015
 config = snakemake.config["industry"]
 
 # GWh/ktoe OR MWh/toe
-conv_factor = 11.630
+toe_to_MWh = 11.630
 
 eu28 = [
     "FR",
@@ -203,7 +203,7 @@ df.loc["process emission", sector] = (
 
 # final energy consumption per t
 df.loc[["elec", "heat", "methane"], sector] = (
-    df.loc[["elec", "heat", "methane"], sector] * conv_factor / s_out[sector]
+    df.loc[["elec", "heat", "methane"], sector] * toe_to_MWh / s_out[sector]
 )  # unit MWh/t material
 
 ### For primary route: DRI with H2 + EAF
@@ -321,7 +321,7 @@ df.loc["process emission", sector] = (
 # final energy consumption per t
 df.loc[["elec", "heat", "methane", "coke", "coal"], sector] = (
     df.loc[["elec", "heat", "methane", "coke", "coal"], sector]
-    * conv_factor
+    * toe_to_MWh
     / s_out[sector]
 )  # unit MWh/t material
 
@@ -474,7 +474,7 @@ df.loc["process emission from feedstock", sector] += (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 # convert from ktoe/a to GWh/a
-df.loc[sources, sector] *= conv_factor
+df.loc[sources, sector] *= toe_to_MWh
 
 df.loc["methane", sector] -= total_ammonia * config["MWh_CH4_per_tNH3_SMR"]
 df.loc["elec", sector] -= total_ammonia * config["MWh_elec_per_tNH3_SMR"]
@@ -586,7 +586,7 @@ df.loc["process emission", sector] += (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ### Pharmaceutical products etc.
@@ -677,7 +677,7 @@ df.loc["process emission", sector] += 0  # unit tCO2/t material
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ##- Non-metallic mineral products
@@ -761,7 +761,7 @@ df.loc["process emission", sector] += (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ### Ceramics & other NMM
@@ -826,7 +826,7 @@ df.loc["process emission", sector] += (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ### Glass production
@@ -880,7 +880,7 @@ df.loc["process emission", sector] += (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ##- Pulp, paper and printing
@@ -934,7 +934,7 @@ assert sector in str(s_out.index)
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Pulp production (kt)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Pulp production (kt)"]
 )  # unit MWh/t material
 
 ### Paper production
@@ -999,7 +999,7 @@ assert sector in str(s_out.index)
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material\
 
 ### Printing and media reproduction
@@ -1039,7 +1039,7 @@ assert sector in str(s_out.index)
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out.values
+    df.loc[sources, sector] * toe_to_MWh / s_out.values
 )  # unit MWh/t material
 
 ##- Food, beverages and tobaco
@@ -1093,7 +1093,7 @@ s_out = idees['out'][3:4]
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 ##- Non Ferrous Metals
@@ -1154,7 +1154,7 @@ assert sector in str(s_out.index)
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Alumina production (kt)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Alumina production (kt)"]
 )  # unit MWh/t material
 
 ### Aluminium primary route
@@ -1210,7 +1210,7 @@ df.loc["process emission", sector] = (
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Aluminium - primary production"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Aluminium - primary production"]
 )  # unit MWh/t material
 
 ### Aluminium secondary route
@@ -1263,7 +1263,7 @@ assert sector in str(s_out.index)
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Aluminium - secondary production"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Aluminium - secondary production"]
 )  # unit MWh/t material
 
 ### Other non-ferrous metals
@@ -1315,7 +1315,7 @@ df.loc["process emission", sector] = (
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
     df.loc[sources, sector]
-    * conv_factor
+    * toe_to_MWh
     / s_out["Other non-ferrous metals (kt lead eq.)"]
 )  # unit MWh/t material
 
@@ -1369,7 +1369,7 @@ s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 ##- Machinery Equipment
@@ -1424,7 +1424,7 @@ s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 ##- Textiles and leather
@@ -1465,7 +1465,7 @@ s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 ##- Wood and wood products
@@ -1505,7 +1505,7 @@ s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 ##- Other Industrial Sectors
@@ -1564,7 +1564,7 @@ s_out = idees['out'][3:4]
 # final energy consumption per t
 sources = ["elec", "biomass", "methane", "hydrogen", "heat", "naphtha"]
 df.loc[sources, sector] = (
-    df.loc[sources, sector] * conv_factor / s_out["Physical output (index)"]
+    df.loc[sources, sector] * toe_to_MWh / s_out["Physical output (index)"]
 )  # unit MWh/t material
 
 df.index.name = "MWh/tMaterial"
