@@ -341,49 +341,6 @@ def add_co2limit(n, Nyears=1.,limit=0.):
           carrier_attribute="co2_emissions", sense="<=",
           constant=co2_limit)
 
-
-def set_line_volume_limit(n, lv):
-
-    dc_b = n.links.carrier == 'DC'
-
-    if lv != "opt":
-        lv = float(lv)
-
-        # Either line_volume cap or cost
-        n.lines['capital_cost'] = 0.
-        n.links.loc[dc_b,'capital_cost'] = 0.
-    else:
-        n.lines['capital_cost'] = (n.lines['length'] *
-                                   costs.at['HVAC overhead', 'fixed'])
-
-        #add HVDC inverter post factor, to maintain consistency with LV limit
-        n.links.loc[dc_b, 'capital_cost'] = (n.links.loc[dc_b, 'length'] *
-                                             costs.at['HVDC overhead', 'fixed'])# +
-                                             #costs.at['HVDC inverter pair', 'fixed'])
-
-
-
-    if lv != 1.0:
-        lines_s_nom = n.lines.s_nom.where(
-            n.lines.type == '',
-            np.sqrt(3) * n.lines.num_parallel *
-            n.lines.type.map(n.line_types.i_nom) *
-            n.lines.bus0.map(n.buses.v_nom)
-        )
-
-        n.lines['s_nom_min'] = lines_s_nom
-
-        n.links.loc[dc_b,'p_nom_min'] = n.links['p_nom']
-
-        n.lines['s_nom_extendable'] = True
-        n.links.loc[dc_b,'p_nom_extendable'] = True
-
-        if lv != "opt":
-            n.line_volume_limit = lv * ((lines_s_nom * n.lines['length']).sum() +
-                                        n.links.loc[dc_b].eval('p_nom * length').sum())
-
-    return n
-
 def average_every_nhours(n, offset):
     logger.info('Resampling the network to {}'.format(offset))
     m = n.copy(with_time=False)
