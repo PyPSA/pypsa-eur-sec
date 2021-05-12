@@ -1,26 +1,26 @@
 # coding: utf-8
 
-import logging
-logger = logging.getLogger(__name__)
-import pandas as pd
-idx = pd.IndexSlice
-
-import numpy as np
-import xarray as xr
-import re, os, sys
-
-from six import iteritems, string_types
-
 import pypsa
-
+import re
+import os
+import sys
 import yaml
-
 import pytz
 
-from vresutils.costdata import annuity
+import pandas as pd
+import numpy as np
+import xarray as xr
 
 from scipy.stats import beta
+from vresutils.costdata import annuity
+
 from build_energy_totals import build_eea_co2, build_eurostat_co2, build_co2_totals
+
+idx = pd.IndexSlice
+
+import logging
+logger = logging.getLogger(__name__)
+
 
 #First tell PyPSA that links can have multiple outputs by
 #overriding the component_attrs. This can be done for
@@ -410,12 +410,12 @@ def average_every_nhours(n, offset):
 
     #fix copying of network attributes
     #copied from pypsa/io.py, should be in pypsa/components.py#Network.copy()
-    allowed_types = (float,int,bool) + string_types + tuple(np.typeDict.values())
+    allowed_types = (float, int, bool, str) + tuple(np.typeDict.values())
     attrs = dict((attr, getattr(n, attr))
                  for attr in dir(n)
                  if (not attr.startswith("__") and
                      isinstance(getattr(n,attr), allowed_types)))
-    for k,v in iteritems(attrs):
+    for k,v in attrs.items():
         setattr(m,k,v)
 
     snapshot_weightings = n.snapshot_weightings.resample(offset).sum()
@@ -424,7 +424,7 @@ def average_every_nhours(n, offset):
 
     for c in n.iterate_components():
         pnl = getattr(m, c.list_name+"_t")
-        for k, df in iteritems(c.pnl):
+        for k, df in c.pnl.items():
             if not df.empty:
                 if c.list_name == "stores" and k == "e_max_pu":
                     pnl[k] = df.resample(offset).min()
