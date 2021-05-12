@@ -17,24 +17,7 @@ matplotlib.use('Agg')
 # from sector/scripts/paper_graphics-co2_sweep.py
 
 
-override_component_attrs = pypsa.descriptors.Dict(
-    {k: v.copy() for k, v in pypsa.components.component_attrs.items()})
-override_component_attrs["Link"].loc["bus2"] = [
-    "string", np.nan, np.nan, "2nd bus", "Input (optional)"]
-override_component_attrs["Link"].loc["bus3"] = [
-    "string", np.nan, np.nan, "3rd bus", "Input (optional)"]
-override_component_attrs["Link"].loc["efficiency2"] = [
-    "static or series", "per unit", 1., "2nd bus efficiency", "Input (optional)"]
-override_component_attrs["Link"].loc["efficiency3"] = [
-    "static or series", "per unit", 1., "3rd bus efficiency", "Input (optional)"]
-override_component_attrs["Link"].loc["p2"] = [
-    "series", "MW", 0., "2nd bus output", "Output"]
-override_component_attrs["Link"].loc["p3"] = [
-    "series", "MW", 0., "3rd bus output", "Output"]
-override_component_attrs["StorageUnit"].loc["p_dispatch"] = [
-    "series", "MW", 0., "Storage discharging.", "Output"]
-override_component_attrs["StorageUnit"].loc["p_store"] = [
-    "series", "MW", 0., "Storage charging.", "Output"]
+from helper import override_component_attrs
 
 
 
@@ -532,8 +515,8 @@ if __name__ == "__main__":
                                     "/maps/{}"
                                     .format(name))
 
-    n = pypsa.Network(snakemake.input.network,
-                      override_component_attrs=override_component_attrs)
+    overrides = override_component_attrs(snakemake.input.overrides)
+    n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
     plot_map(n, components=["generators", "links", "stores", "storage_units"],
              bus_size_factor=1.5e10, transmission=False)
