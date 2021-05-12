@@ -320,25 +320,40 @@ def add_dac(n):
            lifetime=costs.at['direct air capture','lifetime'])
 
 
-def add_co2limit(n, Nyears=1.,limit=0.):
+def add_co2limit(n, Nyears=1., limit=0.):
 
-    cts = pop_layout.ct.value_counts().index
+    # TODO truth should be in n.buses.country.unique()
+    cts = pop_layout.ct.unique()
 
-    co2_limit = co2_totals.loc[cts, "electricity"].sum()
-
+    sectors = ["electricity"]
     if "T" in opts:
-        co2_limit += co2_totals.loc[cts, [i+ " non-elec" for i in ["rail","road"]]].sum().sum()
+        sectors += [
+            "rail non-elec",
+            "road non-elec"
+        ]
     if "H" in opts:
-        co2_limit += co2_totals.loc[cts, [i+ " non-elec" for i in ["residential","services"]]].sum().sum()
+        sectors += [
+            "residential non-elec",
+            "services non-elec"
+        ]
     if "I" in opts:
-        co2_limit += co2_totals.loc[cts, ["industrial non-elec","industrial processes",
-                                          "domestic aviation","international aviation",
-                                          "domestic navigation","international navigation"]].sum().sum()
+        sectors += [
+            "industrial non-elec",
+            "industrial processes",
+            "domestic aviation",
+            "international aviation",
+            "domestic navigation",
+            "international navigation"
+        ]
 
-    co2_limit *= limit*Nyears
+    co2_limit = co2_totals.loc[cts, sectors].sum().sum()
 
-    n.add("GlobalConstraint", "CO2Limit",
-          carrier_attribute="co2_emissions", sense="<=",
+    co2_limit *= limit * Nyears
+
+    n.add("GlobalConstraint",
+          "CO2Limit",
+          carrier_attribute="co2_emissions",
+          sense="<=",
           constant=co2_limit)
 
 def average_every_nhours(n, offset):
