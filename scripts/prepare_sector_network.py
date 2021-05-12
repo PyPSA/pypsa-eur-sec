@@ -341,16 +341,6 @@ def add_co2limit(n, Nyears=1.,limit=0.):
           carrier_attribute="co2_emissions", sense="<=",
           constant=co2_limit)
 
-def add_emission_prices(n, emission_prices=None, exclude_co2=False):
-    assert False, "Needs to be fixed, adds NAN"
-
-    if emission_prices is None:
-        emission_prices = snakemake.config['costs']['emission_prices']
-    if exclude_co2: emission_prices.pop('co2')
-    ep = (pd.Series(emission_prices).rename(lambda x: x+'_emissions') * n.carriers).sum(axis=1)
-    n.generators['marginal_cost'] += n.generators.carrier.map(ep)
-    n.storage_units['marginal_cost'] += n.storage_units.carrier.map(ep)
-
 def set_line_s_max_pu(n):
     # set n-1 security margin to 0.5 for 37 clusters and to 0.7 from 200 clusters
     # 128 reproduces 98% of line volume in TWkm, but clustering distortions inside node
