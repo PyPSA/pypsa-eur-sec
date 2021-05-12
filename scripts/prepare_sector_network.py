@@ -341,16 +341,6 @@ def add_co2limit(n, Nyears=1.,limit=0.):
           carrier_attribute="co2_emissions", sense="<=",
           constant=co2_limit)
 
-def set_line_s_max_pu(n):
-    # set n-1 security margin to 0.5 for 37 clusters and to 0.7 from 200 clusters
-    # 128 reproduces 98% of line volume in TWkm, but clustering distortions inside node
-    n_clusters = len(n.buses.index[n.buses.carrier == "AC"])
-    s_max_pu = np.clip(0.5 + 0.2 * (n_clusters - 37) / (200 - 37), 0.5, 0.7)
-    n.lines['s_max_pu'] = s_max_pu
-
-    dc_b = n.links.carrier == 'DC'
-    n.links.loc[dc_b, 'p_max_pu'] = snakemake.config['links']['p_max_pu']
-    n.links.loc[dc_b, 'p_min_pu'] = - snakemake.config['links']['p_max_pu']
 
 def set_line_volume_limit(n, lv):
 
