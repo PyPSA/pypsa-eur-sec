@@ -1900,28 +1900,10 @@ def decentral(n):
 
 def remove_h2_network(n):
 
-    nodes = n.buses.locations.unique()
-
     n.links.drop(n.links.index[n.links.carrier == "H2 pipeline"], inplace=True)
 
-    n.stores.drop("EU H2 Store", inplace=True)
-
-    if options['hydrogen_underground_storage']:
-        h2_capital_cost = costs.at["gas storage", "fixed"]
-    else:
-        h2_capital_cost = costs.at["hydrogen storage", "fixed"]
-
-    # TODO: is this necessary?
-    # put back nodal H2 storage
-    n.madd("Store",
-        nodes + " H2 Store",
-        bus=nodes + " H2",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        carrier="H2 Store",
-        capital_cost=h2_capital_cost
-    )
-
+    if "EU H2 Store" in n.stores.index:
+        n.stores.drop("EU H2 Store", inplace=True)
 
 if __name__ == "__main__":
 
