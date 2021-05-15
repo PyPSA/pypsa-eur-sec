@@ -417,15 +417,13 @@ def generate_periodic_profiles(dt_index, nodes, weekly_profile, localize=None):
     country for the period dt_index, taking account of time zones and summer time.
     """
 
-    # TODO instead of timezone mappings, why not use pytz.country_timezones['DE']?
-    timezone_mappings = pd.read_csv(snakemake.input.timezone_mappings, index_col=0, squeeze=True, header=None)
-
     weekly_profile = pd.Series(weekly_profile, range(24*7))
 
     week_df = pd.DataFrame(index=dt_index, columns=nodes)
 
     for node in nodes:
-        tz_dt_index = dt_index.tz_convert(pytz.timezone(timezone_mappings[node[:2]]))
+        timezone = pytz.timezone(pytz.country_timezones[node[2:]][0])
+        tz_dt_index = dt_index.tz_convert(timezone)
         week_df[node] = [24 * dt.weekday() + dt.hour for dt in tz_dt_index]
         week_df[node] = week_df[node].map(weekly_profile)
 
@@ -506,7 +504,7 @@ def prepare_data(n):
         weekly_profile = weekday * 5 + weekend * 2
         intraday_year_profile = generate_periodic_profiles(daily_space_heat_demand.index.tz_localize("UTC"),
                                                             nodes=daily_space_heat_demand.columns,
-                                                            weekly_profile=weekly_profile).tz_localize(None)
+                                                            weekly_profile=weekly_profile)
 
         if use == "space":
             heat_demand_shape = daily_space_heat_demand * intraday_year_profile
@@ -534,7 +532,7 @@ def prepare_data(n):
     #Generate profiles
     transport_shape = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
                                                  nodes=pop_layout.index,
-                                                 weekly_profile=traffic.values).tz_localize(None)
+                                                 weekly_profile=traffic.values)
     transport_shape = transport_shape / transport_shape.sum()
 
     transport_data = pd.read_csv(snakemake.input.transport_name, index_col=0)
@@ -591,7 +589,7 @@ def prepare_data(n):
 
     avail_profile = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
                                                nodes=pop_layout.index,
-                                               weekly_profile=avail.values).tz_localize(None)
+                                               weekly_profile=avail.values)
 
     dsm_week = np.zeros((24*7,))
 
@@ -599,7 +597,7 @@ def prepare_data(n):
 
     dsm_profile = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
                                              nodes=pop_layout.index,
-                                             weekly_profile=dsm_week).tz_localize(None)
+                                             weekly_profile=dsm_week)
 
 
     ###############
