@@ -197,6 +197,8 @@ def add_carrier_buses(n, carriers):
     """
     Add buses to connect e.g. coal, nuclear and oil plants
     """
+    if isinstance(carriers, str):
+        carriers = [carriers]
 
     for carrier in carriers:
 
@@ -646,32 +648,9 @@ def add_generation(n, costs):
     # TODO make configurable option
     conventionals = {"OCGT": "gas"}
 
+    add_carrier_buses(n, conventionals.values.unique())
+
     for generator, carrier in conventionals.items():
-        
-        n.add("Carrier", carrier)
-
-        n.add("Bus",
-            "EU " + carrier,
-            location="EU",
-            carrier=carrier
-        )
-
-        # could correct to e.g. 0.2 EUR/kWh * annuity and O&M
-        n.add("Store",
-            "EU " + carrier + " Store",
-            bus="EU " + carrier,
-            e_nom_extendable=True,
-            e_cyclic=True,
-            carrier=carrier,
-        )
-
-        n.add("Generator",
-            "EU " + carrier,
-            bus="EU " + carrier,
-            p_nom_extendable=True,
-            carrier=carrier,
-            marginal_cost=costs.at[carrier, 'fuel']
-        )
 
         n.madd("Link",
             nodes + " " + generator,
