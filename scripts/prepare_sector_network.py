@@ -569,13 +569,12 @@ def prepare_data(n):
                                     options['EV_upper_degree_factor'])
 
     # divide out the heating/cooling demand from ICE totals
+    # and multiply back in the heating/cooling demand for EVs
     ice_correction = (transport_shape * (1 + dd_ICE)).sum() / transport_shape.sum()
 
-    transport = (transport_shape.multiply(nodal_energy_totals["total road"] + nodal_energy_totals["total rail"]
-                 - nodal_energy_totals["electricity rail"]) * 1e6 * Nyears).divide(efficiency_gain * ice_correction)
+    energy_totals_transport = nodal_energy_totals["total road"] + nodal_energy_totals["total rail"] - nodal_energy_totals["electricity rail"]
 
-    #multiply back in the heating/cooling demand for EVs
-    transport = transport.multiply(1 + dd_EV)
+    transport = (transport_shape.multiply(energy_totals_transport) * 1e6 * Nyears).divide(efficiency_gain * ice_correction).multiply(1 + dd_EV)
 
     ## derive plugged-in availability for PKW's (cars)
 
