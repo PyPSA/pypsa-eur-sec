@@ -43,6 +43,7 @@ rule build_population_layouts:
         pop_layout_urban="resources/pop_layout_urban.nc",
         pop_layout_rural="resources/pop_layout_rural.nc"
     resources: mem_mb=20000
+    threads: 8
     script: "scripts/build_population_layouts.py"
 
 
