@@ -636,8 +636,8 @@ def prepare_costs(cost_file, USD_to_EUR, discount_rate, Nyears, lifetime):
                           "lifetime" : lifetime
     })
 
-    annuity_factor = annuity(v["lifetime"], v["discount rate"]) + v["FOM"] / 100
-    costs["fixed"] = [annuity_factor * v["investment"] * Nyears for i, v in costs.iterrows()]
+    annuity_factor = lambda v: annuity(v["lifetime"], v["discount rate"]) + v["FOM"] / 100
+    costs["fixed"] = [annuity_factor(v) * v["investment"] * Nyears for i, v in costs.iterrows()]
 
     return costs
 
