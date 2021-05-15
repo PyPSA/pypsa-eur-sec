@@ -299,6 +299,7 @@ rule build_retro_cost:
 
 rule prepare_sector_network:
     input:
+        overrides="data/override_component_attrs",
         network=pypsaeur('networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
         energy_totals_name='resources/energy_totals.csv',
         co2_totals_name='resources/co2_totals.csv',
@@ -347,6 +348,7 @@ rule prepare_sector_network:
 
 rule plot_network:
     input:
+        overrides="data/override_component_attrs",
         network=config['results_dir'] + config['run'] + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
     output:
         map=config['results_dir'] + config['run'] + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
@@ -367,6 +369,7 @@ rule copy_config:
 
 rule make_summary:
     input:
+        overrides="data/override_component_attrs",
         networks=expand(config['results_dir'] + config['run'] + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
                  **config['scenario']),
         costs=config['costs_dir'] + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
@@ -413,6 +416,7 @@ if config["foresight"] == "overnight":
 
     rule solve_network:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir'] + config['run'] + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
             config=config['summary_dir'] + '/' + config['run'] + '/configs/config.yaml'
@@ -433,6 +437,7 @@ if config["foresight"] == "myopic":
 
     rule add_existing_baseyear:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir']  +  config['run'] + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             powerplants=pypsaeur('resources/powerplants.csv'),
             busmap_s=pypsaeur("resources/busmap_elec_s{simpl}.csv"),
@@ -455,6 +460,7 @@ if config["foresight"] == "myopic":
 
     rule add_brownfield:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir']  +  config['run'] + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             network_p=process_input, #solved network at previous time step
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
@@ -470,6 +476,7 @@ if config["foresight"] == "myopic":
 
     rule solve_network_myopic:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir'] + config['run'] + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
             config=config['summary_dir'] + '/' + config['run'] + '/configs/config.yaml'
