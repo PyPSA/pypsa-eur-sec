@@ -529,8 +529,7 @@ def prepare_data(n):
 
     ## Get overall demand curve for all vehicles
 
-    # TODO move "count" inte read_csv with usecols
-    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2)["count"]
+    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"])
 
     #Generate profiles
     transport_shape = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
@@ -582,8 +581,7 @@ def prepare_data(n):
 
     ## derive plugged-in availability for PKW's (cars)
 
-    # TODO: use usecols for "count"
-    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2)["count"]
+    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"])
 
     # TODO: make config option
     avail_max = 0.95
