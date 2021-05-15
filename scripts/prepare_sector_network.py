@@ -83,10 +83,7 @@ def build_carbon_budget(o):
         carbon_budget = float(o[o.find("cb")+2:o.find("ex")])
         r = float(o[o.find("ex")+2:])
 
-    # TODO this is read in in main already
-    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
-    pop_layout["ct"] = pop_layout.index.str[:2]
-    countries = pop_layout.ct.unique()
+    countries = n.buses.country.unique()
 
     e_1990 = co2_emissions_year(countries, opts, year=1990)
 
@@ -345,8 +342,7 @@ def add_co2limit(n, Nyears=1., limit=0.):
 
     print("Adding CO2 budget limit as per unit of 1990 levels of", limit)
 
-    # TODO truth should be in n.buses.country.unique()
-    countries = pop_layout.ct.unique()
+    countries = n.buses.country.unique()
 
     sectors = ["electricity"]
     if "T" in opts:
@@ -650,8 +646,7 @@ def add_generation(n, costs):
 
     print("adding electricity generation")
 
-    # TODO truth should be n.buses.lcoations.unique()
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     # TODO make configurable option
     conventionals = {"OCGT": "gas"}
@@ -740,8 +735,7 @@ def insert_electricity_distribution_grid(n, costs):
     print("Inserting electricity distribution grid with investment cost factor of",
           options['electricity_distribution_grid_cost_factor'])
 
-    # TODO Truth should be taken from network (n.buses.locations.unique())
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     cost_factor = options['electricity_distribution_grid_cost_factor']
 
@@ -883,8 +877,7 @@ def add_storage(n, costs):
 
     print("adding electricity storage")
 
-    # TODO truth should be n.buses.locations.unique()
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     n.add("Carrier", "H2")
 
@@ -1099,8 +1092,7 @@ def add_land_transport(n, costs):
 
     assert ice_share >= 0, "Error, more FCEV and EV share than 1."
 
-    # TODO truth should be n.buses.locations.unique()
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     if electric_share > 0:
 
@@ -1556,8 +1548,7 @@ def add_biomass(n, costs):
     print("adding biomass")
 
     # biomass distributed at country level - i.e. transport within country allowed
-    # TODO: truth should be n.buses.country.unique()
-    countries = pop_layout.ct.unique()
+    countries = n.buses.country.unique()
 
     biomass_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
 
@@ -1650,8 +1641,7 @@ def add_industry(n, costs):
 
     print("adding industrial demand")
 
-    # TODO truth should be n.buses.locations.unique()
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     # 1e6 to convert TWh to MWh
     industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
@@ -1936,7 +1926,7 @@ def decentral(n):
 
 def remove_h2_network(n):
 
-    nodes = pop_layout.index
+    nodes = n.buses.locations.unique()
 
     n.links.drop(n.links.index[n.links.carrier == "H2 pipeline"], inplace=True)
 
