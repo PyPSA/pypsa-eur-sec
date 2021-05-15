@@ -1,6 +1,4 @@
 
-from six import iteritems
-
 import sys
 
 import pandas as pd
@@ -550,7 +548,7 @@ def make_summaries(networks_dict):
     for output in outputs:
         df[output] = pd.DataFrame(columns=columns,dtype=float)
 
-    for label, filename in iteritems(networks_dict):
+    for label, filename in networks_dict.items():
         print(label, filename)
 
         n = pypsa.Network(filename,
