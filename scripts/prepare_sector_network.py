@@ -438,12 +438,11 @@ def generate_periodic_profiles(dt_index, nodes, weekly_profile, localize=None):
     return week_df
 
 
-# TODO there should be a pandas function for this!
-def shift_df(df, hours=1):
-    """Works both on Series and DataFrame"""
+def cycling_shift(df, steps=1):
+    """Cyclic shift on index of pd.Series|pd.DataFrame by number of steps"""
     df = df.copy()
-    df.values[:] = np.concatenate([df.values[-hours:],
-                                   df.values[:-hours]])
+    new_index = np.roll(df.index, steps)
+    df.values[:] = df.reindex(index=new_index).values
     return df
 
 
@@ -1114,7 +1113,7 @@ def add_land_transport(n, costs):
             carrier="Li ion"
         )
         
-        p_set = electric_share * (transport[nodes] + shift_df(transport[nodes], 1) + shift_df(transport[nodes], 2)) / 3
+        p_set = electric_share * (transport[nodes] + cycling_shift(transport[nodes], 1) + cycling_shift(transport[nodes], 2)) / 3
 
         n.madd("Load",
             nodes,
