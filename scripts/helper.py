@@ -44,4 +44,4 @@ def override_component_attrs(directory):
             overrides = pd.read_csv(fn, index_col=0, dtype='object')
             attrs[component] = overrides.combine_first(attrs[component])
 
-    return component_attrs
+    return attrs
