@@ -2018,12 +2018,11 @@ if __name__ == "__main__":
 
     Nyears = n.snapshot_weightings.sum() / 8760
 
-    # TODO move this into own function or just store ct, ct_total and fraction already in building rule
-    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout,index_col=0)
-    pop_layout["ct"] = pop_layout.index.str[:2]
-    ct_total = pop_layout.total.groupby(pop_layout["ct"]).sum()
-    pop_layout["ct_total"] = pop_layout["ct"].map(ct_total.get)
-    pop_layout["fraction"] = pop_layout["total"]/pop_layout["ct_total"]
+    # TODO store fraction in file already, remove once rev-cl-population-layouts in
+    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
+    node_country = pop_layout.index.str[:2]
+    country_population = pop_layout.total.groupby(node_country).sum()
+    pop_layout["fraction"] = pop_layout.total / node_country.map(country_population)
 
     costs = prepare_costs(snakemake.input.costs,
                           snakemake.config['costs']['USD2013_to_EUR2013'],
