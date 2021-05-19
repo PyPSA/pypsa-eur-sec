@@ -1926,6 +1926,14 @@ def maybe_adjust_costs_and_potentials(n, opts):
             print("changing", attr , "for", carrier, "by factor", factor)
 
 
+# TODO this should rather be a config no wildcard
+def limit_individual_line_extension(n, maxext):
+    print(f"limiting new HVAC and HVDC extensions to {maxext} MW")
+    n.lines['s_nom_max'] = n.lines['s_nom'] + maxext
+    hvdc = n.links.index[n.links.carrier == 'DC']
+    n.links.loc[hvdc, 'p_nom_max'] = n.links.loc[hvdc, 'p_nom'] + maxext
+
+
 if __name__ == "__main__":
 
     # # Detect running outside of snakemake and mock snakemake for testing
@@ -2099,15 +2107,11 @@ if __name__ == "__main__":
     add_co2limit(n, Nyears, limit)
     # ------ end CO2 limit block
 
-    # TODO move into function (rather config option than wildcard, no?)
     for o in opts:
-        if o[:10] == 'linemaxext':
-            maxext = float(o[10:]) * 1e3
-            print(f"limiting new HVAC and HVDC extensions to {maxext} MW")
-            n.lines['s_nom_max'] = n.lines['s_nom'] + maxext
-            hvdc = n.links.index[n.links.carrier == 'DC']
-            n.links.loc[hvdc, 'p_nom_max'] = n.links.loc[hvdc, 'p_nom'] + maxext
-            break
+        if not o[:10] == 'linemaxext': continue
+        maxext = float(o[10:]) * 1e3
+        limit_individual_line_extension(n, maxext)
+        break
 
     if options['electricity_distribution_grid']:
         insert_electricity_distribution_grid(n)
