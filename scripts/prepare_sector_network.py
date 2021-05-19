@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__)
 from helper import override_component_attrs
 
 
-# TODO this should include investment_year in function call
-def get(item):
+def get(item, investment_year=None):
     """Check whether item depends on investment year"""
     if isinstance(item, dict):
         return item[investment_year]
@@ -1056,8 +1055,8 @@ def add_land_transport(n, costs):
 
     print("adding land transport")
 
-    fuel_cell_share = get(options["land_transport_fuel_cell_share"])
-    electric_share = get(options["land_transport_electric_share"])
+    fuel_cell_share = get(options["land_transport_fuel_cell_share"], investment_year)
+    electric_share = get(options["land_transport_electric_share"], investment_year)
     ice_share = 1 - fuel_cell_share - electric_share
 
     print("FCEV share", fuel_cell_share)
@@ -1185,7 +1184,7 @@ def add_heat(n, costs):
 
     # exogenously reduce space heat demand
     if options["reduce_space_heat_exogenously"]:
-        dE = get(options["reduce_space_heat_exogenously_factor"])
+        dE = get(options["reduce_space_heat_exogenously_factor"], investment_year)
         print(f"assumed space heat reduction of {dE*100} %")
         for sector in sectors:
             heat_demand[sector + " space"] = (1 - dE) * heat_demand[sector + " space"]
@@ -2076,7 +2075,7 @@ if __name__ == "__main__":
 
     # TODO cleanup!
     # ------- begin CO2 limit block
-    limit = get(snakemake.config["co2_budget"])
+    limit = get(snakemake.config["co2_budget"], investment_year)
     print("CO2 limit set to", limit)
 
     for o in opts:
