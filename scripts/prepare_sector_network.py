@@ -338,8 +338,6 @@ def add_dac(n, costs):
 
 
 def add_co2limit(n, Nyears=1., limit=0.):
-    # pop_layout
-    # co2_totals
 
     print("Adding CO2 budget limit as per unit of 1990 levels of", limit)
 
@@ -365,6 +363,9 @@ def add_co2limit(n, Nyears=1., limit=0.):
             "domestic navigation",
             "international navigation"
         ]
+
+    # convert Mt to tCO2
+    co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
 
     co2_limit = co2_totals.loc[countries, sectors].sum().sum()
 
@@ -600,14 +601,7 @@ def prepare_data(n):
                                              weekly_profile=dsm_week)
 
 
-    ###############
-    #CO2
-    ###############
-
-    # convert Mt to tCO2
-    co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
-
-    return nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, co2_totals, nodal_transport_data
+    return nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, nodal_transport_data
 
 
 # TODO checkout PyPSA-Eur script
@@ -2038,7 +2032,7 @@ if __name__ == "__main__":
             options['electricity_distribution_grid'] = True
             options['electricity_distribution_grid_cost_factor'] = float(o[4:].replace("p", ".").replace("m", "-"))
 
-    nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, co2_totals, nodal_transport_data = prepare_data(n)
+    nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, nodal_transport_data = prepare_data(n)
 
     if "nodistrict" in opts:
         options["central"] = False
