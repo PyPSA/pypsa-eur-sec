@@ -1905,6 +1905,34 @@ def remove_h2_network(n):
     if "EU H2 Store" in n.stores.index:
         n.stores.drop("EU H2 Store", inplace=True)
 
+
+def maybe_adjust_costs_and_potentials(n, opts):
+
+    for o in opts:
+        if "+" not in o: continue
+        oo = o.split("+")
+        carrier_list = np.hstack((n.generators.carrier.unique(), n.links.carrier.unique(),
+                                n.stores.carrier.unique(), n.storage_units.carrier.unique()))
+        suptechs = map(lambda c: c.split("-", 2)[0], carrier_list)
+        if oo[0].startswith(tuple(suptechs)):
+            carrier = oo[0]
+            attr_lookup = {"p": "p_nom_max", "c": "capital_cost"}
+            attr = attr_lookup[oo[1][0]]
+            factor = float(oo[1][1:])
+            #beware if factor is 0 and p_nom_max is np.inf, 0*np.inf is nan
+            if carrier == "AC":  # lines do not have carrier
+                n.lines[attr] *= factor
+            else:
+                comps = {"Generator", "Link", "StorageUnit"} if attr == 'p_nom_max' else {"Generator", "Link", "StorageUnit", "Store"}
+                for c in n.iterate_components(comps):
+                    if carrier=='solar':
+                        sel = c.df.carrier.str.contains(carrier) & ~c.df.carrier.str.contains("solar rooftop")
+                    else:
+                        sel = c.df.carrier.str.contains(carrier)
+                    c.df.loc[sel,attr] *= factor
+            print("changing", attr , "for", carrier, "by factor", factor)
+
+
 if __name__ == "__main__":
 
     # # Detect running outside of snakemake and mock snakemake for testing
@@ -2091,30 +2119,7 @@ if __name__ == "__main__":
     if options['electricity_distribution_grid']:
         insert_electricity_distribution_grid(n)
 
-    # TODO move opts cost adjustment into function
-    for o in opts:
-        if "+" in o:
-            oo = o.split("+")
-            carrier_list = np.hstack((n.generators.carrier.unique(), n.links.carrier.unique(),
-                                    n.stores.carrier.unique(), n.storage_units.carrier.unique()))
-            suptechs = map(lambda c: c.split("-", 2)[0], carrier_list)
-            if oo[0].startswith(tuple(suptechs)):
-                carrier = oo[0]
-                attr_lookup = {"p": "p_nom_max", "c": "capital_cost"}
-                attr = attr_lookup[oo[1][0]]
-                factor = float(oo[1][1:])
-                #beware if factor is 0 and p_nom_max is np.inf, 0*np.inf is nan
-                if carrier == "AC":  # lines do not have carrier
-                    n.lines[attr] *= factor
-                else:
-                    comps = {"Generator", "Link", "StorageUnit"} if attr == 'p_nom_max' else {"Generator", "Link", "StorageUnit", "Store"}
-                    for c in n.iterate_components(comps):
-                        if carrier=='solar':
-                            sel = c.df.carrier.str.contains(carrier) & ~c.df.carrier.str.contains("solar rooftop")
-                        else:
-                            sel = c.df.carrier.str.contains(carrier)
-                        c.df.loc[sel,attr] *= factor
-                print("changing", attr , "for", carrier, "by factor", factor)
+    maybe_adjust_costs_and_potentials(n, opts)
 
     if options['gas_distribution_grid']:
         insert_gas_distribution_costs(n)
