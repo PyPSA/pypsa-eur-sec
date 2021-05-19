@@ -67,7 +67,7 @@ def co2_emissions_year(cts, opts, year):
 
 
 # TODO: move to own rule with sector-opts wildcard?
-def build_carbon_budget(o):
+def build_carbon_budget(o, fn):
     """
     Distribute carbon budget following beta or exponential transition path.
     """
@@ -117,9 +117,10 @@ def build_carbon_budget(o):
 
         co2_cap = pd.Series({t: exponential_decay(t) for t in planning_horizons})
 
-
     # TODO log in Snakefile
-    co2_cap.to_csv(path_cb + 'carbon_budget_distribution.csv', float_format='%.3f')
+    if not os.path.exists(fn):
+        os.makedirs(fn)
+    co2_cap.to_csv(fn, float_format='%.3f')
 
 
 def add_lifetime_wind_solar(n, costs):
@@ -2075,37 +2076,25 @@ if __name__ == "__main__":
             n = average_every_nhours(n, m.group(0))
             break
 
-    # TODO cleanup!
-    # ------- begin CO2 limit block
+    limit_type = "config"
     limit = get(snakemake.config["co2_budget"], investment_year)
-    print("CO2 limit set to", limit)
-
     for o in opts:
-
-        if "cb" in o:
-            path_cb = snakemake.config['results_dir'] + snakemake.config['run'] + '/csvs/'
-            if not os.path.exists(path_cb):
-                os.makedirs(path_cb)
-            try:
-                co2_cap = pd.read_csv(path_cb + 'carbon_budget_distribution.csv', index_col=0)
-            except:
-                build_carbon_budget(o)
-                co2_cap = pd.read_csv(path_cb + 'carbon_budget_distribution.csv', index_col=0)
-
-            limit = co2_cap.loc[investment_year]
-            print("overriding CO2 limit with scenario limit", limit)
-            break
-
-
+        if not "cb" in o: continue
+        limit_type = "carbon budget"
+        fn = snakemake.config['results_dir'] + snakemake.config['run'] + '/csvs/carbon_budget_distribution.csv'
+        if not os.path.exists(fn):
+            build_carbon_budget(o, fn)
+        co2_cap = pd.read_csv(fn, index_col=0)
+        limit = co2_cap.loc[investment_year]
+        break
     for o in opts:
-        if "Co2L" in o:
-            limit = o[o.find("Co2L")+4:]
-            limit = float(limit.replace("p", ".").replace("m", "-"))
-            print("overriding CO2 limit with scenario limit", limit)
-            break
-
+        if not "Co2L" in o: continue
+        limit_type = "wildcard"
+        limit = o[o.find("Co2L")+4:]
+        limit = float(limit.replace("p", ".").replace("m", "-"))
+        break
+    print("add CO2 limit from", limit_type)
     add_co2limit(n, Nyears, limit)
-    # ------ end CO2 limit block
 
     for o in opts:
         if not o[:10] == 'linemaxext': continue
