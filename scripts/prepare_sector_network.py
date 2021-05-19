@@ -497,10 +497,10 @@ def prepare_data(network):
     ##############
 
 
-    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).T.to_pandas().reindex(index=network.snapshots)
-    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).T.to_pandas().reindex(index=network.snapshots)
+    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).to_pandas().reindex(index=network.snapshots)
+    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).to_pandas().reindex(index=network.snapshots)
 
-    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).T.to_pandas().reindex(index=network.snapshots)
+    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).to_pandas().reindex(index=network.snapshots)
     #1e3 converts from W/m^2 to MW/(1000m^2) = kW/m^2
     solar_thermal = options['solar_cf_correction'] * solar_thermal/1e3
 
@@ -511,7 +511,7 @@ def prepare_data(network):
     nodal_energy_totals = nodal_energy_totals.multiply(pop_layout.fraction,axis=0)
 
     #copy forward the daily average heat demand into each hour, so it can be multipled by the intraday profile
-    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).T.to_pandas().reindex(index=network.snapshots, method="ffill")
+    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).to_pandas().reindex(index=network.snapshots, method="ffill")
 
     intraday_profiles = pd.read_csv(snakemake.input.heat_profile,index_col=0)
 
@@ -576,7 +576,7 @@ def prepare_data(network):
 
 
     #get heating demand for correction to demand time series
-    temperature = xr.open_dataarray(snakemake.input.temp_air_total).T.to_pandas()
+    temperature = xr.open_dataarray(snakemake.input.temp_air_total).to_pandas()
 
     #correction factors for vehicle heating
     dd_ICE = transport_degree_factor(temperature,
