@@ -37,7 +37,7 @@ def co2_emissions_year(cts, opts, year):
     if year > 2014:
         eurostat_co2 = build_eurostat_co2(year=2014)
     else:
-        eurostat_   co2 = build_eurostat_co2(year)
+        eurostat_co2 = build_eurostat_co2(year)
 
     co2_totals = build_co2_totals(eea_co2, eurostat_co2)
 
