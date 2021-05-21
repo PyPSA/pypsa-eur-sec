@@ -41,7 +41,7 @@ def override_component_attrs(directory):
     for component, list_name in components.list_name.items():
         fn = f"{directory}/{list_name}.csv"
         if os.path.isfile(fn):
-            overrides = pd.read_csv(fn, index_col=0, dtype='object')
+            overrides = pd.read_csv(fn, index_col=0, na_values="n/a")
             attrs[component] = overrides.combine_first(attrs[component])
 
     return attrs
