@@ -133,15 +133,24 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+def input_eurostat(w):
+    # 2016 includes BA, 2017 does not
+    report_year = config["energy"]["eurostat_report_year"]
+    return f"data/eurostat-energy_balances-june_{report_year}_edition"
+
 
 rule build_energy_totals:
     input:
-        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
+        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
+        co2="data/eea/UNFCCC_v23.csv",
+        swiss="data/switzerland-sfoe/switzerland-new_format.csv",
+        idees="data/jrc-idees-2015",
+        eurostat=input_eurostat
     output:
         energy_name='resources/energy_totals.csv',
-	co2_name='resources/co2_totals.csv',
-	transport_name='resources/transport_data.csv'
-    threads: 1
+	    co2_name='resources/co2_totals.csv',
+	    transport_name='resources/transport_data.csv'
+    threads: 16
     resources: mem_mb=10000
     script: 'scripts/build_energy_totals.py'
 
