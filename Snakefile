@@ -299,12 +299,12 @@ rule prepare_sector_network:
         energy_totals_name='resources/energy_totals.csv',
         co2_totals_name='resources/co2_totals.csv',
         transport_name='resources/transport_data.csv',
-	    traffic_data_KFZ = "data/emobility/KFZ__count",
-	    traffic_data_Pkw = "data/emobility/Pkw__count",
+        traffic_data_KFZ = "data/emobility/KFZ__count",
+        traffic_data_Pkw = "data/emobility/Pkw__count",
         biomass_potentials='resources/biomass_potentials.csv',
         heat_profile="data/heat_load_profile_BDEW.csv",
         costs=CDIR + "costs_{planning_horizons}.csv",
-	    h2_cavern="data/hydrogen_salt_cavern_potentials.csv",
+        h2_cavern="data/hydrogen_salt_cavern_potentials.csv",
         busmap_s=pypsaeur("resources/busmap_elec_s{simpl}.csv"),
         busmap=pypsaeur("resources/busmap_elec_s{simpl}_{clusters}.csv"),
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
@@ -328,7 +328,7 @@ rule prepare_sector_network:
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
-	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
+        retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
         floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
     output: RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
     threads: 1
