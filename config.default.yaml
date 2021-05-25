@@ -239,6 +239,7 @@ industry:
   'NH3_process_emissions' : 24.5 # in MtCO2/a from SMR for H2 production for NH3 from UNFCCC for 2015 for EU28
   'petrochemical_process_emissions' : 25.5 # in MtCO2/a for petrochemical and other from UNFCCC for 2015 for EU28
   'HVC_primary_fraction' : 1.0 #fraction of current non-ammonia basic chemicals produced via primary route
+  hotmaps_locate_missing: false
   reference_year: 2015
 
 plotting:
