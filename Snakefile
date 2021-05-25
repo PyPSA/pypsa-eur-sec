@@ -247,11 +247,12 @@ rule build_industrial_energy_demand_per_node:
 
 rule build_industrial_energy_demand_per_country_today:
     input:
+        jrc="data/jrc-idees-2015",
         ammonia_production="resources/ammonia_production.csv",
         industrial_production_per_country="resources/industrial_production_per_country.csv"
     output:
         industrial_energy_demand_per_country_today="resources/industrial_energy_demand_per_country_today.csv"
-    threads: 1
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_energy_demand_per_country_today.py'
 
