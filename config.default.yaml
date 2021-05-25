@@ -1,4 +1,4 @@
-version: 0.4.0
+version: 0.5.0
 
 logging_level: INFO
 
@@ -72,6 +72,12 @@ pypsa_eur:
   "Generator": ["onwind", "offwind-ac", "offwind-dc", "solar", "ror"]
   "StorageUnit": ["PHS","hydro"]
   "Store": []
+
+energy:
+  energy_totals_year: 2011
+  base_emissions_year: 1990
+  eurostat_report_year: 2016
+  emissions: CO2 # "CO2" or "All greenhouse gases - (CO2 equivalent)"
 
 biomass:
   year: 2030
