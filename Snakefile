@@ -413,7 +413,7 @@ if config["foresight"] == "overnight":
             network=RDIR + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=CDIR + "costs_{planning_horizons}.csv",
             config=SDIR + '/configs/config.yaml'
-        output: "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        output: RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
         log:
             solver=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
@@ -473,11 +473,11 @@ if config["foresight"] == "myopic":
     rule solve_network_myopic:
         input:
             overrides="data/override_component_attrs",
-            network=config['results_dir'] + config['run'] + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
-            costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
-            config=config['summary_dir'] + '/' + config['run'] + '/configs/config.yaml'
+            network=RDIR + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            costs=CDIR + "costs_{planning_horizons}.csv",
+            config=SDIR + '/configs/config.yaml'
         output:
-            config['results_dir'] + config['run'] + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+            RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
         log:
             solver=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
