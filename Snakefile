@@ -133,15 +133,24 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+def input_eurostat(w):
+    # 2016 includes BA, 2017 does not
+    report_year = config["energy"]["eurostat_report_year"]
+    return f"data/eurostat-energy_balances-june_{report_year}_edition"
+
 
 rule build_energy_totals:
     input:
-        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
+        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
+        co2="data/eea/UNFCCC_v23.csv",
+        swiss="data/switzerland-sfoe/switzerland-new_format.csv",
+        idees="data/jrc-idees-2015",
+        eurostat=input_eurostat
     output:
         energy_name='resources/energy_totals.csv',
-	co2_name='resources/co2_totals.csv',
-	transport_name='resources/transport_data.csv'
-    threads: 1
+	    co2_name='resources/co2_totals.csv',
+	    transport_name='resources/transport_data.csv'
+    threads: 16
     resources: mem_mb=10000
     script: 'scripts/build_energy_totals.py'
 
@@ -177,10 +186,12 @@ rule build_industry_sector_ratios:
 
 rule build_industrial_production_per_country:
     input:
-        ammonia_production="resources/ammonia_production.csv"
+        ammonia_production="resources/ammonia_production.csv",
+        jrc="data/jrc-idees-2015",
+        eurostat="data/eurostat-energy_balances-may_2018_edition",
     output:
         industrial_production_per_country="resources/industrial_production_per_country.csv"
-    threads: 1
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_production_per_country.py'
 
@@ -235,11 +246,12 @@ rule build_industrial_energy_demand_per_node:
 
 rule build_industrial_energy_demand_per_country_today:
     input:
+        jrc="data/jrc-idees-2015",
         ammonia_production="resources/ammonia_production.csv",
         industrial_production_per_country="resources/industrial_production_per_country.csv"
     output:
         industrial_energy_demand_per_country_today="resources/industrial_energy_demand_per_country_today.csv"
-    threads: 1
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_energy_demand_per_country_today.py'
 
@@ -255,33 +267,11 @@ rule build_industrial_energy_demand_per_node_today:
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
-
-rule build_industrial_energy_demand_per_country:
-    input:
-        industry_sector_ratios="resources/industry_sector_ratios.csv",
-        industrial_production_per_country="resources/industrial_production_per_country_tomorrow.csv"
-    output:
-        industrial_energy_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_energy_demand_per_country.py'
-
-
-rule build_industrial_demand:
-    input:
-        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        industrial_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    output:
-        industrial_demand="resources/industrial_demand_elec_s{simpl}_{clusters}.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_demand.py'
-
 rule build_retro_cost:
     input:
         building_stock="data/retro/data_building_stock.csv",
         data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
-        air_temperature = "resources/temp_air_total_{network}_s{simpl}_{clusters}.nc",
+        air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
         u_values_PL="data/retro/u_values_poland.csv",
         tax_w="data/retro/electricity_taxes_eu.csv",
         construction_index="data/retro/comparative_level_investment.csv",
