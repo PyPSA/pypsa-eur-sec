@@ -267,28 +267,6 @@ rule build_industrial_energy_demand_per_node_today:
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
-
-rule build_industrial_energy_demand_per_country:
-    input:
-        industry_sector_ratios="resources/industry_sector_ratios.csv",
-        industrial_production_per_country="resources/industrial_production_per_country_tomorrow.csv"
-    output:
-        industrial_energy_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_energy_demand_per_country.py'
-
-
-rule build_industrial_demand:
-    input:
-        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        industrial_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    output:
-        industrial_demand="resources/industrial_demand_elec_s{simpl}_{clusters}.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_demand.py'
-
 rule build_retro_cost:
     input:
         building_stock="data/retro/data_building_stock.csv",
