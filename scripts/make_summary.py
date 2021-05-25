@@ -19,26 +19,7 @@ idx = pd.IndexSlice
 
 opt_name = {"Store": "e", "Line" : "s", "Transformer" : "s"}
 
-#First tell PyPSA that links can have multiple outputs by
-#overriding the component_attrs. This can be done for
-#as many buses as you need with format busi for i = 2,3,4,5,....
-#See https://pypsa.org/doc/components.html#link-with-multiple-outputs-or-inputs
-
-
-override_component_attrs = pypsa.descriptors.Dict({k : v.copy() for k,v in pypsa.components.component_attrs.items()})
-override_component_attrs["Link"].loc["bus2"] = ["string",np.nan,np.nan,"2nd bus","Input (optional)"]
-override_component_attrs["Link"].loc["bus3"] = ["string",np.nan,np.nan,"3rd bus","Input (optional)"]
-override_component_attrs["Link"].loc["bus4"] = ["string",np.nan,np.nan,"4th bus","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency2"] = ["static or series","per unit",1.,"2nd bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency3"] = ["static or series","per unit",1.,"3rd bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency4"] = ["static or series","per unit",1.,"4th bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["p2"] = ["series","MW",0.,"2nd bus output","Output"]
-override_component_attrs["Link"].loc["p3"] = ["series","MW",0.,"3rd bus output","Output"]
-override_component_attrs["Link"].loc["p4"] = ["series","MW",0.,"4th bus output","Output"]
-override_component_attrs["StorageUnit"].loc["p_dispatch"] = ["series","MW",0.,"Storage discharging.","Output"]
-override_component_attrs["StorageUnit"].loc["p_store"] = ["series","MW",0.,"Storage charging.","Output"]
-
-
+from helper import override_component_attrs
 
 
 def assign_carriers(n):
@@ -553,8 +534,8 @@ def make_summaries(networks_dict):
     for label, filename in iteritems(networks_dict):
         print(label, filename)
 
-        n = pypsa.Network(filename,
-                          override_component_attrs=override_component_attrs)
+        overrides = override_component_attrs(snakemake.input.overrides)
+        n = pypsa.Network(filename, override_component_attrs=overrides)
 
 
         assign_carriers(n)
@@ -587,7 +568,6 @@ if __name__ == "__main__":
         snakemake.config["scenario"]["sector_opts"] = ["3H-T-H-B-I-solar3-dist1"]
         snakemake.config["planning_horizons"] = ['2020', '2030', '2040', '2050']
         snakemake.input = Dict()
-        snakemake.input['heat_demand_name'] = 'data/heating/daily_heat_demand.h5'
         snakemake.input['costs'] = snakemake.config['costs_dir'] + "costs_{}.csv".format(snakemake.config['scenario']['planning_horizons'][0])
         snakemake.output = Dict()
         for item in outputs:

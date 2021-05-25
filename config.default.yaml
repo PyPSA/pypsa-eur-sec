@@ -1,4 +1,4 @@
-version: 0.4.0
+version: 0.5.0
 
 logging_level: INFO
 
@@ -60,8 +60,7 @@ snapshots:
   closed: left # end is not inclusive
 
 atlite:
-  cutout_dir: ../pypsa-eur/cutouts
-  cutout_name: europe-2013-era5
+  cutout: ../pypsa-eur/cutouts/europe-2013-era5.nc
 
 # this information is NOT used but needed as an argument for
 # pypsa-eur/scripts/add_electricity.py/load_costs in make_summary.py
@@ -90,6 +89,12 @@ pypsa_eur:
   Store: []
 
 
+energy:
+  energy_totals_year: 2011
+  base_emissions_year: 1990
+  eurostat_report_year: 2016
+  emissions: CO2 # "CO2" or "All greenhouse gases - (CO2 equivalent)"
+
 biomass:
   year: 2030
   scenario: Med
@@ -115,6 +120,12 @@ biomass:
       - Manure biomass potential
       - Sludge biomass
 
+
+solar_thermal:
+  clearsky_model: simple  # should be "simple" or "enhanced"?
+  orientation:
+    slope: 45.
+    azimuth: 180.
 
 # only relevant for foresight = myopic or perfect
 existing_capacities:
@@ -217,6 +228,8 @@ industry:
   NH3_process_emissions: 24.5 # in MtCO2/a from SMR for H2 production for NH3 from UNFCCC for 2015 for EU28
   petrochemical_process_emissions: 25.5 # in MtCO2/a for petrochemical and other from UNFCCC for 2015 for EU28
   HVC_primary_fraction: 1.0 #fraction of current non-ammonia basic chemicals produced via primary route
+  hotmaps_locate_missing: false
+  reference_year: 2015
 
 
 costs:
