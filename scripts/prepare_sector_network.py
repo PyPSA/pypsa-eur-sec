@@ -22,29 +22,7 @@ from vresutils.costdata import annuity
 from scipy.stats import beta
 from build_energy_totals import build_eea_co2, build_eurostat_co2, build_co2_totals
 
-#First tell PyPSA that links can have multiple outputs by
-#overriding the component_attrs. This can be done for
-#as many buses as you need with format busi for i = 2,3,4,5,....
-#See https://pypsa.org/doc/components.html#link-with-multiple-outputs-or-inputs
-
-
-override_component_attrs = pypsa.descriptors.Dict({k : v.copy() for k,v in pypsa.components.component_attrs.items()})
-override_component_attrs["Link"].loc["bus2"] = ["string",np.nan,np.nan,"2nd bus","Input (optional)"]
-override_component_attrs["Link"].loc["bus3"] = ["string",np.nan,np.nan,"3rd bus","Input (optional)"]
-override_component_attrs["Link"].loc["bus4"] = ["string",np.nan,np.nan,"4th bus","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency2"] = ["static or series","per unit",1.,"2nd bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency3"] = ["static or series","per unit",1.,"3rd bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["efficiency4"] = ["static or series","per unit",1.,"4th bus efficiency","Input (optional)"]
-override_component_attrs["Link"].loc["p2"] = ["series","MW",0.,"2nd bus output","Output"]
-override_component_attrs["Link"].loc["p3"] = ["series","MW",0.,"3rd bus output","Output"]
-override_component_attrs["Link"].loc["p4"] = ["series","MW",0.,"4th bus output","Output"]
-
-override_component_attrs["Link"].loc["build_year"] = ["integer","year",np.nan,"build year","Input (optional)"]
-override_component_attrs["Link"].loc["lifetime"] = ["float","years",np.nan,"lifetime","Input (optional)"]
-override_component_attrs["Generator"].loc["build_year"] = ["integer","year",np.nan,"build year","Input (optional)"]
-override_component_attrs["Generator"].loc["lifetime"] = ["float","years",np.nan,"lifetime","Input (optional)"]
-override_component_attrs["Store"].loc["build_year"] = ["integer","year",np.nan,"build year","Input (optional)"]
-override_component_attrs["Store"].loc["lifetime"] = ["float","years",np.nan,"lifetime","Input (optional)"]
+from helper import override_component_attrs
 
 
 
@@ -497,10 +475,10 @@ def prepare_data(network):
     ##############
 
 
-    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).T.to_pandas().reindex(index=network.snapshots)
-    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).T.to_pandas().reindex(index=network.snapshots)
+    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).to_pandas().reindex(index=network.snapshots)
+    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).to_pandas().reindex(index=network.snapshots)
 
-    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).T.to_pandas().reindex(index=network.snapshots)
+    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).to_pandas().reindex(index=network.snapshots)
     #1e3 converts from W/m^2 to MW/(1000m^2) = kW/m^2
     solar_thermal = options['solar_cf_correction'] * solar_thermal/1e3
 
@@ -511,7 +489,7 @@ def prepare_data(network):
     nodal_energy_totals = nodal_energy_totals.multiply(pop_layout.fraction,axis=0)
 
     #copy forward the daily average heat demand into each hour, so it can be multipled by the intraday profile
-    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).T.to_pandas().reindex(index=network.snapshots, method="ffill")
+    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).to_pandas().reindex(index=network.snapshots, method="ffill")
 
     intraday_profiles = pd.read_csv(snakemake.input.heat_profile,index_col=0)
 
@@ -576,7 +554,7 @@ def prepare_data(network):
 
 
     #get heating demand for correction to demand time series
-    temperature = xr.open_dataarray(snakemake.input.temp_air_total).T.to_pandas()
+    temperature = xr.open_dataarray(snakemake.input.temp_air_total).to_pandas()
 
     #correction factors for vehicle heating
     dd_ICE = transport_degree_factor(temperature,
@@ -1154,6 +1132,12 @@ def add_land_transport(network):
 
     if ice_share > 0:
 
+        if "EU oil" not in network.buses.index:
+            network.madd("Bus",
+                         ["EU oil"],
+                         location="EU",
+                         carrier="oil")
+
         network.madd("Load",
                      nodes,
                      suffix=" land transport oil",
@@ -1542,6 +1526,8 @@ def add_biomass(network):
                  bus1="EU gas",
                  bus2="co2 atmosphere",
                  carrier="biogas to gas",
+                 capital_cost=costs.loc["biogas upgrading", "fixed"],
+                 marginal_cost=costs.loc["biogas upgrading", "VOM"],
                  efficiency2=-costs.at['gas','CO2 intensity'],
                  p_nom_extendable=True)
 
@@ -1769,6 +1755,7 @@ def add_industry(network):
     #remove today's industrial electricity demand by scaling down total electricity demand
     for ct in n.buses.country.unique():
         loads = n.loads.index[(n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")]
+        if n.loads_t.p_set[loads].empty: continue
         factor = 1 - industrial_demand.loc[loads,"current electricity"].sum()/n.loads_t.p_set[loads].sum().sum()
         n.loads_t.p_set[loads] *= factor
 
@@ -1915,7 +1902,7 @@ if __name__ == "__main__":
                 	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
                         floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
             ),
-            output=['results/version-cb48be3/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
+            output=['results/version-cb48be3/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
         )
         import yaml
         with open('config.yaml', encoding='utf8') as f:
@@ -1932,8 +1919,8 @@ if __name__ == "__main__":
 
     investment_year=int(snakemake.wildcards.planning_horizons[-4:])
 
-    n = pypsa.Network(snakemake.input.network,
-                      override_component_attrs=override_component_attrs)
+    overrides = override_component_attrs(snakemake.input.overrides)
+    n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
     Nyears = n.snapshot_weightings.sum()/8760.
 
