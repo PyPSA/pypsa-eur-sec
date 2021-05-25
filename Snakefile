@@ -186,10 +186,12 @@ rule build_industry_sector_ratios:
 
 rule build_industrial_production_per_country:
     input:
-        ammonia_production="resources/ammonia_production.csv"
+        ammonia_production="resources/ammonia_production.csv",
+        jrc="data/jrc-idees-2015",
+        eurostat="data/eurostat-energy_balances-may_2018_edition",
     output:
-        industrial_production_per_country="resources/industrial_production_per_country.csv"  
-    threads: 1
+        industrial_production_per_country="resources/industrial_production_per_country.csv"
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_production_per_country.py'
 
