@@ -134,15 +134,24 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+def input_eurostat(w):
+    # 2016 includes BA, 2017 does not
+    report_year = config["energy"]["eurostat_report_year"]
+    return f"data/eurostat-energy_balances-june_{report_year}_edition"
+
 
 rule build_energy_totals:
     input:
-        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson')
+        nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
+        co2="data/eea/UNFCCC_v23.csv",
+        swiss="data/switzerland-sfoe/switzerland-new_format.csv",
+        idees="data/jrc-idees-2015",
+        eurostat=input_eurostat
     output:
         energy_name='resources/energy_totals.csv',
-	co2_name='resources/co2_totals.csv',
-	transport_name='resources/transport_data.csv'
-    threads: 1
+	    co2_name='resources/co2_totals.csv',
+	    transport_name='resources/transport_data.csv'
+    threads: 16
     resources: mem_mb=10000
     script: 'scripts/build_energy_totals.py'
 
@@ -168,7 +177,8 @@ rule build_ammonia_production:
 
 rule build_industry_sector_ratios:
     input:
-        ammonia_production="resources/ammonia_production.csv"
+        ammonia_production="resources/ammonia_production.csv",
+        idees="data/jrc-idees-2015"
     output:
         industry_sector_ratios="resources/industry_sector_ratios.csv"
     threads: 1
@@ -178,10 +188,12 @@ rule build_industry_sector_ratios:
 
 rule build_industrial_production_per_country:
     input:
-        ammonia_production="resources/ammonia_production.csv"
+        ammonia_production="resources/ammonia_production.csv",
+        jrc="data/jrc-idees-2015",
+        eurostat="data/eurostat-energy_balances-may_2018_edition",
     output:
         industrial_production_per_country="resources/industrial_production_per_country.csv"
-    threads: 1
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_production_per_country.py'
 
@@ -200,10 +212,9 @@ rule build_industrial_production_per_country_tomorrow:
 
 rule build_industrial_distribution_key:
     input:
+        regions_onshore=pypsaeur('resources/regions_onshore_elec_s{simpl}_{clusters}.geojson'),
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        europe_shape=pypsaeur('resources/europe_shape.geojson'),
         hotmaps_industrial_database="data/Industrial_Database.csv",
-        network=pypsaeur('networks/elec_s{simpl}_{clusters}.nc')
     output:
         industrial_distribution_key="resources/industrial_distribution_key_elec_s{simpl}_{clusters}.csv"
     threads: 1
@@ -237,11 +248,12 @@ rule build_industrial_energy_demand_per_node:
 
 rule build_industrial_energy_demand_per_country_today:
     input:
+        jrc="data/jrc-idees-2015",
         ammonia_production="resources/ammonia_production.csv",
         industrial_production_per_country="resources/industrial_production_per_country.csv"
     output:
         industrial_energy_demand_per_country_today="resources/industrial_energy_demand_per_country_today.csv"
-    threads: 1
+    threads: 8
     resources: mem_mb=1000
     script: 'scripts/build_industrial_energy_demand_per_country_today.py'
 
@@ -257,33 +269,11 @@ rule build_industrial_energy_demand_per_node_today:
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
-
-rule build_industrial_energy_demand_per_country:
-    input:
-        industry_sector_ratios="resources/industry_sector_ratios.csv",
-        industrial_production_per_country="resources/industrial_production_per_country_tomorrow.csv"
-    output:
-        industrial_energy_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_energy_demand_per_country.py'
-
-
-rule build_industrial_demand:
-    input:
-        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        industrial_demand_per_country="resources/industrial_energy_demand_per_country.csv"
-    output:
-        industrial_demand="resources/industrial_demand_elec_s{simpl}_{clusters}.csv"
-    threads: 1
-    resources: mem_mb=1000
-    script: 'scripts/build_industrial_demand.py'
-
 rule build_retro_cost:
     input:
         building_stock="data/retro/data_building_stock.csv",
         data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
-        air_temperature = "resources/temp_air_total_{network}_s{simpl}_{clusters}.nc",
+        air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
         u_values_PL="data/retro/u_values_poland.csv",
         tax_w="data/retro/electricity_taxes_eu.csv",
         construction_index="data/retro/comparative_level_investment.csv",
@@ -300,6 +290,7 @@ rule build_retro_cost:
 
 rule prepare_sector_network:
     input:
+        overrides="data/override_component_attrs",
         network=pypsaeur('networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
         energy_totals_name='resources/energy_totals.csv',
         co2_totals_name='resources/co2_totals.csv',
@@ -347,6 +338,7 @@ rule prepare_sector_network:
 
 rule plot_network:
     input:
+        overrides="data/override_component_attrs",
         network=config['results_dir'] + config['run'] + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
     output:
         map=config['results_dir'] + config['run'] + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
@@ -367,6 +359,7 @@ rule copy_config:
 
 rule make_summary:
     input:
+        overrides="data/override_component_attrs",
         networks=expand(config['results_dir'] + config['run'] + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
                  **config['scenario']),
         costs=config['costs_dir'] + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
@@ -413,6 +406,7 @@ if config["foresight"] == "overnight":
 
     rule solve_network:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir'] + config['run'] + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
             config=config['summary_dir'] + '/' + config['run'] + '/configs/config.yaml'
@@ -433,6 +427,7 @@ if config["foresight"] == "myopic":
 
     rule add_existing_baseyear:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir']  +  config['run'] + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             powerplants=pypsaeur('resources/powerplants.csv'),
             busmap_s=pypsaeur("resources/busmap_elec_s{simpl}.csv"),
@@ -455,6 +450,7 @@ if config["foresight"] == "myopic":
 
     rule add_brownfield:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir']  +  config['run'] + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             network_p=process_input, #solved network at previous time step
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
@@ -470,6 +466,7 @@ if config["foresight"] == "myopic":
 
     rule solve_network_myopic:
         input:
+            overrides="data/override_component_attrs",
             network=config['results_dir'] + config['run'] + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=config['costs_dir'] + "costs_{planning_horizons}.csv",
             config=config['summary_dir'] + '/' + config['run'] + '/configs/config.yaml'
