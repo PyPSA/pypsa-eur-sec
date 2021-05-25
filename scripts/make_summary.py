@@ -568,7 +568,6 @@ if __name__ == "__main__":
         snakemake.config["scenario"]["sector_opts"] = ["3H-T-H-B-I-solar3-dist1"]
         snakemake.config["planning_horizons"] = ['2020', '2030', '2040', '2050']
         snakemake.input = Dict()
-        snakemake.input['heat_demand_name'] = 'data/heating/daily_heat_demand.h5'
         snakemake.input['costs'] = snakemake.config['costs_dir'] + "costs_{}.csv".format(snakemake.config['scenario']['planning_horizons'][0])
         snakemake.output = Dict()
         for item in outputs:
