@@ -4,7 +4,6 @@ import geopandas as gpd
 import xarray as xr
 import pandas as pd
 import atlite
-from helper import clean_invalid_geometries
 
 
 if __name__ == '__main__':
@@ -12,9 +11,7 @@ if __name__ == '__main__':
     cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
 
     clustered_regions = gpd.read_file(
-        snakemake.input.regions_onshore).set_index('name').squeeze()
-
-    clean_invalid_geometries(clustered_regions)
+        snakemake.input.regions_onshore).set_index('name').buffer(0).squeeze()
 
     I = cutout.indicatormatrix(clustered_regions)
 
@@ -24,5 +21,9 @@ if __name__ == '__main__':
         pop[item] = I.dot(pop_layout.stack(spatial=('y', 'x')))
 
     pop = pd.DataFrame(pop, index=clustered_regions.index)
+
+    node_country = pop.index.str[:2]
+    country_population = pop.total.groupby(node_country).sum()
+    pop["fraction"] = pop.total / node_country.map(country_population)
 
     pop.to_csv(snakemake.output.clustered_pop_layout)

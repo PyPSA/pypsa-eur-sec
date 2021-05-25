@@ -15,14 +15,10 @@ from scipy.stats import beta
 from vresutils.costdata import annuity
 
 from build_energy_totals import build_eea_co2, build_eurostat_co2, build_co2_totals
-
-idx = pd.IndexSlice
+from helper import override_component_attrs
 
 import logging
 logger = logging.getLogger(__name__)
-
-
-from helper import override_component_attrs
 
 
 def get(item, investment_year=None):
@@ -478,10 +474,10 @@ def prepare_data(n):
     ##############
 
 
-    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).T.to_pandas().reindex(index=n.snapshots)
-    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).T.to_pandas().reindex(index=n.snapshots)
+    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).to_pandas().reindex(index=n.snapshots)
+    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).to_pandas().reindex(index=n.snapshots)
 
-    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).T.to_pandas().reindex(index=n.snapshots)
+    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).to_pandas().reindex(index=n.snapshots)
     # 1e3 converts from W/m^2 to MW/(1000m^2) = kW/m^2
     solar_thermal = options['solar_cf_correction'] * solar_thermal / 1e3
 
@@ -492,7 +488,7 @@ def prepare_data(n):
     nodal_energy_totals = nodal_energy_totals.multiply(pop_layout.fraction, axis=0)
 
     # copy forward the daily average heat demand into each hour, so it can be multipled by the intraday profile
-    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).T.to_pandas().reindex(index=n.snapshots, method="ffill")
+    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).to_pandas().reindex(index=n.snapshots, method="ffill")
 
     intraday_profiles = pd.read_csv(snakemake.input.heat_profile, index_col=0)
 
@@ -555,8 +551,8 @@ def prepare_data(n):
 
     efficiency_gain = nodal_transport_data["average fuel efficiency"] / battery_to_wheels_eta
 
-    # get heating demand for correction to demand time series
-    temperature = xr.open_dataarray(snakemake.input.temp_air_total).T.to_pandas()
+    #get heating demand for correction to demand time series
+    temperature = xr.open_dataarray(snakemake.input.temp_air_total).to_pandas()
 
     # correction factors for vehicle heating
     dd_ICE = transport_degree_factor(temperature,
@@ -1143,6 +1139,13 @@ def add_land_transport(n, costs):
 
     if ice_share > 0:
 
+        if "EU oil" not in n.buses.index:
+            n.add("Bus",
+                "EU oil",
+                location="EU",
+                carrier="oil"
+            )
+
         ice_efficiency = options['transport_internal_combustion_efficiency']
 
         n.madd("Load",
@@ -1560,6 +1563,8 @@ def add_biomass(n, costs):
         bus1="EU gas",
         bus2="co2 atmosphere",
         carrier="biogas to gas",
+        capital_cost=costs.loc["biogas upgrading", "fixed"],
+        marginal_cost=costs.loc["biogas upgrading", "VOM"],
         efficiency2=-costs.at['gas', 'CO2 intensity'],
         p_nom_extendable=True
     )
@@ -1816,6 +1821,7 @@ def add_industry(n, costs):
     for ct in n.buses.country.unique():
         # TODO map onto n.bus.country
         loads_i = n.loads.index[(n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")]
+        if n.loads_t.p_set[loads_i].empty: continue
         factor = 1 - industrial_demand.loc[loads_i, "current electricity"].sum() / n.loads_t.p_set[loads_i].sum().sum()
         n.loads_t.p_set[loads_i] *= factor
 
@@ -1936,58 +1942,57 @@ def limit_individual_line_extension(n, maxext):
 
 
 if __name__ == "__main__":
+    # Detect running outside of snakemake and mock snakemake for testing
+    if 'snakemake' not in globals():
+        from vresutils.snakemake import MockSnakemake
+        snakemake = MockSnakemake(
+            wildcards=dict(network='elec', simpl='', clusters='37', lv='1.0',
+                           opts='', planning_horizons='2020',
+                           sector_opts='120H-T-H-B-I-onwind+p3-dist1-cb48be3'),
 
-    # # Detect running outside of snakemake and mock snakemake for testing
-    # if 'snakemake' not in globals():
-    #     from vresutils.snakemake import MockSnakemake
-    #     snakemake = MockSnakemake(
-    #         wildcards=dict(network='elec', simpl='', clusters='37', lv='1.0',
-    #                        opts='', planning_horizons='2020',
-    #                        sector_opts='120H-T-H-B-I-onwind+p3-dist1-cb48be3'),
-
-    #         input=dict( network='../pypsa-eur/networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
-    #                     energy_totals_name='resources/energy_totals.csv',
-    #                     co2_totals_name='resources/co2_totals.csv',
-    #                     transport_name='resources/transport_data.csv',
-    #             	    traffic_data = "data/emobility/",
-    #                     biomass_potentials='resources/biomass_potentials.csv',
-    #                     timezone_mappings='data/timezone_mappings.csv',
-    #                     heat_profile="data/heat_load_profile_BDEW.csv",
-    #                     costs="../technology-data/outputs/costs_{planning_horizons}.csv",
-    #             	    h2_cavern = "data/hydrogen_salt_cavern_potentials.csv",
-    #                     profile_offwind_ac="../pypsa-eur/resources/profile_offwind-ac.nc",
-    #                     profile_offwind_dc="../pypsa-eur/resources/profile_offwind-dc.nc",
-    #                     busmap_s="../pypsa-eur/resources/busmap_elec_s{simpl}.csv",
-    #                     busmap="../pypsa-eur/resources/busmap_elec_s{simpl}_{clusters}.csv",
-    #                     clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-    #                     simplified_pop_layout="resources/pop_layout_elec_s{simpl}.csv",
-    #                     industrial_demand="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv",
-    #                     heat_demand_urban="resources/heat_demand_urban_elec_s{simpl}_{clusters}.nc",
-    #                     heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
-    #                     heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc",
-    #                     temp_soil_total="resources/temp_soil_total_elec_s{simpl}_{clusters}.nc",
-    #                     temp_soil_rural="resources/temp_soil_rural_elec_s{simpl}_{clusters}.nc",
-    #                     temp_soil_urban="resources/temp_soil_urban_elec_s{simpl}_{clusters}.nc",
-    #                     temp_air_total="resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
-    #                     temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
-    #                     temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc",
-    #                     cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
-    #                     cop_soil_rural="resources/cop_soil_rural_elec_s{simpl}_{clusters}.nc",
-    #                     cop_soil_urban="resources/cop_soil_urban_elec_s{simpl}_{clusters}.nc",
-    #                     cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
-    #                     cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
-    #                     cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
-    #                     solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
-    #                     solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
-    #                     solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
-    #             	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-    #                     floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
-    #         ),
-    #         output=['results/version-cb48be3/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
-    #     )
-    #     import yaml
-    #     with open('config.yaml', encoding='utf8') as f:
-    #         snakemake.config = yaml.safe_load(f)
+            input=dict( network='../pypsa-eur/networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
+                        energy_totals_name='resources/energy_totals.csv',
+                        co2_totals_name='resources/co2_totals.csv',
+                        transport_name='resources/transport_data.csv',
+                	    traffic_data = "data/emobility/",
+                        biomass_potentials='resources/biomass_potentials.csv',
+                        timezone_mappings='data/timezone_mappings.csv',
+                        heat_profile="data/heat_load_profile_BDEW.csv",
+                        costs="../technology-data/outputs/costs_{planning_horizons}.csv",
+                	    h2_cavern = "data/hydrogen_salt_cavern_potentials.csv",
+                        profile_offwind_ac="../pypsa-eur/resources/profile_offwind-ac.nc",
+                        profile_offwind_dc="../pypsa-eur/resources/profile_offwind-dc.nc",
+                        busmap_s="../pypsa-eur/resources/busmap_elec_s{simpl}.csv",
+                        busmap="../pypsa-eur/resources/busmap_elec_s{simpl}_{clusters}.csv",
+                        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
+                        simplified_pop_layout="resources/pop_layout_elec_s{simpl}.csv",
+                        industrial_demand="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv",
+                        heat_demand_urban="resources/heat_demand_urban_elec_s{simpl}_{clusters}.nc",
+                        heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
+                        heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_total="resources/temp_soil_total_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_rural="resources/temp_soil_rural_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_urban="resources/temp_soil_urban_elec_s{simpl}_{clusters}.nc",
+                        temp_air_total="resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
+                        temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
+                        temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_rural="resources/cop_soil_rural_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_urban="resources/cop_soil_urban_elec_s{simpl}_{clusters}.nc",
+                        cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
+                        cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
+                        cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
+                	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
+                        floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
+            ),
+            output=['results/version-cb48be3/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
+        )
+        import yaml
+        with open('config.yaml', encoding='utf8') as f:
+            snakemake.config = yaml.safe_load(f)
 
 
     logging.basicConfig(level=snakemake.config['logging_level'])
