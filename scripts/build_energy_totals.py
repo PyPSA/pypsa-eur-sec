@@ -628,19 +628,9 @@ def build_transport_data(countries, population, idees):
 
 
 if __name__ == "__main__":
-
-    # Detect running outside of snakemake and mock snakemake for testing
-    if "snakemake" not in globals():
-        from vresutils import Dict
-
-        snakemake = Dict()
-        snakemake.output = Dict()
-        snakemake.output["energy_name"] = "data/energy_totals.csv"
-        snakemake.output["co2_name"] = "data/co2_totals.csv"
-        snakemake.output["transport_name"] = "data/transport_data.csv"
-
-        snakemake.input = Dict()
-        snakemake.input["nuts3_shapes"] = "../pypsa-eur/resources/nuts3_shapes.geojson"
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_energy_totals')
 
     config = snakemake.config["energy"]
 

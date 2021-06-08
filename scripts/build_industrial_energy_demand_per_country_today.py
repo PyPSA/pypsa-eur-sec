@@ -141,6 +141,9 @@ def industrial_energy_demand(countries):
 
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_industrial_energy_demand_per_country_today')
 
     config = snakemake.config['industry']
     year = config.get('reference_year', 2015)

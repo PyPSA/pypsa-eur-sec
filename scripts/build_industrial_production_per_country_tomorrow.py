@@ -3,6 +3,9 @@
 import pandas as pd
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_industrial_production_per_country_tomorrow')
 
     config = snakemake.config["industry"]
 

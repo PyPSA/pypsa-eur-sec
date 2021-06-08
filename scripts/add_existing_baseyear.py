@@ -403,27 +403,16 @@ def add_heating_capacities_installed_before_baseyear(n, baseyear, grouping_years
 
 
 if __name__ == "__main__":
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils.snakemake import MockSnakemake
-        snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='45', lv='1.0',
-                           sector_opts='Co2L0-3H-T-H-B-I-solar3-dist1',
-                           planning_horizons='2020'),
-            input=dict(network='pypsa-eur-sec/results/version-2/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc',
-                       powerplants='pypsa-eur/resources/powerplants.csv',
-                       busmap_s='pypsa-eur/resources/busmap_elec_s{simpl}.csv',
-                       busmap='pypsa-eur/resources/busmap_elec_s{simpl}_{clusters}.csv',
-                       costs='technology_data/outputs/costs_{planning_horizons}.csv',
-                       cop_air_total="pypsa-eur-sec/resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
-                       cop_soil_total="pypsa-eur-sec/resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
-                       clustered_pop_layout="pypsa-eur-sec/resources/pop_layout_elec_s{simpl}_{clusters}.csv",),
-            output=['pypsa-eur-sec/results/version-2/prenetworks_brownfield/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc'],
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'add_existing_baseyear',
+            simpl='',
+            clusters=45,
+            lv=1.0,
+            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+            planning_horizons=2020,
         )
-        import yaml
-        with open('config.yaml', encoding='utf8') as f:
-            snakemake.config = yaml.safe_load(f)
-
 
     logging.basicConfig(level=snakemake.config['logging_level'])
 

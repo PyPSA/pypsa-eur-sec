@@ -193,21 +193,16 @@ def solve_network(n, config, opts='', **kwargs):
 
 
 if __name__ == "__main__":
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils.snakemake import MockSnakemake, Dict
-        snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='39', lv='1.0',
-                           sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
-                           co2_budget_name='b30b3', planning_horizons='2050'),
-            input=dict(network="pypsa-eur-sec/results/test/prenetworks_brownfield/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{co2_budget_name}_{planning_horizons}.nc"),
-            output=["results/networks/s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}-test.nc"],
-            log=dict(gurobi="logs/elec_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_gurobi-test.log",
-                     python="logs/elec_s{simpl}_{clusters}_lv{lv}_{sector_opts}_{co2_budget_name}_{planning_horizons}_python-test.log")
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'solve_network',
+            simpl='',
+            clusters=48,
+            lv=1.0,
+            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+            planning_horizons=2050,
         )
-        import yaml
-        with open('config.yaml', encoding='utf8') as f:
-            snakemake.config = yaml.safe_load(f)
 
     logging.basicConfig(filename=snakemake.log.python,
                         level=snakemake.config['logging_level'])
