@@ -53,20 +53,9 @@ def build_biomass_potentials():
 
 
 if __name__ == "__main__":
-
-
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils import Dict
-        import yaml
-        snakemake = Dict()
-        snakemake.input = Dict()
-        snakemake.input['jrc_potentials'] = "data/biomass/JRC Biomass Potentials.xlsx"
-        snakemake.output = Dict()
-        snakemake.output['biomass_potentials'] = 'data/biomass_potentials.csv'
-        snakemake.output['biomass_potentials_all']='resources/biomass_potentials_all.csv'
-        with open('config.yaml', encoding='utf8') as f:
-            snakemake.config = yaml.safe_load(f)
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_biomass_potentials')
 
 
     # This is a hack, to be replaced once snakemake is unicode-conform

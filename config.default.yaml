@@ -264,8 +264,10 @@ solving:
     clip_p_max_pu: 1.e-2
     load_shedding: false
     noisy_costs: true
-    min_iterations: 1
-    max_iterations: 1
+    skip_iterations: true
+    track_iterations: false
+    min_iterations: 4
+    max_iterations: 6
 
   solver:
     name: gurobi
@@ -290,12 +292,11 @@ solving:
 
 plotting:
   map:
-    figsize: [7, 7]
-    boundaries: [-10.2, 29, 35, 72]
-    p_nom:
-      bus_size_factor: 5.e+4
-      linewidth_factor: 3.e+3 # 1.e+3  #3.e+3
-  costs_max: 1200
+    boundaries: [-11, 30, 34, 71] 
+    color_geomap:
+      ocean: white
+      land: whitesmoke
+  costs_max: 1000
   costs_threshold: 1
   energy_max: 20000.
   energy_min: -15000.
@@ -343,31 +344,31 @@ plotting:
     - solar thermal collector
     - central solar thermal collector
   tech_colors:
-    onwind: b
-    onshore wind: b
-    offwind: c
-    offshore wind: c
-    offwind-ac: c
-    offshore wind (AC): c
-    offwind-dc: '#009999'
-    offshore wind (DC): '#009999'
+    onwind: "#235ebc"
+    onshore wind: "#235ebc"
+    offwind: "#6895dd"
+    offshore wind: "#6895dd"
+    offwind-ac: "#6895dd"
+    offshore wind (AC): "#6895dd"
+    offwind-dc: "#74c6f2"
+    offshore wind (DC): "#74c6f2"
     wave: '#004444'
     hydro: '#3B5323'
     hydro reservoir: '#3B5323'
     ror: '#78AB46'
     run of river: '#78AB46'
     hydroelectricity: '#006400'
-    solar: 'y'
-    solar PV: 'y'
+    solar: "#f9d002"
+    solar PV: "#f9d002"
     solar thermal: coral
-    solar rooftop: '#e6b800'
+    solar rooftop: '#ffef60'
     OCGT: wheat
     OCGT marginal: sandybrown
-    OCGT-heat: orange
-    gas boiler: orange
-    gas boilers: orange
-    gas boiler marginal: orange
-    gas-to-power/heat: orange
+    OCGT-heat: '#ee8340'
+    gas boiler: '#ee8340'
+    gas boilers: '#ee8340'
+    gas boiler marginal: '#ee8340'
+    gas-to-power/heat: '#ee8340'
     gas: brown
     natural gas: brown
     SMR: '#4F4F2F'
@@ -391,8 +392,8 @@ plotting:
     Lignite: grey
     lignite: grey
     Lignite marginal: grey
-    CCGT: orange
-    CCGT marginal: orange
+    CCGT: '#ee8340'
+    CCGT marginal: '#ee8340'
     heat pumps: '#76EE00'
     heat pump: '#76EE00'
     air heat pump: '#76EE00'
@@ -460,19 +461,3 @@ plotting:
     today: '#D2691E'
     shipping: '#6495ED'
     electricity distribution grid: '#333333'
-  nice_names:
-    offwind: Offshore wind
-    onwind: Onshore wind
-    battery: Battery storage
-    lines: Transmission lines
-    AC line: AC lines
-    AC-AC: DC lines
-    ror: Run of river
-  nice_names_n:
-    offwind: "offshore\nwind"
-    onwind: "onshore\nwind"
-    # OCGT: "Gas"
-    H2: "Hydrogen\nstorage"
-    # OCGT marginal: "Gas (marginal)"
-    lines: "transmission\nlines"
-    ror: "run of river"

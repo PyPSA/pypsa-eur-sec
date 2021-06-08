@@ -4,7 +4,6 @@ configfile: "config.yaml"
 
 wildcard_constraints:
     lv="[a-z0-9\.]+",
-    network="[a-zA-Z0-9]*",
     simpl="[a-zA-Z0-9]*",
     clusters="[0-9]+m?",
     sectors="[+a-zA-Z0-9]+",
@@ -48,6 +47,7 @@ rule build_population_layouts:
         pop_layout_urban="resources/pop_layout_urban.nc",
         pop_layout_rural="resources/pop_layout_rural.nc"
     resources: mem_mb=20000
+    benchmark: "benchmarks/build_population_layouts"
     threads: 8
     script: "scripts/build_population_layouts.py"
 
@@ -61,6 +61,7 @@ rule build_clustered_population_layouts:
     output:
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv"
     resources: mem_mb=10000
+    benchmark: "benchmarks/build_clustered_population_layouts/s{simpl}_{clusters}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
@@ -73,6 +74,7 @@ rule build_simplified_population_layouts:
     output:
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}.csv"
     resources: mem_mb=10000
+    benchmark: "benchmarks/build_clustered_population_layouts/s{simpl}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
@@ -87,6 +89,7 @@ rule build_heat_demands:
         heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
         heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
+    benchmark: "benchmarks/build_heat_demands/s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
 
 
@@ -104,6 +107,7 @@ rule build_temperature_profiles:
         temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
         temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
+    benchmark: "benchmarks/build_temperature_profiles/s{simpl}_{clusters}"
     script: "scripts/build_temperature_profiles.py"
 
 
@@ -123,6 +127,7 @@ rule build_cop_profiles:
         cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
         cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
+    benchmark: "benchmarks/build_cop_profiles/s{simpl}_{clusters}"
     script: "scripts/build_cop_profiles.py"
 
 
@@ -137,6 +142,7 @@ rule build_solar_thermal_profiles:
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
+    benchmark: "benchmarks/build_solar_thermal_profiles/s{simpl}_{clusters}"
     script: "scripts/build_solar_thermal_profiles.py"
 
 
@@ -158,6 +164,7 @@ rule build_energy_totals:
 	    transport_name='resources/transport_data.csv'
     threads: 16
     resources: mem_mb=10000
+    benchmark: "benchmarks/build_energy_totals"
     script: 'scripts/build_energy_totals.py'
 
 
@@ -169,6 +176,7 @@ rule build_biomass_potentials:
         biomass_potentials='resources/biomass_potentials.csv'
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_biomass_potentials"
     script: 'scripts/build_biomass_potentials.py'
 
 
@@ -179,6 +187,7 @@ rule build_ammonia_production:
         ammonia_production="resources/ammonia_production.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_ammonia_production"
     script: 'scripts/build_ammonia_production.py'
 
 
@@ -190,6 +199,7 @@ rule build_industry_sector_ratios:
         industry_sector_ratios="resources/industry_sector_ratios.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industry_sector_ratios"
     script: 'scripts/build_industry_sector_ratios.py'
 
 
@@ -202,6 +212,7 @@ rule build_industrial_production_per_country:
         industrial_production_per_country="resources/industrial_production_per_country.csv"
     threads: 8
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_production_per_country"
     script: 'scripts/build_industrial_production_per_country.py'
 
 
@@ -212,6 +223,7 @@ rule build_industrial_production_per_country_tomorrow:
         industrial_production_per_country_tomorrow="resources/industrial_production_per_country_tomorrow.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_production_per_country_tomorrow"
     script: 'scripts/build_industrial_production_per_country_tomorrow.py'
 
 
@@ -224,6 +236,7 @@ rule build_industrial_distribution_key:
         industrial_distribution_key="resources/industrial_distribution_key_elec_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_distribution_key/s{simpl}_{clusters}"
     script: 'scripts/build_industrial_distribution_key.py'
 
 
@@ -235,6 +248,7 @@ rule build_industrial_production_per_node:
         industrial_production_per_node="resources/industrial_production_elec_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_production_per_node/s{simpl}_{clusters}"
     script: 'scripts/build_industrial_production_per_node.py'
 
 
@@ -247,6 +261,7 @@ rule build_industrial_energy_demand_per_node:
         industrial_energy_demand_per_node="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node/s{simpl}_{clusters}"
     script: 'scripts/build_industrial_energy_demand_per_node.py'
 
 
@@ -259,6 +274,7 @@ rule build_industrial_energy_demand_per_country_today:
         industrial_energy_demand_per_country_today="resources/industrial_energy_demand_per_country_today.csv"
     threads: 8
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_energy_demand_per_country_today"
     script: 'scripts/build_industrial_energy_demand_per_country_today.py'
 
 
@@ -270,26 +286,32 @@ rule build_industrial_energy_demand_per_node_today:
         industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node_today/s{simpl}_{clusters}"
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
-rule build_retro_cost:
-    input:
-        building_stock="data/retro/data_building_stock.csv",
-        data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
-        air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
-        u_values_PL="data/retro/u_values_poland.csv",
-        tax_w="data/retro/electricity_taxes_eu.csv",
-        construction_index="data/retro/comparative_level_investment.csv",
-        floor_area_missing="data/retro/floor_area_missing.csv",
-        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        cost_germany="data/retro/retro_cost_germany.csv",
-        window_assumptions="data/retro/window_assumptions.csv",
-    output:
-        retro_cost="resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-        floor_area="resources/floor_area_elec_s{simpl}_{clusters}.csv"
-    resources: mem_mb=1000
-    script: "scripts/build_retro_cost.py"
+if config["sector"]["retrofitting"]["retro_endogen"]:
+    rule build_retro_cost:
+        input:
+            building_stock="data/retro/data_building_stock.csv",
+            data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
+            air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
+            u_values_PL="data/retro/u_values_poland.csv",
+            tax_w="data/retro/electricity_taxes_eu.csv",
+            construction_index="data/retro/comparative_level_investment.csv",
+            floor_area_missing="data/retro/floor_area_missing.csv",
+            clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
+            cost_germany="data/retro/retro_cost_germany.csv",
+            window_assumptions="data/retro/window_assumptions.csv",
+        output:
+            retro_cost="resources/retro_cost_elec_s{simpl}_{clusters}.csv",
+            floor_area="resources/floor_area_elec_s{simpl}_{clusters}.csv"
+        resources: mem_mb=1000
+        benchmark: "benchmarks/build_retro_cost/s{simpl}_{clusters}"
+        script: "scripts/build_retro_cost.py"
+    build_retro_cost_output = rules.build_retro_cost.output
+else:
+    build_retro_cost_output = {}
 
 
 rule prepare_sector_network:
@@ -328,8 +350,7 @@ rule prepare_sector_network:
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
-        retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-        floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
+	      **build_retro_cost_output
     output: RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
     threads: 1
     resources: mem_mb=2000
@@ -346,6 +367,7 @@ rule plot_network:
         today=RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}-today.pdf"
     threads: 2
     resources: mem_mb=10000
+    benchmark: RDIR + "/benchmarks/plot_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
     script: "scripts/plot_network.py"
 
 
@@ -353,6 +375,7 @@ rule copy_config:
     output: SDIR + '/configs/config.yaml'
     threads: 1
     resources: mem_mb=1000
+    benchmark: SDIR + "/benchmarks/copy_config"
     script: "scripts/copy_config.py"
 
 
@@ -386,6 +409,7 @@ rule make_summary:
         metrics=SDIR + '/csvs/metrics.csv'
     threads: 2
     resources: mem_mb=10000
+    benchmark: SDIR + "/benchmarks/make_summary"
     script: "scripts/make_summary.py"
 
 
@@ -400,6 +424,7 @@ rule plot_summary:
         balances=SDIR + '/graphs/balances-energy.pdf'
     threads: 2
     resources: mem_mb=10000
+    benchmark: SDIR + "/benchmarks/plot_summary"
     script: "scripts/plot_summary.py"
 
 
@@ -417,9 +442,9 @@ if config["foresight"] == "overnight":
             solver=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
             python=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
             memory=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
-        benchmark: RDIR + "/benchmarks/solve_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         threads: 4
         resources: mem_mb=config['solving']['mem']
+        benchmark: RDIR + "/benchmarks/solve_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         script: "scripts/solve_network.py"
 
 
@@ -435,12 +460,18 @@ if config["foresight"] == "myopic":
             clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
             costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
             cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc"
+            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
+            existing_heating='data/existing_infrastructure/existing_heating_raw.csv',
+            country_codes='data/Country_codes.csv',
+            existing_solar='data/existing_infrastructure/solar_capacity_IRENA.csv',
+            existing_onwind='data/existing_infrastructure/onwind_capacity_IRENA.csv',
+            existing_offwind='data/existing_infrastructure/offwind_capacity_IRENA.csv',
         output: RDIR + '/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
         wildcard_constraints:
             planning_horizons=config['scenario']['planning_horizons'][0] #only applies to baseyear
         threads: 1
         resources: mem_mb=2000
+        benchmark: RDIR + 'benchmarks/add_existing_baseyear/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_existing_baseyear.py"
 
 
@@ -462,6 +493,7 @@ if config["foresight"] == "myopic":
         output: RDIR + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         threads: 4
         resources: mem_mb=10000
+        benchmark: RDIR + 'benchmarks/add_brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_brownfield.py"
 
 
@@ -480,7 +512,7 @@ if config["foresight"] == "myopic":
             solver=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
             python=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
             memory=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
-        benchmark: RDIR + "/benchmarks/solve_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         threads: 4
         resources: mem_mb=config['solving']['mem']
+        benchmark: RDIR + "/benchmarks/solve_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         script: "scripts/solve_network.py"
