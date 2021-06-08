@@ -431,24 +431,9 @@ def plot_carbon_budget_distribution():
 
 
 if __name__ == "__main__":
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils import Dict
-        import yaml
-        snakemake = Dict()
-        with open('config.yaml', encoding='utf8') as f:
-            snakemake.config = yaml.safe_load(f)
-        snakemake.input = Dict()
-        snakemake.output = Dict()
-        snakemake.wildcards = Dict()
-        #snakemake.wildcards['sector_opts']='3H-T-H-B-I-solar3-dist1-cb48be3'        
-        
-        for item in ["costs", "energy"]:
-            snakemake.input[item] = snakemake.config['summary_dir'] + '/{name}/csvs/{item}.csv'.format(name=snakemake.config['run'],item=item)
-            snakemake.output[item] = snakemake.config['summary_dir'] + '/{name}/graphs/{item}.pdf'.format(name=snakemake.config['run'],item=item)
-        snakemake.input["balances"] = snakemake.config['summary_dir'] + '/{name}/csvs/supply_energy.csv'.format(name=snakemake.config['run'],item=item)
-        snakemake.output["balances"] = snakemake.config['summary_dir'] + '/{name}/graphs/balances-energy.csv'.format(name=snakemake.config['run'],item=item)
-        
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('plot_summary')
         
     n_header = 4
 

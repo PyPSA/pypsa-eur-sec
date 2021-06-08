@@ -28,6 +28,9 @@ country_to_alpha2 = {
 }
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_ammonia_production')
 
     ammonia = pd.read_excel(snakemake.input.usgs,
                             sheet_name="T12",

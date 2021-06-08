@@ -203,6 +203,9 @@ def add_ammonia_demand_separately(demand):
 
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake('build_industrial_production_per_country')
 
     countries = non_EU + eu28
 

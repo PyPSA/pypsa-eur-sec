@@ -7,6 +7,13 @@ import atlite
 
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'build_clustered_population_layouts',
+            simpl='',
+            clusters=48,
+        )
 
     cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
 

@@ -517,34 +517,16 @@ def plot_series(network, carrier="AC", name="test"):
 
 
 if __name__ == "__main__":
-
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils import Dict
-        import yaml
-        snakemake = Dict()
-        with open('config.yaml') as f:
-            snakemake.config = yaml.safe_load(f)
-        snakemake.config['run'] = "retro_vs_noretro"
-        snakemake.wildcards = {"lv": "1.0"}  # lv1.0, lv1.25, lvopt
-        name = "elec_s_48_lv{}__Co2L0-3H-T-H-B".format(snakemake.wildcards["lv"])
-        suffix = "_retro_tes"
-        name = name + suffix
-        snakemake.input = Dict()
-        snakemake.output = Dict(
-            map=(snakemake.config['results_dir'] + snakemake.config['run']
-                 + "/maps/{}".format(name)),
-            today=(snakemake.config['results_dir'] + snakemake.config['run']
-                   + "/maps/{}.pdf".format(name)))
-        snakemake.input.scenario = "lv" + snakemake.wildcards["lv"]
-#        snakemake.config["run"] = "bio_costs"
-        path = snakemake.config['results_dir'] + snakemake.config['run']
-        snakemake.input.network = (path +
-                                   "/postnetworks/{}.nc"
-                                   .format(name))
-        snakemake.output.network = (path +
-                                    "/maps/{}"
-                                    .format(name))
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'plot_network',
+            simpl='',
+            clusters=48,
+            lv=1.0,
+            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+            planning_horizons=2050,
+        )
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)

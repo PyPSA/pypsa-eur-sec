@@ -7,6 +7,13 @@ import xarray as xr
 import numpy as np
 
 if __name__ == '__main__':
+    if 'snakemake' not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'build_heat_demands',
+            simpl='',
+            clusters=48,
+        )
 
     if 'snakemake' not in globals():
         from vresutils import Dict
