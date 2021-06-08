@@ -437,7 +437,12 @@ if config["foresight"] == "myopic":
             clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
             costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
             cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc"
+            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
+            existing_heating='data/existing_infrastructure/existing_heating_raw.csv',
+            country_codes='data/Country_codes.csv',
+            existing_solar='data/existing_infrastructure/solar_capacity_IRENA.csv',
+            existing_onwind='data/existing_infrastructure/onwind_capacity_IRENA.csv',
+            existing_offwind='data/existing_infrastructure/offwind_capacity_IRENA.csv',
         output: RDIR + '/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
         wildcard_constraints:
             planning_horizons=config['scenario']['planning_horizons'][0] #only applies to baseyear
