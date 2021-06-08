@@ -291,24 +291,28 @@ rule build_industrial_energy_demand_per_node_today:
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
-rule build_retro_cost:
-    input:
-        building_stock="data/retro/data_building_stock.csv",
-        data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
-        air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
-        u_values_PL="data/retro/u_values_poland.csv",
-        tax_w="data/retro/electricity_taxes_eu.csv",
-        construction_index="data/retro/comparative_level_investment.csv",
-        floor_area_missing="data/retro/floor_area_missing.csv",
-        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-        cost_germany="data/retro/retro_cost_germany.csv",
-        window_assumptions="data/retro/window_assumptions.csv",
-    output:
-        retro_cost="resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-        floor_area="resources/floor_area_elec_s{simpl}_{clusters}.csv"
-    resources: mem_mb=1000
-    benchmark: "benchmarks/build_retro_cost/s{simpl}_{clusters}"
-    script: "scripts/build_retro_cost.py"
+if config["sector"]["retrofitting"]["retro_endogen"]:
+    rule build_retro_cost:
+        input:
+            building_stock="data/retro/data_building_stock.csv",
+            data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
+            air_temperature = "resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
+            u_values_PL="data/retro/u_values_poland.csv",
+            tax_w="data/retro/electricity_taxes_eu.csv",
+            construction_index="data/retro/comparative_level_investment.csv",
+            floor_area_missing="data/retro/floor_area_missing.csv",
+            clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
+            cost_germany="data/retro/retro_cost_germany.csv",
+            window_assumptions="data/retro/window_assumptions.csv",
+        output:
+            retro_cost="resources/retro_cost_elec_s{simpl}_{clusters}.csv",
+            floor_area="resources/floor_area_elec_s{simpl}_{clusters}.csv"
+        resources: mem_mb=1000
+        benchmark: "benchmarks/build_retro_cost/s{simpl}_{clusters}"
+        script: "scripts/build_retro_cost.py"
+    build_retro_cost_output = rules.build_retro_cost.output
+else:
+    build_retro_cost_output = {}
 
 
 rule prepare_sector_network:
@@ -349,8 +353,7 @@ rule prepare_sector_network:
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
-	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-        floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
+	    **build_retro_cost_output
     output: RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
     threads: 1
     resources: mem_mb=2000
@@ -471,7 +474,7 @@ if config["foresight"] == "myopic":
             planning_horizons=config['scenario']['planning_horizons'][0] #only applies to baseyear
         threads: 1
         resources: mem_mb=2000
-        benchmark: RDIR + 'benchmarks/add_existing_baseyear/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}
+        benchmark: RDIR + 'benchmarks/add_existing_baseyear/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_existing_baseyear.py"
 
 
@@ -493,7 +496,7 @@ if config["foresight"] == "myopic":
         output: RDIR + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         threads: 4
         resources: mem_mb=10000
-        benchmark: RDIR + 'benchmarks/add_brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}
+        benchmark: RDIR + 'benchmarks/add_brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_brownfield.py"
 
 
