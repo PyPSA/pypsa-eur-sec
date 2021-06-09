@@ -21,6 +21,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def emission_sectors_from_opts(opts):
+
+    sectors = ["electricity"]
+    if "T" in opts:
+        sectors += [
+            "rail non-elec",
+            "road non-elec"
+        ]
+    if "H" in opts:
+        sectors += [
+            "residential non-elec",
+            "services non-elec"
+        ]
+    if "I" in opts:
+        sectors += [
+            "industrial non-elec",
+            "industrial processes",
+            "domestic aviation",
+            "international aviation",
+            "domestic navigation",
+            "international navigation"
+        ]
+
+    return sectors
+
+
 def get(item, investment_year=None):
     """Check whether item depends on investment year"""
     if isinstance(item, dict):
@@ -29,7 +55,7 @@ def get(item, investment_year=None):
         return item
 
 
-def co2_emissions_year(cts, opts, year):
+def co2_emissions_year(countries, opts, year):
     """
     Calculate CO2 emissions in one specific year (e.g. 1990 or 2018).
     """
@@ -45,17 +71,10 @@ def co2_emissions_year(cts, opts, year):
 
     co2_totals = build_co2_totals(eea_co2, eurostat_co2)
 
-    # TODO this code block is duplicated
-    co2_emissions = co2_totals.loc[cts, "electricity"].sum()
-    if "T" in opts:
-        co2_emissions += co2_totals.loc[cts, [i+ " non-elec" for i in ["rail", "road"]]].sum().sum()
-    if "H" in opts:
-        co2_emissions += co2_totals.loc[cts, [i+ " non-elec" for i in ["residential", "services"]]].sum().sum()
-    if "I" in opts:
-        co2_emissions += co2_totals.loc[cts, ["industrial non-elec", "industrial processes",
-                                              "domestic aviation", "international aviation",
-                                              "domestic navigation", "international navigation"]].sum().sum()
-	
+    sectors = emission_sectors_from_opts(opts)
+
+    co2_emissions = co2_totals.loc[countries, sectors].sum().sum()
+
     # convert MtCO2 to GtCO2
     co2_emissions *= 0.001  
 
@@ -101,7 +120,7 @@ def build_carbon_budget(o, fn):
             return (e_0 / e_1990) * (1 - beta.cdf(cdf_term, be, be))
 
         #emissions (relative to 1990)
-        co2_cap = pd.Series({t: beta_decay(t) for t in planning_horizons})
+        co2_cap = pd.Series({t: beta_decay(t) for t in planning_horizons}, name=o)
 
     if "ex" in o:
 
@@ -111,7 +130,7 @@ def build_carbon_budget(o, fn):
         def exponential_decay(t):
             return (e_0 / e_1990) * (1 + (m + r) * (t - t_0)) * np.exp(-m * (t - t_0))
 
-        co2_cap = pd.Series({t: exponential_decay(t) for t in planning_horizons})
+        co2_cap = pd.Series({t: exponential_decay(t) for t in planning_horizons}, name=o)
 
     # TODO log in Snakefile
     if not os.path.exists(fn):
@@ -340,26 +359,7 @@ def add_co2limit(n, Nyears=1., limit=0.):
 
     countries = n.buses.country.unique()
 
-    sectors = ["electricity"]
-    if "T" in opts:
-        sectors += [
-            "rail non-elec",
-            "road non-elec"
-        ]
-    if "H" in opts:
-        sectors += [
-            "residential non-elec",
-            "services non-elec"
-        ]
-    if "I" in opts:
-        sectors += [
-            "industrial non-elec",
-            "industrial processes",
-            "domestic aviation",
-            "international aviation",
-            "domestic navigation",
-            "international navigation"
-        ]
+    sectors = emission_sectors_from_opts(opts)
 
     # convert Mt to tCO2
     co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
@@ -501,9 +501,11 @@ def prepare_data(n):
         weekday = list(intraday_profiles[f"{sector} {use} weekday"])
         weekend = list(intraday_profiles[f"{sector} {use} weekend"])
         weekly_profile = weekday * 5 + weekend * 2
-        intraday_year_profile = generate_periodic_profiles(daily_space_heat_demand.index.tz_localize("UTC"),
-                                                            nodes=daily_space_heat_demand.columns,
-                                                            weekly_profile=weekly_profile)
+        intraday_year_profile = generate_periodic_profiles(
+            daily_space_heat_demand.index.tz_localize("UTC"),
+            nodes=daily_space_heat_demand.columns,
+            weekly_profile=weekly_profile
+        )
 
         if use == "space":
             heat_demand_shape = daily_space_heat_demand * intraday_year_profile
@@ -529,9 +531,11 @@ def prepare_data(n):
     traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"])
 
     #Generate profiles
-    transport_shape = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
-                                                 nodes=pop_layout.index,
-                                                 weekly_profile=traffic.values)
+    transport_shape = generate_periodic_profiles(
+        dt_index=n.snapshots.tz_localize("UTC"),
+        nodes=pop_layout.index,
+        weekly_profile=traffic.values
+    )
     transport_shape = transport_shape / transport_shape.sum()
 
     transport_data = pd.read_csv(snakemake.input.transport_name, index_col=0)
@@ -544,10 +548,8 @@ def prepare_data(n):
 
     # electric motors are more efficient, so alter transport demand
 
-    # kWh/km from EPA https://www.fueleconomy.gov/feg/ for Tesla Model S
-    # TODO: move to config
-    plug_to_wheels_eta = 0.2
-    battery_to_wheels_eta = plug_to_wheels_eta * 0.9
+    plug_to_wheels_eta = options.get("bev_plug_to_wheel_efficiency", 0.2)
+    battery_to_wheels_eta = plug_to_wheels_eta * options.get("bev_charge_efficiency", 0.9)
 
     efficiency_gain = nodal_transport_data["average fuel efficiency"] / battery_to_wheels_eta
 
@@ -555,17 +557,21 @@ def prepare_data(n):
     temperature = xr.open_dataarray(snakemake.input.temp_air_total).to_pandas()
 
     # correction factors for vehicle heating
-    dd_ICE = transport_degree_factor(temperature,
-                                     options['transport_heating_deadband_lower'],
-                                     options['transport_heating_deadband_upper'],
-                                     options['ICE_lower_degree_factor'],
-                                     options['ICE_upper_degree_factor'])
+    dd_ICE = transport_degree_factor(
+        temperature,
+        options['transport_heating_deadband_lower'],
+        options['transport_heating_deadband_upper'],
+        options['ICE_lower_degree_factor'],
+        options['ICE_upper_degree_factor']
+    )
 
-    dd_EV = transport_degree_factor(temperature,
-                                    options['transport_heating_deadband_lower'],
-                                    options['transport_heating_deadband_upper'],
-                                    options['EV_lower_degree_factor'],
-                                    options['EV_upper_degree_factor'])
+    dd_EV = transport_degree_factor(
+        temperature,
+        options['transport_heating_deadband_lower'],
+        options['transport_heating_deadband_upper'],
+        options['EV_lower_degree_factor'],
+        options['EV_upper_degree_factor']
+    )
 
     # divide out the heating/cooling demand from ICE totals
     # and multiply back in the heating/cooling demand for EVs
@@ -579,23 +585,26 @@ def prepare_data(n):
 
     traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"])
 
-    # TODO: make config option
-    avail_max = 0.95
-    avail_mean = 0.8
+    avail_max = options.get("bev_avail_max", 0.95)
+    avail_mean = options.get("bev_avail_mean", 0.8)
 
     avail = avail_max - (avail_max - avail_mean) * (traffic - traffic.min()) / (traffic.mean() - traffic.min())
 
-    avail_profile = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
-                                               nodes=pop_layout.index,
-                                               weekly_profile=avail.values)
+    avail_profile = generate_periodic_profiles(
+        dt_index=n.snapshots.tz_localize("UTC"),
+        nodes=pop_layout.index,
+        weekly_profile=avail.values
+    )
 
     dsm_week = np.zeros((24*7,))
 
     dsm_week[(np.arange(0,7,1) * 24 + options['bev_dsm_restriction_time'])] = options['bev_dsm_restriction_value']
 
-    dsm_profile = generate_periodic_profiles(dt_index=n.snapshots.tz_localize("UTC"),
-                                             nodes=pop_layout.index,
-                                             weekly_profile=dsm_week)
+    dsm_profile = generate_periodic_profiles(
+        dt_index=n.snapshots.tz_localize("UTC"),
+        nodes=pop_layout.index,
+        weekly_profile=dsm_week
+    )
 
 
     return nodal_energy_totals, heat_demand, ashp_cop, gshp_cop, solar_thermal, transport, avail_profile, dsm_profile, nodal_transport_data
@@ -635,8 +644,8 @@ def add_generation(n, costs):
 
     nodes = n.buses.locations.unique()
 
-    # TODO make configurable option
-    conventionals = {"OCGT": "gas"}
+    fallback = {"OCGT": "gas"}
+    conventionals = options.get("conventional_generation", fallback)
 
     add_carrier_buses(n, conventionals.values.unique())
 
@@ -1079,9 +1088,8 @@ def add_land_transport(n, costs):
             p_set=p_set
         )
 
-        # 3-phase charger with 11 kW * x% of time grid-connected
-        # TODO move time grid-connected to config option
-        p_nom = nodal_transport_data["number cars"] * 0.011 * electric_share  
+        
+        p_nom = nodal_transport_data["number cars"] * options.get("bev_charge_rate", 0.011) * electric_share  
 
         n.madd("Link",
             nodes,
@@ -1091,7 +1099,7 @@ def add_land_transport(n, costs):
             p_nom=p_nom,
             carrier="BEV charger",
             p_max_pu=avail_profile[nodes],
-            efficiency=0.9, # TODO move to config
+            efficiency=options.get("bev_charge_efficiency", 0.9),
             #These were set non-zero to find LU infeasibility when availability = 0.25
             #p_nom_extendable=True,
             #p_nom_min=p_nom,
@@ -1108,13 +1116,12 @@ def add_land_transport(n, costs):
             p_nom=p_nom,
             carrier="V2G",
             p_max_pu=avail_profile[nodes],
-            efficiency=0.9 # TODO move to config
+            efficiency=options.get("bev_charge_efficiency", 0.9),
         )
 
     if electric_share > 0 and options["bev_dsm"]:
 
-        # 50 kWh battery http://www.zeit.de/mobilitaet/2014-10/auto-fahrzeug-bestand
-        e_nom = nodal_transport_data["number cars"] * 0.05 * options["bev_availability"] * electric_share 
+        e_nom = nodal_transport_data["number cars"] * options.get("bev_energy", 0.05), * options["bev_availability"] * electric_share 
 
         n.madd("Store",
             nodes,
@@ -1276,9 +1283,13 @@ def add_heat(n, costs):
                 p_nom_extendable=True
             )
 
-            # 180 day time constant for centralised, 3 day for decentralised
-            # TODO move to config
-            tes_time_constant_days = options["tes_tau"] if name_type == "decentral" else 180.
+            
+            if isinstance(options["tes_tau"], dict):
+                tes_time_constant_days = options["tes_tau"][name_type]
+            else:
+                logger.warning("Deprecated: a future version will require you to specify 'tes_tau' ",
+                               "for 'decentral' and 'central' separately.")
+                tes_time_constant_days = options["tes_tau"] if name_type == "decentral" else 180.
             
             # conversion from EUR/m^3 to EUR/MWh for 40 K diff and 1.17 kWh/m^3/K
             capital_cost = costs.at[name_type + ' water tank storage', 'fixed'] / 0.00117 / 40 
@@ -1997,7 +2008,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=snakemake.config['logging_level'])
 
-    # TODO as global variable? rename to config?
     options = snakemake.config["sector"]
 
     opts = snakemake.wildcards.sector_opts.split('-')
@@ -2008,12 +2018,6 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
     Nyears = n.snapshot_weightings.sum() / 8760
-
-    # TODO store fraction in file already, remove once rev-cl-population-layouts in
-    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
-    node_country = pop_layout.index.str[:2]
-    country_population = pop_layout.total.groupby(node_country).sum()
-    pop_layout["fraction"] = pop_layout.total / node_country.map(country_population)
 
     costs = prepare_costs(snakemake.input.costs,
                           snakemake.config['costs']['USD2013_to_EUR2013'],
@@ -2089,8 +2093,8 @@ if __name__ == "__main__":
         fn = snakemake.config['results_dir'] + snakemake.config['run'] + '/csvs/carbon_budget_distribution.csv'
         if not os.path.exists(fn):
             build_carbon_budget(o, fn)
-        co2_cap = pd.read_csv(fn, index_col=0)
-        limit = co2_cap.loc[investment_year]
+        co2_cap = pd.read_csv(fn, index_col=0, squeeze=True)
+        limit = co2_cap[investment_year]
         break
     for o in opts:
         if not "Co2L" in o: continue
