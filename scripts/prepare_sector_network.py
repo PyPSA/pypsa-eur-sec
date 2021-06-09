@@ -97,7 +97,7 @@ def build_carbon_budget(o, fn):
         carbon_budget = float(o[o.find("cb")+2:o.find("ex")])
         r = float(o[o.find("ex")+2:])
 
-    countries = n.buses.country.unique()
+    countries = n.buses.country.dropna().unique()
 
     e_1990 = co2_emissions_year(countries, opts, year=1990)
 
@@ -357,7 +357,7 @@ def add_co2limit(n, Nyears=1., limit=0.):
 
     print("Adding CO2 budget limit as per unit of 1990 levels of", limit)
 
-    countries = n.buses.country.unique()
+    countries = n.buses.country.dropna().unique()
 
     sectors = emission_sectors_from_opts(opts)
 
@@ -420,7 +420,7 @@ def generate_periodic_profiles(dt_index, nodes, weekly_profile, localize=None):
     week_df = pd.DataFrame(index=dt_index, columns=nodes)
 
     for node in nodes:
-        timezone = pytz.timezone(pytz.country_timezones[node[2:]][0])
+        timezone = pytz.timezone(pytz.country_timezones[node[:2]][0])
         tz_dt_index = dt_index.tz_convert(timezone)
         week_df[node] = [24 * dt.weekday() + dt.hour for dt in tz_dt_index]
         week_df[node] = week_df[node].map(weekly_profile)
@@ -527,7 +527,7 @@ def prepare_data(n):
 
     ## Get overall demand curve for all vehicles
 
-    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"])
+    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"], squeeze=True)
 
     #Generate profiles
     transport_shape = generate_periodic_profiles(
@@ -582,7 +582,7 @@ def prepare_data(n):
 
     ## derive plugged-in availability for PKW's (cars)
 
-    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"])
+    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"], squeeze=True)
 
     avail_max = options.get("bev_avail_max", 0.95)
     avail_mean = options.get("bev_avail_mean", 0.8)
@@ -641,12 +641,12 @@ def add_generation(n, costs):
 
     print("adding electricity generation")
 
-    nodes = n.buses.locations.unique()
+    nodes = pop_layout.index
 
     fallback = {"OCGT": "gas"}
     conventionals = options.get("conventional_generation", fallback)
 
-    add_carrier_buses(n, conventionals.values.unique())
+    add_carrier_buses(n, np.unique(list(conventionals.values())))
 
     for generator, carrier in conventionals.items():
 
@@ -707,7 +707,7 @@ def insert_electricity_distribution_grid(n, costs):
     print("Inserting electricity distribution grid with investment cost factor of",
           options['electricity_distribution_grid_cost_factor'])
 
-    nodes = n.buses.locations.unique()
+    nodes = pop_layout.index
 
     cost_factor = options['electricity_distribution_grid_cost_factor']
 
@@ -849,7 +849,7 @@ def add_storage(n, costs):
 
     print("adding electricity storage")
 
-    nodes = n.buses.locations.unique()
+    nodes = pop_layout.index
 
     n.add("Carrier", "H2")
 
@@ -908,7 +908,7 @@ def add_storage(n, costs):
 
     # hydrogen stored overground (where not already underground)
     h2_capital_cost = costs.at["hydrogen storage tank", "fixed"]
-    nodes_overground = nodes.symmetric_difference(cavern_nodes.index)
+    nodes_overground = cavern_nodes.index.symmetric_difference(nodes)
 
     n.madd("Store",
         nodes_overground + " H2 Store",
@@ -1064,7 +1064,7 @@ def add_land_transport(n, costs):
 
     assert ice_share >= 0, "Error, more FCEV and EV share than 1."
 
-    nodes = n.buses.locations.unique()
+    nodes = pop_layout.index
 
     if electric_share > 0:
 
@@ -1120,7 +1120,7 @@ def add_land_transport(n, costs):
 
     if electric_share > 0 and options["bev_dsm"]:
 
-        e_nom = nodal_transport_data["number cars"] * options.get("bev_energy", 0.05), * options["bev_availability"] * electric_share 
+        e_nom = nodal_transport_data["number cars"] * options.get("bev_energy", 0.05) * options["bev_availability"] * electric_share 
 
         n.madd("Store",
             nodes,
@@ -1306,7 +1306,7 @@ def add_heat(n, costs):
 
         if options["boilers"]:
 
-            key = f"{name} resistive heater"
+            key = f"{name_type} resistive heater"
 
             n.madd("Link",
                 nodes[name] + f" {name} resistive heater",
@@ -1529,7 +1529,7 @@ def add_biomass(n, costs):
     print("adding biomass")
 
     # biomass distributed at country level - i.e. transport within country allowed
-    countries = n.buses.country.unique()
+    countries = n.buses.country.dropna().unique()
 
     biomass_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
 
@@ -1624,7 +1624,7 @@ def add_industry(n, costs):
 
     print("adding industrial demand")
 
-    nodes = n.buses.locations.unique()
+    nodes = pop_layout.index
 
     # 1e6 to convert TWh to MWh
     industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
@@ -1828,7 +1828,7 @@ def add_industry(n, costs):
     )
 
     # remove today's industrial electricity demand by scaling down total electricity demand
-    for ct in n.buses.country.unique():
+    for ct in n.buses.country.dropna().unique():
         # TODO map onto n.bus.country
         loads_i = n.loads.index[(n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")]
         if n.loads_t.p_set[loads_i].empty: continue
@@ -1974,6 +1974,7 @@ if __name__ == "__main__":
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
+    pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
     Nyears = n.snapshot_weightings.sum() / 8760
 
     costs = prepare_costs(snakemake.input.costs,
@@ -2069,14 +2070,14 @@ if __name__ == "__main__":
         break
 
     if options['electricity_distribution_grid']:
-        insert_electricity_distribution_grid(n)
+        insert_electricity_distribution_grid(n, costs)
 
     maybe_adjust_costs_and_potentials(n, opts)
 
     if options['gas_distribution_grid']:
-        insert_gas_distribution_costs(n)
+        insert_gas_distribution_costs(n, costs)
 
     if options['electricity_grid_connection']:
-        add_electricity_grid_connection(n)
+        add_electricity_grid_connection(n, costs)
 
     n.export_to_netcdf(snakemake.output[0])

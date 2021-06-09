@@ -10,3 +10,4 @@ p3,series,MW,0.,3rd bus output,Output
 p4,series,MW,0.,4th bus output,Output
 build_year,integer,year,n/a,build year,Input (optional)
 lifetime,float,years,n/a,lifetime,Input (optional)
+carrier,string,n/a,n/a,carrier,Input (optional)
