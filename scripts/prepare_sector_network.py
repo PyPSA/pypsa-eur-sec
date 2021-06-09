@@ -375,7 +375,6 @@ def add_co2limit(n, Nyears=1., limit=0.):
         constant=co2_limit
     )
 
-
 # TODO PyPSA-Eur merge issue
 def average_every_nhours(n, offset):
     logger.info(f'Resampling the network to {offset}')
@@ -1953,58 +1952,16 @@ def limit_individual_line_extension(n, maxext):
 
 
 if __name__ == "__main__":
-    # Detect running outside of snakemake and mock snakemake for testing
     if 'snakemake' not in globals():
-        from vresutils.snakemake import MockSnakemake
-        snakemake = MockSnakemake(
-            wildcards=dict(network='elec', simpl='', clusters='37', lv='1.0',
-                           opts='', planning_horizons='2020',
-                           sector_opts='120H-T-H-B-I-onwind+p3-dist1-cb48be3'),
-
-            input=dict( network='../pypsa-eur/networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
-                        energy_totals_name='resources/energy_totals.csv',
-                        co2_totals_name='resources/co2_totals.csv',
-                        transport_name='resources/transport_data.csv',
-                	    traffic_data = "data/emobility/",
-                        biomass_potentials='resources/biomass_potentials.csv',
-                        timezone_mappings='data/timezone_mappings.csv',
-                        heat_profile="data/heat_load_profile_BDEW.csv",
-                        costs="../technology-data/outputs/costs_{planning_horizons}.csv",
-                	    h2_cavern = "data/hydrogen_salt_cavern_potentials.csv",
-                        profile_offwind_ac="../pypsa-eur/resources/profile_offwind-ac.nc",
-                        profile_offwind_dc="../pypsa-eur/resources/profile_offwind-dc.nc",
-                        busmap_s="../pypsa-eur/resources/busmap_elec_s{simpl}.csv",
-                        busmap="../pypsa-eur/resources/busmap_elec_s{simpl}_{clusters}.csv",
-                        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-                        simplified_pop_layout="resources/pop_layout_elec_s{simpl}.csv",
-                        industrial_demand="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv",
-                        heat_demand_urban="resources/heat_demand_urban_elec_s{simpl}_{clusters}.nc",
-                        heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
-                        heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc",
-                        temp_soil_total="resources/temp_soil_total_elec_s{simpl}_{clusters}.nc",
-                        temp_soil_rural="resources/temp_soil_rural_elec_s{simpl}_{clusters}.nc",
-                        temp_soil_urban="resources/temp_soil_urban_elec_s{simpl}_{clusters}.nc",
-                        temp_air_total="resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
-                        temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
-                        temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc",
-                        cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
-                        cop_soil_rural="resources/cop_soil_rural_elec_s{simpl}_{clusters}.nc",
-                        cop_soil_urban="resources/cop_soil_urban_elec_s{simpl}_{clusters}.nc",
-                        cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
-                        cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
-                        cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
-                        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
-                        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
-                        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
-                	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
-                        floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
-            ),
-            output=['results/version-cb48be3/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'prepare_sector_network',
+            simpl='',
+            clusters=48,
+            lv=1.0,
+            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+            planning_horizons=2020,
         )
-        import yaml
-        with open('config.yaml', encoding='utf8') as f:
-            snakemake.config = yaml.safe_load(f)
-
 
     logging.basicConfig(level=snakemake.config['logging_level'])
 

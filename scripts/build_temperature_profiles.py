@@ -7,22 +7,20 @@ import xarray as xr
 import numpy as np
 
 if __name__ == '__main__':
-
     if 'snakemake' not in globals():
-        from vresutils import Dict
-        import yaml
-        snakemake = Dict()
-        with open('config.yaml') as f:
-            snakemake.config = yaml.safe_load(f)
-        snakemake.input = Dict()
-        snakemake.output = Dict()
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            'build_temperature_profiles',
+            simpl='',
+            clusters=48,
+        )
 
     time = pd.date_range(freq='h', **snakemake.config['snapshots'])
     cutout_config = snakemake.config['atlite']['cutout']
     cutout = atlite.Cutout(cutout_config).sel(time=time)
 
     clustered_regions = gpd.read_file(
-        snakemake.input.regions_onshore).set_index('name').squeeze().buffer(0)
+        snakemake.input.regions_onshore).set_index('name').buffer(0).squeeze()
 
     I = cutout.indicatormatrix(clustered_regions)
 
