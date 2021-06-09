@@ -308,9 +308,9 @@ plotting:
       land: whitesmoke
   costs_max: 1000
   costs_threshold: 1
-  energy_max: 20000.
-  energy_min: -15000.
-  energy_threshold: 50.
+  energy_max: 20000
+  energy_min: -20000
+  energy_threshold: 50
   vre_techs:
     - onwind
     - offwind-ac
