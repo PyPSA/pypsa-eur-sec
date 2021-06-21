@@ -240,12 +240,20 @@ def remove_elec_base_techs(n):
 
     for c in n.iterate_components(snakemake.config["pypsa_eur"]):
         to_keep = snakemake.config["pypsa_eur"][c.name]
-        to_remove = pd.Index(c.df.carrier.unique())^to_keep
+        to_remove = pd.Index(c.df.carrier.unique()).symmetric_difference(to_keep)
         print("Removing",c.list_name,"with carrier",to_remove)
         names = c.df.index[c.df.carrier.isin(to_remove)]
         print(names)
         n.mremove(c.name, names)
         n.carriers.drop(to_remove, inplace=True, errors="ignore")
+
+
+def remove_non_electric_buses(n):
+    """
+    remove buses from pypsa-eur with carriers which are not AC buses
+    """
+    print("drop buses from PyPSA-Eur with carrier: ", n.buses[~n.buses.carrier.isin(["AC", "DC"])].carrier.unique())
+    n.buses = n.buses[n.buses.carrier.isin(["AC", "DC"])]
 
 
 def add_co2_tracking(n):
@@ -489,10 +497,10 @@ def prepare_data(network):
     ##############
 
 
-    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).T.to_pandas().reindex(index=network.snapshots)
-    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).T.to_pandas().reindex(index=network.snapshots)
+    ashp_cop = xr.open_dataarray(snakemake.input.cop_air_total).to_pandas().reindex(index=network.snapshots)
+    gshp_cop = xr.open_dataarray(snakemake.input.cop_soil_total).to_pandas().reindex(index=network.snapshots)
 
-    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).T.to_pandas().reindex(index=network.snapshots)
+    solar_thermal = xr.open_dataarray(snakemake.input.solar_thermal_total).to_pandas().reindex(index=network.snapshots)
     #1e3 converts from W/m^2 to MW/(1000m^2) = kW/m^2
     solar_thermal = options['solar_cf_correction'] * solar_thermal/1e3
 
@@ -503,7 +511,7 @@ def prepare_data(network):
     nodal_energy_totals = nodal_energy_totals.multiply(pop_layout.fraction,axis=0)
 
     #copy forward the daily average heat demand into each hour, so it can be multipled by the intraday profile
-    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).T.to_pandas().reindex(index=network.snapshots, method="ffill")
+    daily_space_heat_demand = xr.open_dataarray(snakemake.input.heat_demand_total).to_pandas().reindex(index=network.snapshots, method="ffill")
 
     intraday_profiles = pd.read_csv(snakemake.input.heat_profile,index_col=0)
 
@@ -568,7 +576,7 @@ def prepare_data(network):
 
 
     #get heating demand for correction to demand time series
-    temperature = xr.open_dataarray(snakemake.input.temp_air_total).T.to_pandas()
+    temperature = xr.open_dataarray(snakemake.input.temp_air_total).to_pandas()
 
     #correction factors for vehicle heating
     dd_ICE = transport_degree_factor(temperature,
@@ -921,7 +929,7 @@ def add_storage(network):
 
     # hydrogen stored overground
     h2_capital_cost = costs.at["hydrogen storage tank", "fixed"]
-    nodes_overground = nodes ^ cavern_nodes.index
+    nodes_overground = nodes.symmetric_difference(cavern_nodes.index)
 
     network.madd("Store",
                  nodes_overground + " H2 Store",
@@ -1146,6 +1154,12 @@ def add_land_transport(network):
 
     if ice_share > 0:
 
+        if "EU oil" not in network.buses.index:
+            network.madd("Bus",
+                         ["EU oil"],
+                         location="EU",
+                         carrier="oil")
+
         network.madd("Load",
                      nodes,
                      suffix=" land transport oil",
@@ -1174,11 +1188,10 @@ def add_heat(network):
 
     urban_fraction = options['central_fraction']*pop_layout["urban"]/(pop_layout[["urban","rural"]].sum(axis=1))
 
-    # building retrofitting, exogenously reduce space heat demand
-    if options["retrofitting"]["retro_exogen"]:
-        dE = get_parameter(options["retrofitting"]["dE"])
-        print("retrofitting exogenously, assumed space heat reduction of ",
-              dE)
+    # exogenously reduce space heat demand
+    if options["reduce_space_heat_exogenously"]:
+        dE = get_parameter(options["reduce_space_heat_exogenously_factor"])
+        print("assumed space heat reduction of {} %".format(dE*100))
         for sector in sectors:
             heat_demand[sector + " space"] = (1-dE)*heat_demand[sector + " space"]
 
@@ -1484,7 +1497,7 @@ def create_nodes_for_heat_sector():
         else:
             nodes[sector + " urban decentral"] = pop_layout.index
     # for central nodes, residential and services are aggregated
-    nodes["urban central"] = pop_layout.index ^ nodes["residential urban decentral"]
+    nodes["urban central"] = pop_layout.index.symmetric_difference(nodes["residential urban decentral"])
     return nodes
 
 
@@ -1535,6 +1548,8 @@ def add_biomass(network):
                  bus1="EU gas",
                  bus2="co2 atmosphere",
                  carrier="biogas to gas",
+                 capital_cost=costs.loc["biogas upgrading", "fixed"],
+                 marginal_cost=costs.loc["biogas upgrading", "VOM"],
                  efficiency2=-costs.at['gas','CO2 intensity'],
                  p_nom_extendable=True)
 
@@ -1762,6 +1777,7 @@ def add_industry(network):
     #remove today's industrial electricity demand by scaling down total electricity demand
     for ct in n.buses.country.unique():
         loads = n.loads.index[(n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")]
+        if n.loads_t.p_set[loads].empty: continue
         factor = 1 - industrial_demand.loc[loads,"current electricity"].sum()/n.loads_t.p_set[loads].sum().sum()
         n.loads_t.p_set[loads] *= factor
 
@@ -1870,7 +1886,7 @@ if __name__ == "__main__":
                            opts='', planning_horizons='2020',
                            sector_opts='120H-T-H-B-I-onwind+p3-dist1-cb48be3'),
 
-            input=dict( network='../pypsa-eur/networks/{network}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
+            input=dict( network='../pypsa-eur/networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc',
                         energy_totals_name='resources/energy_totals.csv',
                         co2_totals_name='resources/co2_totals.csv',
                         transport_name='resources/transport_data.csv',
@@ -1882,34 +1898,33 @@ if __name__ == "__main__":
                 	    h2_cavern = "data/hydrogen_salt_cavern_potentials.csv",
                         profile_offwind_ac="../pypsa-eur/resources/profile_offwind-ac.nc",
                         profile_offwind_dc="../pypsa-eur/resources/profile_offwind-dc.nc",
-                        busmap_s="../pypsa-eur/resources/busmap_{network}_s{simpl}.csv",
-                        busmap="../pypsa-eur/resources/busmap_{network}_s{simpl}_{clusters}.csv",
-                        clustered_pop_layout="resources/pop_layout_{network}_s{simpl}_{clusters}.csv",
-                        simplified_pop_layout="resources/pop_layout_{network}_s{simpl}.csv",
-                        industrial_demand="resources/industrial_energy_demand_{network}_s{simpl}_{clusters}.csv",
-                        heat_demand_urban="resources/heat_demand_urban_{network}_s{simpl}_{clusters}.nc",
-                        heat_demand_rural="resources/heat_demand_rural_{network}_s{simpl}_{clusters}.nc",
-                        heat_demand_total="resources/heat_demand_total_{network}_s{simpl}_{clusters}.nc",
-                        temp_soil_total="resources/temp_soil_total_{network}_s{simpl}_{clusters}.nc",
-                        temp_soil_rural="resources/temp_soil_rural_{network}_s{simpl}_{clusters}.nc",
-                        temp_soil_urban="resources/temp_soil_urban_{network}_s{simpl}_{clusters}.nc",
-                        temp_air_total="resources/temp_air_total_{network}_s{simpl}_{clusters}.nc",
-                        temp_air_rural="resources/temp_air_rural_{network}_s{simpl}_{clusters}.nc",
-                        temp_air_urban="resources/temp_air_urban_{network}_s{simpl}_{clusters}.nc",
-                        cop_soil_total="resources/cop_soil_total_{network}_s{simpl}_{clusters}.nc",
-                        cop_soil_rural="resources/cop_soil_rural_{network}_s{simpl}_{clusters}.nc",
-                        cop_soil_urban="resources/cop_soil_urban_{network}_s{simpl}_{clusters}.nc",
-                        cop_air_total="resources/cop_air_total_{network}_s{simpl}_{clusters}.nc",
-                        cop_air_rural="resources/cop_air_rural_{network}_s{simpl}_{clusters}.nc",
-                        cop_air_urban="resources/cop_air_urban_{network}_s{simpl}_{clusters}.nc",
-                        solar_thermal_total="resources/solar_thermal_total_{network}_s{simpl}_{clusters}.nc",
-                        solar_thermal_urban="resources/solar_thermal_urban_{network}_s{simpl}_{clusters}.nc",
-                        solar_thermal_rural="resources/solar_thermal_rural_{network}_s{simpl}_{clusters}.nc",
-                	    retro_cost_energy = "resources/retro_cost_{network}_s{simpl}_{clusters}.csv",
-                        floor_area = "resources/floor_area_{network}_s{simpl}_{clusters}.csv"
+                        busmap_s="../pypsa-eur/resources/busmap_elec_s{simpl}.csv",
+                        busmap="../pypsa-eur/resources/busmap_elec_s{simpl}_{clusters}.csv",
+                        clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
+                        simplified_pop_layout="resources/pop_layout_elec_s{simpl}.csv",
+                        industrial_demand="resources/industrial_energy_demand_elec_s{simpl}_{clusters}.csv",
+                        heat_demand_urban="resources/heat_demand_urban_elec_s{simpl}_{clusters}.nc",
+                        heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
+                        heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_total="resources/temp_soil_total_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_rural="resources/temp_soil_rural_elec_s{simpl}_{clusters}.nc",
+                        temp_soil_urban="resources/temp_soil_urban_elec_s{simpl}_{clusters}.nc",
+                        temp_air_total="resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
+                        temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
+                        temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_rural="resources/cop_soil_rural_elec_s{simpl}_{clusters}.nc",
+                        cop_soil_urban="resources/cop_soil_urban_elec_s{simpl}_{clusters}.nc",
+                        cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
+                        cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
+                        cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
+                        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
+                	    retro_cost_energy = "resources/retro_cost_elec_s{simpl}_{clusters}.csv",
+                        floor_area = "resources/floor_area_elec_s{simpl}_{clusters}.csv"
             ),
-            output=['results/version-cb48be3/prenetworks/{network}_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
-
+            output=['results/version-cb48be3/prenetworks/elec_s{simpl}_{clusters}_lv{lv}__{sector_opts}_{planning_horizons}.nc']
         )
         import yaml
         with open('config.yaml', encoding='utf8') as f:
@@ -1948,6 +1963,8 @@ if __name__ == "__main__":
     remove_elec_base_techs(n)
 
     n.loads["carrier"] = "electricity"
+
+    remove_non_electric_buses(n)
 
     n.buses["location"] = n.buses.index
 
