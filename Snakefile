@@ -179,7 +179,7 @@ rule build_industrial_production_per_country:
     input:
         ammonia_production="resources/ammonia_production.csv"
     output:
-        industrial_production_per_country="resources/industrial_production_per_country.csv"
+        industrial_production_per_country="resources/industrial_production_per_country.csv"  
     threads: 1
     resources: mem_mb=1000
     script: 'scripts/build_industrial_production_per_country.py'
