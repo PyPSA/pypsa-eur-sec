@@ -29,7 +29,7 @@ def add_land_use_constraint(n):
         existing.index += " " + carrier + "-" + snakemake.wildcards.planning_horizons
         n.generators.loc[existing.index, "p_nom_max"] -= existing
 
-    n.generators.p_nom_max.clip(lower=0)
+    n.generators.p_nom_max.clip(lower=0, inplace=True)
 
 
 def prepare_network(n, solve_opts=None):

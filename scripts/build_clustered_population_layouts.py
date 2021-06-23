@@ -29,8 +29,8 @@ if __name__ == '__main__':
 
     pop = pd.DataFrame(pop, index=clustered_regions.index)
 
-    node_country = pop.index.str[:2]
-    country_population = pop.total.groupby(node_country).sum()
-    pop["fraction"] = pop.total / node_country.map(country_population)
+    pop["ct"] = pop.index.str[:2]
+    country_population = pop.total.groupby(pop.ct).sum()
+    pop["fraction"] = pop.total / pop.ct.map(country_population)
 
     pop.to_csv(snakemake.output.clustered_pop_layout)
