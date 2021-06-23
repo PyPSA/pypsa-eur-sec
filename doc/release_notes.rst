@@ -5,7 +5,48 @@ Release Notes
 Future release
 ==============
 
-* Include new features here.
+* Extended use of ``multiprocessing`` for much better performance
+   (from up to 20 minutes to less than one minute).
+* Compatibility with ``atlite>=0.2``.
+* Handle most input files (or base directories) via ``snakemake.input``.
+* Use of ``mock_snakemake`` from PyPSA-Eur.
+* Update ``solve_network`` rule in accordance with its PyPSA-Eur pendant by using ``n.ilopf()`` and remove outdated ``pyomo`` code.
+  Allows the new setting to skip iterated impedance updates with ``solving: options: skip_iterations: true``.
+* The component attributes that are to be overridden are now stored in the folder
+  ``data/override_component_attrs`` analogous to ``pypsa/component_attrs``.
+  This reduces verbosity and also allows circumventing the ``n.madd()`` hack
+  for individual components with non-default attributes.
+  This data is also tracked in the Snakefile.
+  
+  A function ``helper.override_component_attrs`` was added that loads this data
+  and can pass the overridden component attributes into ``pypsa.Network()``:
+  
+  >>> from helper import override_component_attrs
+  >>> overrides = override_component_attrs(snakemake.input.overrides)
+  >>> n = pypsa.Network("mynetwork.nc", override_component_attrs=overrides)
+  
+* Add various parameters to ``config.default.yaml`` which were previously hardcoded inside the scripts 
+  (e.g. energy reference years, BEV settings, solar thermal collector models, geomap colours).
+* Removed stale industry demand rules ``build_industrial_energy_demand_per_country``
+  and ``build_industrial_demand``. These are superseded with more regionally resolved rules.
+* Bugfix: Corrected calculation of cement carbon capture efficiency.
+* Retrofitting rule is now only triggered if endogeneously optimised.
+* Show progress in build rules with ``tqdm`` progress bars.
+* Reduced verbosity of ``Snakefile`` through directory prefixes.
+* Improve legibility of ``config.default.yaml`` and remove unused options.
+* Use simpler and shorter ``gdf.sjoin()`` function to allocate industrial sites from the Hotmaps database to onshore regions.
+* Add optional function to use ``geopy`` to locate entries of the Hotmaps industrial sites data base
+  with missing location based on city and country, which reduces missing entries by half. It can be
+  activated by setting ``industry: hotmaps_locate_missing: true``, takes a few minutes longer,
+  and should only be used if spatial resolution is coarser than city level.
+* Use the country-specific time zone mappings from ``pytz`` rather than a manual mapping.
+* A function ``add_carrier_buses()`` was added to the ``prepare_network`` rule to reduce code duplication.#
+* In the ``prepare_network`` rule the cost and potential adjustment was moved into an
+  own function ``maybe_adjust_costs_and_potentials()``.
+* Use ``matplotlibrc`` to set the default plotting style and backend``.
+* Added benchmark files for each rule.
+* Consistent use of ``__main__`` block and further unspecific code cleaning.
+
 
 
 PyPSA-Eur-Sec 0.5.0 (21st May 2021)
