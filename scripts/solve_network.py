@@ -159,15 +159,6 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
 
 
-def fix_branches(n, lines_s_nom=None, links_p_nom=None):
-    if lines_s_nom is not None and len(lines_s_nom) > 0:
-        n.lines.loc[lines_s_nom.index,"s_nom"] = lines_s_nom.values
-        n.lines.loc[lines_s_nom.index,"s_nom_extendable"] = False
-    if links_p_nom is not None and len(links_p_nom) > 0:
-        n.links.loc[links_p_nom.index,"p_nom"] = links_p_nom.values
-        n.links.loc[links_p_nom.index,"p_nom_extendable"] = False
-
-
 def solve_network(n, config, opts='', **kwargs):
     solver_options = config['solving']['solver'].copy()
     solver_name = solver_options.pop('name')
