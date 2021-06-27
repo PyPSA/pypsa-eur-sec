@@ -4,8 +4,6 @@ import uuid
 import pandas as pd
 import geopandas as gpd
 from itertools import product
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
 
 
 def locate_missing_industrial_sites(df):
@@ -14,6 +12,14 @@ def locate_missing_industrial_sites(df):
     city and countries. Should only be used if the model's
     spatial resolution is coarser than individual cities.
     """
+
+    try:
+        from geopy.geocoders import Nominatim
+        from geopy.extra.rate_limiter import RateLimiter
+    except:
+        raise ModuleNotFoundError("Optional dependency 'geopy' not found."
+                                  "Install via 'conda install -c conda-forge geopy'"
+                                  "or set 'industry: hotmaps_locate_missing: false'.")
 
     locator = Nominatim(user_agent=str(uuid.uuid4()))
     geocode = RateLimiter(locator.geocode, min_delay_seconds=2)

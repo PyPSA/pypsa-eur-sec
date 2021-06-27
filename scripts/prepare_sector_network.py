@@ -3,7 +3,6 @@
 import pypsa
 import re
 import os
-import yaml
 import pytz
 
 import pandas as pd

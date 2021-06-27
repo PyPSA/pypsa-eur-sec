@@ -1,16 +1,12 @@
 """Solve network."""
 
 import pypsa
-import gc
 
 import numpy as np
-import pandas as pd
 
 from pypsa.linopt import get_var, linexpr, define_constraints
 
 from pypsa.linopf import network_lopf, ilopf
-
-from pypsa.descriptors import free_output_series_dataframes
 
 from vresutils.benchmark import memory_logger
 
