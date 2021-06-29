@@ -95,15 +95,15 @@ def calculate_nodal_costs(n, label, nodal_costs):
         nodal_costs.loc[index,label] = capital_costs.values
 
         if c.name == "Link":
-            p = c.pnl.p0.multiply(n.snapshot_weightings, axis=0).sum()
+            p = c.pnl.p0.multiply(n.snapshot_weightings.generators, axis=0).sum()
         elif c.name == "Line":
             continue
         elif c.name == "StorageUnit":
-            p_all = c.pnl.p.multiply(n.snapshot_weightings, axis=0)
+            p_all = c.pnl.p.multiply(n.snapshot_weightings.generators, axis=0)
             p_all[p_all < 0.] = 0.
             p = p_all.sum()
         else:
-            p = c.pnl.p.multiply(n.snapshot_weightings, axis=0).sum()
+            p = c.pnl.p.multiply(n.snapshot_weightings.generators, axis=0).sum()
 
         #correct sequestration cost
         if c.name == "Store":
@@ -133,15 +133,15 @@ def calculate_costs(n, label, costs):
         costs.loc[capital_costs_grouped.index, label] = capital_costs_grouped
 
         if c.name == "Link":
-            p = c.pnl.p0.multiply(n.snapshot_weightings, axis=0).sum()
+            p = c.pnl.p0.multiply(n.snapshot_weightings.generators, axis=0).sum()
         elif c.name == "Line":
             continue
         elif c.name == "StorageUnit":
-            p_all = c.pnl.p.multiply(n.snapshot_weightings, axis=0)
+            p_all = c.pnl.p.multiply(n.snapshot_weightings.generators, axis=0)
             p_all[p_all < 0.] = 0.
             p = p_all.sum()
         else:
-            p = c.pnl.p.multiply(n.snapshot_weightings, axis=0).sum()
+            p = c.pnl.p.multiply(n.snapshot_weightings.generators, axis=0).sum()
 
         #correct sequestration cost
         if c.name == "Store":
@@ -226,11 +226,11 @@ def calculate_energy(n, label, energy):
     for c in n.iterate_components(n.one_port_components|n.branch_components):
 
         if c.name in n.one_port_components:
-            c_energies = c.pnl.p.multiply(n.snapshot_weightings, axis=0).sum().multiply(c.df.sign).groupby(c.df.carrier).sum()
+            c_energies = c.pnl.p.multiply(n.snapshot_weightings.generators, axis=0).sum().multiply(c.df.sign).groupby(c.df.carrier).sum()
         else:
             c_energies = pd.Series(0., c.df.carrier.unique())
             for port in [col[3:] for col in c.df.columns if col[:3] == "bus"]:
-                totals = c.pnl["p" + port].multiply(n.snapshot_weightings, axis=0).sum()
+                totals = c.pnl["p" + port].multiply(n.snapshot_weightings.generators, axis=0).sum()
                 #remove values where bus is missing (bug in nomopyomo)
                 no_bus = c.df.index[c.df["bus" + port] == ""]
                 totals.loc[no_bus] = n.component_attrs[c.name].loc["p" + port, "default"]
@@ -306,7 +306,7 @@ def calculate_supply_energy(n, label, supply_energy):
             if len(items) == 0:
                 continue
 
-            s = c.pnl.p[items].multiply(n.snapshot_weightings,axis=0).sum().multiply(c.df.loc[items, 'sign']).groupby(c.df.loc[items, 'carrier']).sum()
+            s = c.pnl.p[items].multiply(n.snapshot_weightings.generators,axis=0).sum().multiply(c.df.loc[items, 'sign']).groupby(c.df.loc[items, 'carrier']).sum()
             s = pd.concat([s], keys=[c.list_name])
             s = pd.concat([s], keys=[i])
 
@@ -323,7 +323,7 @@ def calculate_supply_energy(n, label, supply_energy):
                 if len(items) == 0:
                     continue
 
-                s = (-1)*c.pnl["p"+end][items].multiply(n.snapshot_weightings,axis=0).sum().groupby(c.df.loc[items, 'carrier']).sum()
+                s = (-1)*c.pnl["p"+end][items].multiply(n.snapshot_weightings.generators,axis=0).sum().groupby(c.df.loc[items, 'carrier']).sum()
                 s.index = s.index + end
                 s = pd.concat([s], keys=[c.list_name])
                 s = pd.concat([s], keys=[i])

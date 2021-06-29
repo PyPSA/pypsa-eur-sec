@@ -426,7 +426,7 @@ if __name__ == "__main__":
 
     add_build_year_to_new_assets(n, baseyear)
 
-    Nyears = n.snapshot_weightings.sum() / 8760.
+    Nyears = n.snapshot_weightings.generators.sum() / 8760.
     costs = prepare_costs(
         snakemake.input.costs,
         snakemake.config['costs']['USD2013_to_EUR2013'],
