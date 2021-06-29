@@ -1701,7 +1701,7 @@ def add_industry(n, costs):
         capital_cost=costs.at["cement capture", "fixed"] * costs.at['gas', 'CO2 intensity'],
         efficiency=0.9,
         efficiency2=costs.at['gas', 'CO2 intensity'] * (1 - costs.at["cement capture", "capture_rate"]),
-        efficiency3=costs.at['gas', 'CO2 intensity'] ** costs.at["cement capture", "capture_rate"],
+        efficiency3=costs.at['gas', 'CO2 intensity'] * costs.at["cement capture", "capture_rate"],
         lifetime=costs.at['cement capture', 'lifetime']
     )
 
