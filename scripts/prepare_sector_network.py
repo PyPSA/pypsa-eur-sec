@@ -1714,6 +1714,24 @@ def add_industry(n, costs):
         p_set=industrial_demand.loc[nodes, "hydrogen"] / 8760
     )
 
+    n.madd("Bus",
+        nodes,
+        suffix=" H2 for shipping",
+        carrier="H2 for shipping",
+        location=nodes
+    )
+
+    n.madd("Link",
+        nodes + " H2 liquefaction",
+        bus0=nodes + " H2",
+        bus1=nodes + " H2 for shipping",
+        carrier="H2 liquefaction",
+        efficiency=costs.at["H2 liquefaction", 'efficiency'],
+        capital_cost=costs.at["H2 liquefaction", 'fixed'],
+        p_nom_extendable=True,
+        lifetime=costs.at['H2 liquefaction', 'lifetime']
+    )
+
     all_navigation = ["total international navigation", "total domestic navigation"]
     efficiency = options['shipping_average_efficiency'] / costs.at["fuel cell", "efficiency"]
     p_set = nodal_energy_totals.loc[nodes, all_navigation].sum(axis=1) * 1e6 * efficiency / 8760
@@ -1721,7 +1739,7 @@ def add_industry(n, costs):
     n.madd("Load",
         nodes,
         suffix=" H2 for shipping",
-        bus=nodes + " H2",
+        bus=nodes + " H2 for shipping",
         carrier="H2 for shipping",
         p_set=p_set
     )
