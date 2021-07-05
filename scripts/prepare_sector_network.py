@@ -1716,15 +1716,15 @@ def add_industry(n, costs):
 
     n.madd("Bus",
         nodes,
-        suffix=" H2 for shipping",
-        carrier="H2 for shipping",
+        suffix=" H2 liquid",
+        carrier="H2 liquid",
         location=nodes
     )
 
     n.madd("Link",
         nodes + " H2 liquefaction",
         bus0=nodes + " H2",
-        bus1=nodes + " H2 for shipping",
+        bus1=nodes + " H2 liquid",
         carrier="H2 liquefaction",
         efficiency=costs.at["H2 liquefaction", 'efficiency'],
         capital_cost=costs.at["H2 liquefaction", 'fixed'],
@@ -1739,7 +1739,7 @@ def add_industry(n, costs):
     n.madd("Load",
         nodes,
         suffix=" H2 for shipping",
-        bus=nodes + " H2 for shipping",
+        bus=nodes + " H2 liquid",
         carrier="H2 for shipping",
         p_set=p_set
     )
