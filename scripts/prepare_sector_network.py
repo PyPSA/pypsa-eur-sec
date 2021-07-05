@@ -2075,7 +2075,7 @@ if __name__ == "__main__":
             suptechs = map(lambda c: c.split("-", 2)[0], carrier_list)
             if oo[0].startswith(tuple(suptechs)):
                 carrier = oo[0]
-                attr_lookup = {"p": "p_nom_max", "c": "capital_cost"}
+                attr_lookup = {"p": "p_nom_max", "e":"e_nom_max", "c": "capital_cost"}
                 attr = attr_lookup[oo[1][0]]
                 factor = float(oo[1][1:])
                 #beware if factor is 0 and p_nom_max is np.inf, 0*np.inf is nan
@@ -2083,6 +2083,8 @@ if __name__ == "__main__":
                     n.lines[attr] *= factor
                 else:
                     comps = {"Generator", "Link", "StorageUnit"} if attr=='p_nom_max' else {"Generator", "Link", "StorageUnit", "Store"}
+                    if attr=="e_nom_max":
+                        comps = {"Store"} 
                     for c in n.iterate_components(comps):
                         if carrier=='solar':
                             sel = c.df.carrier.str.contains(carrier) & ~c.df.carrier.str.contains("solar rooftop")

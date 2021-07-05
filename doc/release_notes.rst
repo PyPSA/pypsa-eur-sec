@@ -7,6 +7,8 @@ Future release
 
 * Include new features here.
 
+* Include the option to alter the maximum energy capacity of a store via the ``carrier+factor`` in the ``{sector_opts}`` wildcard. This can be useful for sensitivity analyses. Example: ``co2 stored +e2`` multiplies the ``e_nom_max`` by 3. In this example, ``e_nom_max`` represents the CO2 sequestration potential in Europe.
+
 
 PyPSA-Eur-Sec 0.5.0 (21st May 2021)
 ===================================
