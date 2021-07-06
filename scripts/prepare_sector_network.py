@@ -906,7 +906,7 @@ def add_storage(n, costs):
         )
 
     # hydrogen stored overground (where not already underground)
-    h2_capital_cost = costs.at["hydrogen storage tank", "fixed"]
+    h2_capital_cost = costs.at["hydrogen storage tank incl. compressor", "fixed"]
     nodes_overground = cavern_nodes.index.symmetric_difference(nodes)
 
     n.madd("Store",
@@ -997,7 +997,7 @@ def add_storage(n, costs):
             carrier="Sabatier",
             efficiency=costs.at["methanation", "efficiency"],
             efficiency2=-costs.at["methanation", "efficiency"] * costs.at['gas', 'CO2 intensity'],
-            capital_cost=costs.at["methanation", "fixed"],
+            capital_cost=costs.at["methanation", "fixed"] * costs.at["methanation", "efficiency"],  # costs given per kW_gas
             lifetime=costs.at['methanation', 'lifetime']
         )
 
