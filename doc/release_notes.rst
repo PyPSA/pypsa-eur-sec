@@ -60,6 +60,7 @@ Future release
   These are included in the environment specifications of PyPSA-Eur.
 * Consistent use of ``__main__`` block and further unspecific code cleaning.
 * Distinguish costs for home battery storage and inverter from utility-scale battery costs.
+* Added regionalised H2 liquefaction costs for H2 demand in shipping. This introduces a new ``H2 liquid`` bus at each location.
 
 
 
