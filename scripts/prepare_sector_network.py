@@ -941,9 +941,9 @@ def add_storage(n, costs):
         p_min_pu=-1,
         p_nom_extendable=True,
         length=h2_links.length.values,
-        capital_cost=costs.at['H2 pipeline', 'fixed'] * h2_links.length.values,
+        capital_cost=costs.at['H2 (g) pipeline', 'fixed'] * h2_links.length.values,
         carrier="H2 pipeline",
-        lifetime=costs.at['H2 pipeline', 'lifetime']
+        lifetime=costs.at['H2 (g) pipeline', 'lifetime']
     )
 
     n.add("Carrier", "battery")
