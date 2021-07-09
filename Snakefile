@@ -223,7 +223,7 @@ rule build_industrial_production_per_country_tomorrow:
         industrial_production_per_country_tomorrow="resources/industrial_production_per_country_tomorrow_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_production_per_country_tomorrow"
+    benchmark: "benchmarks/build_industrial_production_per_country_tomorrow_{planning_horizons}"
     script: 'scripts/build_industrial_production_per_country_tomorrow.py'
 
 
@@ -248,7 +248,7 @@ rule build_industrial_production_per_node:
         industrial_production_per_node="resources/industrial_production_elec_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_production_per_node/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_production_per_node/s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_production_per_node.py'
 
 
@@ -261,7 +261,7 @@ rule build_industrial_energy_demand_per_node:
         industrial_energy_demand_per_node="resources/industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_energy_demand_per_node/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node/s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_energy_demand_per_node.py'
 
 
