@@ -151,7 +151,7 @@ def add_chp_constraints(n):
 
 
 def extra_functionality(n, snapshots):
-    add_chp_constraints(n)
+    #add_chp_constraints(n)  # these constraints are currently unnecessary since all CHPs operate on the backpressure line. 
     add_battery_constraints(n)
 
 
