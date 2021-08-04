@@ -174,6 +174,7 @@ sector:
   transport_fuel_cell_efficiency: 0.5
   transport_internal_combustion_efficiency: 0.3
   shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011
+  shipping_hydrogen_liquefaction: true # whether to consider liquefaction costs for shipping H2 demands
   time_dep_hp_cop: true #time dependent heat pump coefficient of performance
   heat_pump_sink_T: 55. # Celsius, based on DTU / large area radiators; used in build_cop_profiles.py
    # conservatively high to cover hot water and space heating in poorly-insulated buildings
