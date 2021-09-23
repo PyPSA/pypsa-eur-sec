@@ -33,7 +33,7 @@ if __name__ == '__main__':
     production[key_pri] = fraction_persistent_primary * production[key_pri]
     production[key_sec] = total_aluminium - production[key_pri]
 
-    production["Basic chemicals (without ammonia)"] *= config['HVC_primary_fraction']
+    production["HVC"] *= config['HVC_primary_fraction']
 
     fn = snakemake.output.industrial_production_per_country_tomorrow
     production.to_csv(fn, float_format='%.2f')
