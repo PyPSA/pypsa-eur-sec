@@ -270,6 +270,9 @@ def patch_electricity_network(n):
     update_wind_solar_costs(n, costs)
     n.loads["carrier"] = "electricity"
     n.buses["location"] = n.buses.index
+    # remove trailing white space of load index
+    n.loads.rename(lambda x: x.strip(), inplace=True)
+    n.loads_t.p_set.rename(lambda x: x.strip(), axis=1, inplace=True)
 
 
 def add_co2_tracking(n, options):
