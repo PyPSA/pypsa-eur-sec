@@ -2010,7 +2010,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             'prepare_sector_network',
             simpl='',
-            clusters='45',
+            clusters='45,
             lv=1.0,
             opts='',
             sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
