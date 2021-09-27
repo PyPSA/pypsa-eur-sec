@@ -270,7 +270,7 @@ def patch_electricity_network(n):
     update_wind_solar_costs(n, costs)
     n.loads["carrier"] = "electricity"
     n.buses["location"] = n.buses.index
-    # remove trailing white space of load index
+    # remove trailing white space of load index until new PyPSA version after v0.18.
     n.loads.rename(lambda x: x.strip(), inplace=True)
     n.loads_t.p_set.rename(lambda x: x.strip(), axis=1, inplace=True)
 
