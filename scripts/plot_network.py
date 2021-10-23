@@ -86,6 +86,8 @@ def assign_location(n):
 def plot_map(network, components=["links", "stores", "storage_units", "generators"],
              bus_size_factor=1.7e10, transmission=False):
 
+    tech_colors = snakemake.config['plotting']['tech_colors']
+
     n = network.copy()
     assign_location(n)
     # Drop non-electric buses so they don't clutter the plot
@@ -175,13 +177,30 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
 
     n.plot(
         bus_sizes=costs / bus_size_factor,
-        bus_colors=snakemake.config['plotting']['tech_colors'],
+        bus_colors=tech_colors,
         line_colors=ac_color,
         link_colors=dc_color,
         line_widths=line_widths / linewidth_factor,
         link_widths=link_widths / linewidth_factor,
         ax=ax,  **map_opts
     )
+
+    handles = []
+    labels = []
+
+    for tech in costs.index.get_level_values(1).unique():
+        handles.append(Circle((0,0), 5, color=tech_colors[tech]))
+        labels.append(tech)
+
+    technology_legend = ax.legend(
+        handles, labels,
+        bbox_to_anchor=(1.01, 0.01),
+        frameon=False,
+        ncol=4,
+        fontsize=6.5
+    )
+
+    ax.add_artist(technology_legend)
 
     handles = make_legend_circles_for(
         [5e9, 1e9],
