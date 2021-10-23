@@ -33,6 +33,16 @@ def rename_techs_tyndp(tech):
         return tech
 
 
+def rename_techs_map(tech):
+    tech = rename_techs_tyndp(tech)
+    if "H2" in tech or "SMR" in tech:
+        return "hydrogen"
+    elif "CC" in tech:
+        return "CCS"
+    else:
+        return tech
+
+
 def make_handler_map_to_scale_circles_as_in(ax, dont_resize_actively=False):
     fig = ax.get_figure()
 
@@ -85,7 +95,7 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
 
     for comp in components:
         df_c = getattr(n, comp)
-        df_c["nice_group"] = df_c.carrier.map(rename_techs_tyndp)
+        df_c["nice_group"] = df_c.carrier.map(rename_techs_map)
 
         attr = "e_nom_opt" if comp == "stores" else "p_nom_opt"
 
