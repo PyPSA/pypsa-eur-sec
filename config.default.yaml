@@ -240,7 +240,7 @@ sector:
   hydrogen_underground_storage: true
   hydrogen_underground_storage_locations:
     - onshore  # more than 50 km from sea
-    - nearshore  # within 50 km of sea
+    # - nearshore  # within 50 km of sea
     # - offshore
   use_fischer_tropsch_waste_heat: true
   use_fuel_cell_waste_heat: true
