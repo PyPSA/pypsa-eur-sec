@@ -7,6 +7,7 @@ import warnings
 
 from pypsa.descriptors import get_switchable_as_dense as as_dense
 from matplotlib.colors import to_rgba
+from importlib.util import find_spec
 from helper import override_component_attrs
 
 
