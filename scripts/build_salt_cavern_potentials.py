@@ -19,7 +19,7 @@ onshore (>50km from sea), offshore (Figure 7).
 
 
 import geopandas as gpd
-import pandas as pdprovided
+import pandas as pd
 
 
 def concat_gdf(gdf_list, crs='EPSG:4326'):
