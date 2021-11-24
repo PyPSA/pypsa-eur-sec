@@ -483,6 +483,7 @@ plotting:
     lines: '#6c9459'
     transmission lines: '#6c9459'
     electricity distribution grid: '#97ad8c'
+    electricity grid: '#6c9459'
     # electricity demand
     Electric load: '#110d63'
     electric demand: '#110d63'
@@ -518,7 +519,9 @@ plotting:
     heat pumps: '#2fb537'
     heat pump: '#2fb537'
     air heat pump: '#36eb41'
+    air-sourced ambient: '#36eb41'
     ground heat pump: '#2fb537'
+    ground-sourced ambient: '#2fb537'
     Ambient: '#98eb9d'
     CHP: '#8a5751'
     CHP CC: '#634643'

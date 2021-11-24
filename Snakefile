@@ -403,6 +403,19 @@ rule plot_network:
     script: "scripts/plot_network.py"
 
 
+rule plot_sankey:
+    input: 
+        overrides="data/override_component_attrs",
+        network=RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+    output:
+        connections=RDIR + "/sankey/connections_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.csv",
+        #sankey=RDIR + "/sankey/sankey_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.html"
+    threads: 1
+    resources: mem_mb=10000
+    benchmark: RDIR + "/benchmarks/plot_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
+    script: "scripts/plot_sankey.py"
+
+
 rule copy_config:
     output: SDIR + '/configs/config.yaml'
     threads: 1
@@ -421,6 +434,10 @@ rule make_summary:
         costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
         plots=expand(
             RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+            **config['scenario']
+        ),
+        sankey=expand(
+            RDIR + "/sankey/connections_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.csv",
             **config['scenario']
         )
     output:

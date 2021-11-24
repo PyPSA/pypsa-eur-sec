@@ -7,6 +7,8 @@ Future release
 
 .. note::
   This unreleased version currently may require the master branches of PyPSA, PyPSA-Eur, and the technology-data repository.
+ 
+* New rule ``plot_sankey`` that produces a Sankey diagram for each solved network (requires optional dependency ``plotly``)
 
 PyPSA-Eur-Sec 0.6.0 (4 October 2021)
 ====================================
