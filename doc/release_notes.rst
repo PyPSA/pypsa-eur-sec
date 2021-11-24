@@ -8,6 +8,8 @@ Future release
 .. note::
   This unreleased version currently may require the master branches of PyPSA, PyPSA-Eur, and the technology-data repository.
 
+* Option ``retrieve_sector_databundle`` to automatically retrieve and extract data bundle.
+
 PyPSA-Eur-Sec 0.6.0 (4 October 2021)
 ====================================
 
