@@ -1078,12 +1078,14 @@ def add_storage_and_grids(n, costs):
         capital_cost=h2_capital_cost
     )
 
-    if options["gas_network"]:
-
-        logger.info("Add gas network")
+    if options["gas_network"] or options["H2_retrofit"]:
 
         fn = snakemake.input.clustered_gas_network
         gas_pipes = pd.read_csv(fn, index_col=0)
+
+    if options["gas_network"]:
+
+        logger.info("Add gas infrastructure, incl. LNG terminals, production and entry-points.")
 
         if options["H2_retrofit"]:
             gas_pipes["p_nom_max"] = gas_pipes.p_nom
@@ -1163,13 +1165,13 @@ def add_storage_and_grids(n, costs):
             lifetime=costs.at['CH4 (g) pipeline', 'lifetime']
         )
 
-    # retroftting existing CH4 pipes to H2 pipes
-    if options["gas_network"] and options["H2_retrofit"]:
+    if options["H2_retrofit"]:
 
-        gas_pipe_i = n.links[n.links.carrier == "gas pipeline"].index
-        n.links.loc[gas_pipe_i, "p_nom_extendable"] = True
-        h2_pipes = gas_pipes.rename(index=lambda x:
-                                    x.replace("gas pipeline", "H2 pipeline retrofitted"))
+        logger.info("Add retrofitting options of existing CH4 pipes to H2 pipes.")
+
+        fr = "gas pipeline"
+        to = "H2 pipeline retrofitted"
+        h2_pipes = gas_pipes.rename(index=lambda x: x.replace(fr, to))
 
         n.madd("Link",
             h2_pipes.index,
@@ -1187,9 +1189,11 @@ def add_storage_and_grids(n, costs):
 
     if options.get("H2_network", True):
 
+        logger.info("Add options for new hydrogen pipelines.")
+
         h2_pipes = create_network_topology(n, "H2 pipeline ", carriers=["DC", "gas pipeline"])
 
-        # TODO Add efficiency losses
+        # TODO Add efficiency lossesh2_pipes
         n.madd("Link",
             h2_pipes.index,
             bus0=h2_pipes.bus0.values + " H2",
