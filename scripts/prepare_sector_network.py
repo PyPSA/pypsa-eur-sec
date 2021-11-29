@@ -1194,7 +1194,7 @@ def add_storage_and_grids(n, costs):
 
         h2_pipes = create_network_topology(n, "H2 pipeline ", carriers=["DC", "gas pipeline"])
 
-        # TODO Add efficiency lossesh2_pipes
+        # TODO Add efficiency losses
         n.madd("Link",
             h2_pipes.index,
             bus0=h2_pipes.bus0.values + " H2",
