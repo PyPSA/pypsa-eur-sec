@@ -73,7 +73,7 @@ def define_spatial(nodes):
         spatial.co2.vents = ["co2 vent"]
 
     spatial.co2.df = pd.DataFrame(vars(spatial.co2), index=nodes)
-    
+
     # gas
 
     spatial.gas = SimpleNamespace()
@@ -85,9 +85,9 @@ def define_spatial(nodes):
         spatial.gas.industry = nodes + " gas for industry"
         spatial.gas.industry_cc = nodes + " gas for industry CC"
     else:
-        spatial.gas.nodes = ["EU gas"]
-        spatial.gas.locations = "EU"
-        spatial.gas.biogas = ["EU biogas"]
+        spatial.gas.nodes = pd.Index(["EU gas"])
+        spatial.gas.locations = pd.Index(["EU"])
+        spatial.gas.biogas = pd.Index(["EU biogas"])
         spatial.gas.industry = ["gas for industry"]
         spatial.gas.industry_cc = ["gas for industry CC"]
 
@@ -350,7 +350,7 @@ def add_carrier_buses(n, carrier, nodes=None):
     """
 
     if nodes is None:
-        nodes = ["EU " + carrier]
+        nodes = pd.Index(["EU " + carrier])
 
     # skip if carrier already exists
     if carrier in n.carriers.index:
@@ -805,7 +805,7 @@ def add_generation(n, costs):
         if carrier == 'gas' and options["gas_network"]:
             carrier_nodes = spatial.gas.nodes
         else:
-            carrier_nodes = ["EU " + carrier]
+            carrier_nodes = pd.Index(["EU " + carrier])
 
         add_carrier_buses(n, carrier, carrier_nodes)
 
@@ -1005,7 +1005,7 @@ def add_electricity_grid_connection(n, costs):
 
 
 def add_storage_and_grids(n, costs):
-    print("adding electricity and hydrogen storage as well as hydrogen and gas grids")
+    print("adding electricity and hydrogen storage")
 
     nodes = pop_layout.index
 
@@ -1044,7 +1044,7 @@ def add_storage_and_grids(n, costs):
 
     # only use sites with at least 2 TWh potential
     h2_caverns = h2_caverns[h2_caverns > 2]
-    
+
     # convert TWh to MWh
     h2_caverns = h2_caverns * 1e6
 
@@ -1052,6 +1052,8 @@ def add_storage_and_grids(n, costs):
     h2_caverns.clip(upper=1e9, inplace=True)
 
     if options['hydrogen_underground_storage']:
+
+        logger.info("adding hydrogen underground storage")
 
         h2_capital_cost = costs.at["hydrogen storage underground", "fixed"]
 
@@ -1084,6 +1086,7 @@ def add_storage_and_grids(n, costs):
         gas_pipes = pd.read_csv(fn, index_col=0)
 
     if options["gas_network"]:
+        logger.info("adding natural gas grid")
 
         logger.info("Add gas infrastructure, incl. LNG terminals, production and entry-points.")
 
@@ -1112,7 +1115,7 @@ def add_storage_and_grids(n, costs):
             carrier="gas pipeline",
             lifetime=costs.at['CH4 (g) pipeline', 'lifetime']
         )
-        
+
         # remove fossil generators where there is neither
         # production, LNG terminal, nor entry-point beyond system scope
 
@@ -1167,6 +1170,7 @@ def add_storage_and_grids(n, costs):
         )
 
     if options["H2_retrofit"]:
+        logger.info("adding option to retrofit natural gas grid to hydrogen grid")
 
         logger.info("Add retrofitting options of existing CH4 pipes to H2 pipes.")
 
@@ -1859,7 +1863,7 @@ def add_biomass(n, costs):
     )
 
     n.madd("Link",
-        spatial.gas.locations + "biogas to gas",
+        spatial.gas.locations + " biogas to gas",
         bus0=spatial.gas.biogas,
         bus1=spatial.gas.nodes,
         bus2="co2 atmosphere",
