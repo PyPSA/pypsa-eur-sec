@@ -289,7 +289,7 @@ def plot_h2_map(network):
         title='Electrolyzer capacity',
         handler_map=make_handler_map_to_scale_circles_as_in(ax)
     )
-    
+
     ax.add_artist(l2)
 
     handles = []
@@ -540,7 +540,7 @@ if __name__ == "__main__":
         transmission=False
     )
 
-    plot_h2_map(n)
+    #plot_h2_map(n)
     plot_map_without(n)
 
     #plot_series(n, carrier="AC", name=suffix)

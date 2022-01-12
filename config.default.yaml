@@ -402,11 +402,14 @@ plotting:
   tech_colors:
     onwind: "#235ebc"
     onshore wind: "#235ebc"
+    onwind for hydrogen: "#336ecc"
     offwind: "#6895dd"
     offshore wind: "#6895dd"
     offwind-ac: "#6895dd"
+    offwind-ac for hydrogen: "#7599ee"
     offshore wind (AC): "#6895dd"
     offwind-dc: "#74c6f2"
+    offwind-dc for hydrogen: "#84d6ff"
     offshore wind (DC): "#74c6f2"
     wave: '#004444'
     hydro: '#3B5323'
@@ -415,6 +418,7 @@ plotting:
     run of river: '#78AB46'
     hydroelectricity: '#006400'
     solar: "#f9d002"
+    solar for hydrogen: "#f9e012"
     solar PV: "#f9d002"
     solar thermal: coral
     solar rooftop: '#ffef60'

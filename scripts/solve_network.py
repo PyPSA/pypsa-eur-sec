@@ -29,7 +29,7 @@ def add_land_use_constraint(n):
 
 
 def prepare_network(n, solve_opts=None):
-    
+
     if 'clip_p_max_pu' in solve_opts:
         for df in (n.generators_t.p_max_pu, n.generators_t.p_min_pu, n.storage_units_t.inflow):
             df.where(df>solve_opts['clip_p_max_pu'], other=0., inplace=True)
@@ -149,10 +149,22 @@ def add_chp_constraints(n):
 
         define_constraints(n, lhs, "<=", 0, 'chplink', 'backpressure')
 
+def add_land_constraints(n):
+
+    vre = n.generators.index[n.generators.carrier.isin(["onwind","solar","offwind-ac","offwind-dc"])]
+
+    gen_p_nom = get_var(n, "Generator", "p_nom")
+
+    lhs = linexpr((1,gen_p_nom[vre]),
+                  (1,gen_p_nom[vre + " for hydrogen"].values))
+    rhs = n.generators.loc[vre,"p_nom_max"]
+
+    define_constraints(n, lhs, "<=", rhs, 'Generator', 'land_use')
 
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
-
+    if "electricity for hydrogen" in n.buses.carrier.unique():
+        add_land_constraints(n)
 
 def solve_network(n, config, opts='', **kwargs):
     solver_options = config['solving']['solver'].copy()
