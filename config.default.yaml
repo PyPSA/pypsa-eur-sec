@@ -400,6 +400,7 @@ plotting:
     - solar thermal collector
     - central solar thermal collector
   tech_colors:
+    export electricity from hydrogen island: 'k'
     onwind: "#235ebc"
     onshore wind: "#235ebc"
     onwind for hydrogen: "#336ecc"

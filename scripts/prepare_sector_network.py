@@ -2000,7 +2000,7 @@ def limit_individual_line_extension(n, maxext):
     hvdc = n.links.index[n.links.carrier == 'DC']
     n.links.loc[hvdc, 'p_nom_max'] = n.links.loc[hvdc, 'p_nom'] + maxext
 
-def island_hydrogen_production(n):
+def island_hydrogen_production(n, export=False):
     print("Islanding hydrogen production")
 
     electrolysers = n.links.index[n.links.carrier == "H2 Electrolysis"]
@@ -2011,6 +2011,16 @@ def island_hydrogen_production(n):
            location=nodes,
            carrier="electricity for hydrogen"
            )
+
+    if export:
+        print("Adding electricity export from hydrogen island")
+        n.madd("Link",
+               nodes + " export electricity from hydrogen island",
+               bus0=nodes + " electricity for hydrogen",
+               bus1=nodes,
+               carrier="export electricity from hydrogen island",
+               p_nom=1e6
+               )
 
     n.links.loc[electrolysers,"bus0"] = nodes + " electricity for hydrogen"
 
@@ -2195,6 +2205,9 @@ if __name__ == "__main__":
         add_electricity_grid_connection(n, costs)
 
     if "islandH2" in opts:
-        island_hydrogen_production(n)
+        island_hydrogen_production(n, export=False)
+
+    if "islandH2export" in opts:
+        island_hydrogen_production(n, export=True)
 
     n.export_to_netcdf(snakemake.output[0])
