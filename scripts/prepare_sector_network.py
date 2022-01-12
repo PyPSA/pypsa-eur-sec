@@ -2025,6 +2025,46 @@ def island_hydrogen_production(n):
     #NB: Also have to take care of joint p_nom_max in extra_functionality between competing generation at each node
     #NB: Could also add battery at electricity for hydrogen bus
 
+    n.madd("Bus",
+        nodes + " battery for hydrogen",
+        location=nodes,
+        carrier="battery for hydrogen"
+    )
+
+    n.madd("Store",
+        nodes + " battery for hydrogen",
+        bus=nodes + " battery for hydrogen",
+        e_cyclic=True,
+        e_nom_extendable=True,
+        carrier="battery for hydrogen",
+        capital_cost=costs.at['battery storage', 'fixed'],
+        lifetime=costs.at['battery storage', 'lifetime']
+    )
+
+    n.madd("Link",
+        nodes + " battery charger for hydrogen",
+        bus0=nodes + " electricity for hydrogen",
+        bus1=nodes + " battery for hydrogen",
+        carrier="battery charger for hydrogen",
+        efficiency=costs.at['battery inverter', 'efficiency']**0.5,
+        capital_cost=costs.at['battery inverter', 'fixed'],
+        p_nom_extendable=True,
+        lifetime=costs.at['battery inverter', 'lifetime']
+    )
+
+    n.madd("Link",
+        nodes + " battery discharger for hydrogen",
+        bus0=nodes + " battery for hydrogen",
+        bus1=nodes + " electricity for hydrogen",
+        carrier="battery discharger for hydrogen",
+        efficiency=costs.at['battery inverter', 'efficiency']**0.5,
+        marginal_cost=options['marginal_cost_storage'],
+        p_nom_extendable=True,
+        lifetime=costs.at['battery inverter', 'lifetime']
+    )
+
+
+
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from helper import mock_snakemake
