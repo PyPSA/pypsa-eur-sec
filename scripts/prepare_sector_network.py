@@ -2032,8 +2032,11 @@ def island_hydrogen_production(n, export=False):
     n.generators.loc[vre + " for hydrogen","carrier"] = n.generators.loc[vre + " for hydrogen","carrier"] + " for hydrogen"
 
     n.generators_t.p_max_pu = pd.concat((n.generators_t.p_max_pu,n.generators_t.p_max_pu[vre].rename(lambda n: n + " for hydrogen",axis=1)),axis=1)
-    #NB: Also have to take care of joint p_nom_max in extra_functionality between competing generation at each node
-    #NB: Could also add battery at electricity for hydrogen bus
+    #NB: Also have taken care of joint p_nom_max in extra_functionality between competing generation at each node
+
+    # subtract upstream distribution grid costs added in add_electricity_grid_connection
+    onshore_hydrogen_vre = n.generators.index[n.generators.carrier.isin(["onwind for hydrogen","solar for hydrogen"])]
+    n.generators.loc[onshore_hydrogen_vre, "capital_cost"] -= costs.at['electricity grid connection', 'fixed']
 
     n.madd("Bus",
         nodes + " battery for hydrogen",
