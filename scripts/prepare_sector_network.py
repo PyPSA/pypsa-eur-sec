@@ -2000,7 +2000,7 @@ def limit_individual_line_extension(n, maxext):
     hvdc = n.links.index[n.links.carrier == 'DC']
     n.links.loc[hvdc, 'p_nom_max'] = n.links.loc[hvdc, 'p_nom'] + maxext
 
-def island_hydrogen_production(n, export=False):
+def island_hydrogen_production(n, export=False, compete=False):
     print("Islanding hydrogen production")
 
     electrolysers = n.links.index[n.links.carrier == "H2 Electrolysis"]
@@ -2022,16 +2022,21 @@ def island_hydrogen_production(n, export=False):
                p_nom=1e6
                )
 
-    n.links.loc[electrolysers,"bus0"] = nodes + " electricity for hydrogen"
+    if compete:
+        n.links = pd.concat((n.links,n.links.loc[electrolysers].rename(lambda name: name + " for hydrogen")))
+        n.links.loc[electrolysers + " for hydrogen","bus0"] += " electricity for hydrogen"
+        n.links.loc[electrolysers + " for hydrogen","carrier"] += " for hydrogen"
+    else:
+        n.links.loc[electrolysers,"bus0"] += " electricity for hydrogen"
 
     vre = n.generators.index[n.generators.carrier.isin(["onwind","solar","offwind-ac","offwind-dc"])]
 
-    n.generators = pd.concat((n.generators,n.generators.loc[vre].rename(lambda n: n + " for hydrogen")))
+    n.generators = pd.concat((n.generators,n.generators.loc[vre].rename(lambda name: name + " for hydrogen")))
 
-    n.generators.loc[vre + " for hydrogen","bus"] = n.generators.loc[vre + " for hydrogen","bus"] + " electricity for hydrogen"
-    n.generators.loc[vre + " for hydrogen","carrier"] = n.generators.loc[vre + " for hydrogen","carrier"] + " for hydrogen"
+    n.generators.loc[vre + " for hydrogen","bus"] += " electricity for hydrogen"
+    n.generators.loc[vre + " for hydrogen","carrier"] += " for hydrogen"
 
-    n.generators_t.p_max_pu = pd.concat((n.generators_t.p_max_pu,n.generators_t.p_max_pu[vre].rename(lambda n: n + " for hydrogen",axis=1)),axis=1)
+    n.generators_t.p_max_pu = pd.concat((n.generators_t.p_max_pu,n.generators_t.p_max_pu[vre].rename(lambda name: name + " for hydrogen",axis=1)),axis=1)
     #NB: Also have taken care of joint p_nom_max in extra_functionality between competing generation at each node
 
     # subtract upstream distribution grid costs added in add_electricity_grid_connection
@@ -2208,9 +2213,12 @@ if __name__ == "__main__":
         add_electricity_grid_connection(n, costs)
 
     if "islandH2" in opts:
-        island_hydrogen_production(n, export=False)
+        island_hydrogen_production(n, export=False, compete=False)
 
     if "islandH2export" in opts:
-        island_hydrogen_production(n, export=True)
+        island_hydrogen_production(n, export=True, compete=False)
+
+    if "islandH2compete" in opts:
+        island_hydrogen_production(n, export=False, compete=True)
 
     n.export_to_netcdf(snakemake.output[0])
