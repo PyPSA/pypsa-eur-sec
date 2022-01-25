@@ -11,6 +11,13 @@ run: your-run-name  # use this to keep track of runs with different settings
 foresight: overnight # options are overnight, myopic, perfect (perfect is not yet implemented)
 # if you use myopic or perfect foresight, set the investment years in "planning_horizons" below
 
+# Scenario options can either be specified here in the config file or by using a parameterspace .csv file
+# If scenario options are specified using the config file comment out the parameterspace option
+# If scenario options are specified using the parameterspace .csv file specify the path in the 
+# parameterspace option. 
+# When using the paramterspace option all scenario options from the config file are overwritten. 
+
+#parameterspace: params.csv # Path to parameterspace .csv 
 scenario:
   simpl: # only relevant for PyPSA-Eur
     - ''

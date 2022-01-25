@@ -1,6 +1,8 @@
 
 from os.path import exists
 from shutil import copyfile
+import pandas as pd
+from snakemake.utils import Paramspace
 
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
@@ -23,6 +25,24 @@ SDIR = config['summary_dir'] + '/' + config['run']
 RDIR = config['results_dir'] + config['run']
 CDIR = config['costs_dir']
 
+
+if 'parameterspace' in config:
+    # Declare a dataframe to be a paramspace
+    paramspace = Paramspace(pd.read_csv(config['parameterspace'], 
+                                        sep=",",
+                                        dtype={'lv':pd.Float64Dtype(),
+                                               'clusters':pd.Int32Dtype(),
+                                               'planning_horizons':pd.Int32Dtype()}), 
+                            param_sep='=',
+                            filename_params="*")
+    # remove nan values from paramspace dictionary 
+    param_dict = paramspace.to_dict(orient='list')
+    for (key, value) in param_dict.items():
+        param_dict[key] = [v for v in value if not pd.isna(v)]
+        if len(param_dict[key]) == 0:
+            param_dict[key] = ['']
+    # overwrite config['scenario'] to use values from parameterspce
+    config['scenario'] = param_dict
 
 subworkflow pypsaeur:
     workdir: "../pypsa-eur"
