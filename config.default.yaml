@@ -1,7 +1,5 @@
 version: 0.6.0
 
-NEW LINE
-
 logging_level: INFO
 
 retrieve_sector_databundle: true
