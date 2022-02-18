@@ -14,6 +14,8 @@ foresight: overnight # options are overnight, myopic, perfect (perfect is not ye
 scenario:
   simpl: # only relevant for PyPSA-Eur
     - ''
+  weatheryear:
+    - 2011
   lv: # allowed transmission line volume expansion, can be any float >= 1.0 (today) or "opt"
     - 1.0
     - 1.5

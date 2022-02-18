@@ -48,3 +48,6 @@ doc/_build
 *.xls
 cluster.yaml
 snakemake_cluster
+data/pypsa-eur-sec-data-bundle.tar.gz
+data/md5sums.txt
+data/h2_salt_caverns_GWh_per_sqkm.geojson
