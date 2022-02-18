@@ -1,4 +1,3 @@
-
 from os.path import exists
 from shutil import copyfile
 
@@ -67,25 +66,25 @@ rule build_population_layouts:
         nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
         urban_percent="data/urban_percent.csv"
     output:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc"
+        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
+        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_population_layouts"
+    benchmark: "benchmarks/build_population_layouts{weatheryear}"
     threads: 8
     script: "scripts/build_population_layouts.py"
 
 
 rule build_clustered_population_layouts:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout_total="resources/pop_layout_total{weatheryear}.nc",
+        pop_layout_urban="resources/pop_layout_urban{weatheryear}.nc",
+        pop_layout_rural="resources/pop_layout_rural{weatheryear}.nc",
         regions_onshore=pypsaeur('resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson')
     output:
         clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv"
     resources: mem_mb=10000
-    benchmark: "benchmarks/build_clustered_population_layouts/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_clustered_population_layouts/{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
@@ -98,7 +97,7 @@ rule build_simplified_population_layouts:
     output:
         clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}.csv"
     resources: mem_mb=10000
-    benchmark: "benchmarks/build_clustered_population_layouts/s{simpl}"
+    benchmark: "benchmarks/build_clustered_population_layouts/{weatheryear}_s{simpl}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
@@ -159,24 +158,24 @@ else:
 
 rule build_heat_demands:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
+        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc",
         regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
     output:
         heat_demand_urban="resources/heat_demand_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
         heat_demand_rural="resources/heat_demand_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
         heat_demand_total="resources/heat_demand_total_elec{weatheryear}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_heat_demands/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_heat_demands/{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
 
 
 rule build_temperature_profiles:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
+        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc",
         regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
     output:
         temp_soil_total="resources/temp_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
@@ -186,7 +185,7 @@ rule build_temperature_profiles:
         temp_air_rural="resources/temp_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
         temp_air_urban="resources/temp_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_temperature_profiles/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_temperature_profiles/{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_temperature_profiles.py"
 
 
@@ -206,7 +205,7 @@ rule build_cop_profiles:
         cop_air_rural="resources/cop_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
         cop_air_urban="resources/cop_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_cop_profiles/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_cop_profiles/{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_cop_profiles.py"
 
 
@@ -221,7 +220,7 @@ rule build_solar_thermal_profiles:
         solar_thermal_urban="resources/solar_thermal_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec{weatheryear}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_solar_thermal_profiles/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_solar_thermal_profiles/{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_solar_thermal_profiles.py"
 
 
@@ -258,11 +257,11 @@ rule build_biomass_potentials:
         swiss_population="../pypsa-eur/data/bundle/je-e-21.03.02.xls",
         country_shapes=pypsaeur('resources/country_shapes.geojson')
     output:
-        biomass_potentials_all='resources/biomass_potentials_all_s{simpl}_{clusters}.csv',
-        biomass_potentials='resources/biomass_potentials_s{simpl}_{clusters}.csv'
+        biomass_potentials_all='resources/biomass_potentials_all{weatheryear}_s{simpl}_{clusters}.csv',
+        biomass_potentials='resources/biomass_potentials{weatheryear}_s{simpl}_{clusters}.csv'
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_biomass_potentials_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_biomass_potentials{weatheryear}_s{simpl}_{clusters}"
     script: 'scripts/build_biomass_potentials.py'
 
 
@@ -287,10 +286,10 @@ rule build_salt_cavern_potentials:
         regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
         regions_offshore=pypsaeur("resources/regions_offshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
     output:
-        h2_cavern_potential="resources/salt_cavern_potentials_s{simpl}_{clusters}.csv"
+        h2_cavern_potential="resources/salt_cavern_potentials{weatheryear}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=2000
-    benchmark: "benchmarks/build_salt_cavern_potentials_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_salt_cavern_potentials{weatheryear}_s{simpl}_{clusters}"
     script: "scripts/build_salt_cavern_potentials.py"
 
 
@@ -350,7 +349,7 @@ rule build_industrial_distribution_key:
         industrial_distribution_key="resources/industrial_distribution_key_elec{weatheryear}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_distribution_key/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_distribution_key/{weatheryear}_s{simpl}_{clusters}"
     script: 'scripts/build_industrial_distribution_key.py'
 
 
@@ -362,7 +361,7 @@ rule build_industrial_production_per_node:
         industrial_production_per_node="resources/industrial_production_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_production_per_node/s{simpl}_{clusters}_{planning_horizons}"
+    benchmark: "benchmarks/build_industrial_production_per_node/{weatheryear}_s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_production_per_node.py'
 
 
@@ -375,7 +374,7 @@ rule build_industrial_energy_demand_per_node:
         industrial_energy_demand_per_node="resources/industrial_energy_demand_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_energy_demand_per_node/s{simpl}_{clusters}_{planning_horizons}"
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node/{weatheryear}_s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_energy_demand_per_node.py'
 
 
@@ -400,7 +399,7 @@ rule build_industrial_energy_demand_per_node_today:
         industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec{weatheryear}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_energy_demand_per_node_today/s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node_today/{weatheryear}_s{simpl}_{clusters}"
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
@@ -421,7 +420,7 @@ if config["sector"]["retrofitting"]["retro_endogen"]:
             retro_cost="resources/retro_cost_elec{weatheryear}_s{simpl}_{clusters}.csv",
             floor_area="resources/floor_area_elec{weatheryear}_s{simpl}_{clusters}.csv"
         resources: mem_mb=1000
-        benchmark: "benchmarks/build_retro_cost/s{simpl}_{clusters}"
+        benchmark: "benchmarks/build_retro_cost/{weatheryear}_s{simpl}_{clusters}"
         script: "scripts/build_retro_cost.py"
     build_retro_cost_output = rules.build_retro_cost.output
 else:
