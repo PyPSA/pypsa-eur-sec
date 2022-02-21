@@ -24,9 +24,11 @@ if __name__ == '__main__':
         snakemake.input = Dict()
         snakemake.output = Dict()
 
-    time = pd.date_range(freq='h', **snakemake.config['snapshots'])
-    cutout_config = snakemake.config['atlite']['cutout']
-    cutout = atlite.Cutout(cutout_config).sel(time=time)
+    # time = pd.date_range(freq='h', **snakemake.config['snapshots'])
+    time = pd.date_range(str(snakemake.wildcards.weather_year) + '-01-01',str(int(snakemake.wildcards.weather_year)+1) + '-01-01',freq='h')[0:-1]
+    
+    # cutout_config = snakemake.config['atlite']['cutout']
+    cutout = atlite.Cutout(snakemake.input.cutout).sel(time=time)
 
     clustered_regions = gpd.read_file(
         snakemake.input.regions_onshore).set_index('name').buffer(0).squeeze()

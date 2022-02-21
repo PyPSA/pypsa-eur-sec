@@ -11,12 +11,13 @@ configfile: "config.yaml"
 
 
 wildcard_constraints:
-    weatheryear="[0-9]*",
-    lv="[a-z0-9\.]+",
     simpl="[a-zA-Z0-9]*",
+    weather_year="[0-9]+m?",  
     clusters="[0-9]+m?",
+    lv="[a-z0-9\.]+",
     opts="[-+a-zA-Z0-9]*",
-    sector_opts="[-+a-zA-Z0-9\.\s]*"
+    sector_opts="[-+a-zA-Z0-9\.\s]*"#,
+    # investment_year="[0-9]+m?",
 
 
 SDIR = config['summary_dir'] + '/' + config['run']
@@ -35,13 +36,13 @@ rule all:
 
 rule solve_all_networks:
     input:
-        expand(RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        expand(RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
                **config['scenario'])
 
 
 rule prepare_sector_networks:
     input:
-        expand(RDIR + "/prenetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        expand(RDIR + "/prenetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
                **config['scenario'])
 
 datafiles = [
@@ -66,38 +67,40 @@ rule build_population_layouts:
         nuts3_shapes=pypsaeur('resources/nuts3_shapes.geojson'),
         urban_percent="data/urban_percent.csv"
     output:
-        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
-        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
-        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc"
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_population_layouts{weatheryear}"
+    benchmark: "benchmarks/build_population_layouts{weather_year}"
     threads: 8
     script: "scripts/build_population_layouts.py"
 
 
 rule build_clustered_population_layouts:
     input:
-        pop_layout_total="resources/pop_layout_total{weatheryear}.nc",
-        pop_layout_urban="resources/pop_layout_urban{weatheryear}.nc",
-        pop_layout_rural="resources/pop_layout_rural{weatheryear}.nc",
-        regions_onshore=pypsaeur('resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson')
+        cutout = pypsaeur('cutouts/europe-{weather_year}-era5.nc'),
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc",
+        regions_onshore=pypsaeur('resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson')
     output:
-        clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv"
+        clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}_{clusters}.csv"
     resources: mem_mb=10000
-    benchmark: "benchmarks/build_clustered_population_layouts/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_clustered_population_layouts/{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
 rule build_simplified_population_layouts:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
-        regions_onshore=pypsaeur('resources/regions_onshore_elec{weatheryear}_s{simpl}.geojson')
+        cutout = pypsaeur('cutouts/europe-{weather_year}-era5.nc'),
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc",
+        regions_onshore=pypsaeur('resources/regions_onshore_elec{weather_year}_s{simpl}.geojson')
     output:
-        clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}.csv"
+        clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}.csv"
     resources: mem_mb=10000
-    benchmark: "benchmarks/build_clustered_population_layouts/{weatheryear}_s{simpl}"
+    benchmark: "benchmarks/build_clustered_population_layouts/{weather_year}_s{simpl}"
     script: "scripts/build_clustered_population_layouts.py"
 
 
@@ -131,8 +134,8 @@ if config["sector"]["gas_network"] or config["sector"]["H2_retrofit"]:
             entry="data/gas_network/scigrid-gas/data/IGGIELGN_BorderPoints.geojson",
             production="data/gas_network/scigrid-gas/data/IGGIELGN_Productions.geojson",
             planned_lng="data/gas_network/planned_LNGs.csv",
-            regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
-            regions_offshore=pypsaeur('resources/regions_offshore_elec{weatheryear}_s{simpl}_{clusters}.geojson')
+            regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson"),
+            regions_offshore=pypsaeur('resources/regions_offshore_elec{weather_year}_s{simpl}_{clusters}.geojson')
         output:
             gas_input_nodes="resources/gas_input_locations_s{simpl}_{clusters}.geojson",
             gas_input_nodes_simplified="resources/gas_input_locations_s{simpl}_{clusters}_simplified.csv"
@@ -143,10 +146,10 @@ if config["sector"]["gas_network"] or config["sector"]["H2_retrofit"]:
     rule cluster_gas_network:
         input:
             cleaned_gas_network="resources/gas_network.csv",
-            regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
-            regions_offshore=pypsaeur("resources/regions_offshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
+            regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson"),
+            regions_offshore=pypsaeur("resources/regions_offshore_elec{weather_year}_s{simpl}_{clusters}.geojson")
         output:
-            clustered_gas_network="resources/gas_network_elec{weatheryear}_s{simpl}_{clusters}.csv"
+            clustered_gas_network="resources/gas_network_elec{weather_year}_s{simpl}_{clusters}.csv"
         resources: mem_mb=4000
         script: "scripts/cluster_gas_network.py"
 
@@ -158,69 +161,72 @@ else:
 
 rule build_heat_demands:
     input:
-        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
-        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
-        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc",
-        regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
+        cutout = pypsaeur('cutouts/europe-{weather_year}-era5.nc'),
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc",
+        regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson")
     output:
-        heat_demand_urban="resources/heat_demand_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        heat_demand_rural="resources/heat_demand_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        heat_demand_total="resources/heat_demand_total_elec{weatheryear}_s{simpl}_{clusters}.nc"
+        heat_demand_urban="resources/heat_demand_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        heat_demand_rural="resources/heat_demand_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        heat_demand_total="resources/heat_demand_total_elec{weather_year}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_heat_demands/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_heat_demands/{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
 
 
 rule build_temperature_profiles:
     input:
-        pop_layout_total="resources/pop_layout{weatheryear}_total.nc",
-        pop_layout_urban="resources/pop_layout{weatheryear}_urban.nc",
-        pop_layout_rural="resources/pop_layout{weatheryear}_rural.nc",
-        regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
+        cutout = pypsaeur('cutouts/europe-{weather_year}-era5.nc'),
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc",
+        regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson")
     output:
-        temp_soil_total="resources/temp_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_rural="resources/temp_soil_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_urban="resources/temp_soil_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_total="resources/temp_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_rural="resources/temp_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_urban="resources/temp_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc"
+        temp_soil_total="resources/temp_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_rural="resources/temp_soil_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_urban="resources/temp_soil_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_total="resources/temp_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_rural="resources/temp_air_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_urban="resources/temp_air_urban_elec{weather_year}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_temperature_profiles/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_temperature_profiles/{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_temperature_profiles.py"
 
 
 rule build_cop_profiles:
     input:
-        temp_soil_total="resources/temp_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_rural="resources/temp_soil_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_urban="resources/temp_soil_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_total="resources/temp_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_rural="resources/temp_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_urban="resources/temp_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc"
+        temp_soil_total="resources/temp_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_rural="resources/temp_soil_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_urban="resources/temp_soil_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_total="resources/temp_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_rural="resources/temp_air_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_urban="resources/temp_air_urban_elec{weather_year}_s{simpl}_{clusters}.nc"
     output:
-        cop_soil_total="resources/cop_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_soil_rural="resources/cop_soil_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_soil_urban="resources/cop_soil_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_total="resources/cop_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_rural="resources/cop_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_urban="resources/cop_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc"
+        cop_soil_total="resources/cop_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_soil_rural="resources/cop_soil_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_soil_urban="resources/cop_soil_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_total="resources/cop_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_rural="resources/cop_air_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_urban="resources/cop_air_urban_elec{weather_year}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_cop_profiles/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_cop_profiles/{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_cop_profiles.py"
 
 
 rule build_solar_thermal_profiles:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
-        regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson")
+        cutout = pypsaeur('cutouts/europe-{weather_year}-era5.nc'),
+        pop_layout_total="resources/pop_layout{weather_year}_total.nc",
+        pop_layout_urban="resources/pop_layout{weather_year}_urban.nc",
+        pop_layout_rural="resources/pop_layout{weather_year}_rural.nc",
+        regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson")
     output:
-        solar_thermal_total="resources/solar_thermal_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        solar_thermal_urban="resources/solar_thermal_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        solar_thermal_rural="resources/solar_thermal_rural_elec{weatheryear}_s{simpl}_{clusters}.nc"
+        solar_thermal_total="resources/solar_thermal_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        solar_thermal_urban="resources/solar_thermal_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        solar_thermal_rural="resources/solar_thermal_rural_elec{weather_year}_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_solar_thermal_profiles/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_solar_thermal_profiles/{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_solar_thermal_profiles.py"
 
 
@@ -251,17 +257,17 @@ rule build_biomass_potentials:
     input:
         enspreso_biomass=HTTP.remote("https://cidportal.jrc.ec.europa.eu/ftp/jrc-opendata/ENSPRESO/ENSPRESO_BIOMASS.xlsx", keep_local=True),
         nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson", # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
-        regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
+        regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson"),
         nuts3_population="../pypsa-eur/data/bundle/nama_10r_3popgdp.tsv.gz",
         swiss_cantons="../pypsa-eur/data/bundle/ch_cantons.csv",
         swiss_population="../pypsa-eur/data/bundle/je-e-21.03.02.xls",
         country_shapes=pypsaeur('resources/country_shapes.geojson')
     output:
-        biomass_potentials_all='resources/biomass_potentials_all{weatheryear}_s{simpl}_{clusters}.csv',
-        biomass_potentials='resources/biomass_potentials{weatheryear}_s{simpl}_{clusters}.csv'
+        biomass_potentials_all='resources/biomass_potentials_all{weather_year}_s{simpl}_{clusters}.csv',
+        biomass_potentials='resources/biomass_potentials{weather_year}_s{simpl}_{clusters}.csv'
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_biomass_potentials{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_biomass_potentials{weather_year}_s{simpl}_{clusters}"
     script: 'scripts/build_biomass_potentials.py'
 
 
@@ -283,13 +289,13 @@ else:
 rule build_salt_cavern_potentials:
     input:
         salt_caverns="data/h2_salt_caverns_GWh_per_sqkm.geojson",
-        regions_onshore=pypsaeur("resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
-        regions_offshore=pypsaeur("resources/regions_offshore_elec{weatheryear}_s{simpl}_{clusters}.geojson"),
+        regions_onshore=pypsaeur("resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson"),
+        regions_offshore=pypsaeur("resources/regions_offshore_elec{weather_year}_s{simpl}_{clusters}.geojson"),
     output:
-        h2_cavern_potential="resources/salt_cavern_potentials{weatheryear}_s{simpl}_{clusters}.csv"
+        h2_cavern_potential="resources/salt_cavern_potentials{weather_year}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=2000
-    benchmark: "benchmarks/build_salt_cavern_potentials{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_salt_cavern_potentials{weather_year}_s{simpl}_{clusters}"
     script: "scripts/build_salt_cavern_potentials.py"
 
 
@@ -342,39 +348,39 @@ rule build_industrial_production_per_country_tomorrow:
 
 rule build_industrial_distribution_key:
     input:
-        regions_onshore=pypsaeur('resources/regions_onshore_elec{weatheryear}_s{simpl}_{clusters}.geojson'),
-        clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv",
+        regions_onshore=pypsaeur('resources/regions_onshore_elec{weather_year}_s{simpl}_{clusters}.geojson'),
+        clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}_{clusters}.csv",
         hotmaps_industrial_database="data/Industrial_Database.csv",
     output:
-        industrial_distribution_key="resources/industrial_distribution_key_elec{weatheryear}_s{simpl}_{clusters}.csv"
+        industrial_distribution_key="resources/industrial_distribution_key_elec{weather_year}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_distribution_key/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_distribution_key/{weather_year}_s{simpl}_{clusters}"
     script: 'scripts/build_industrial_distribution_key.py'
 
 
 rule build_industrial_production_per_node:
     input:
-        industrial_distribution_key="resources/industrial_distribution_key_elec{weatheryear}_s{simpl}_{clusters}.csv",
+        industrial_distribution_key="resources/industrial_distribution_key_elec{weather_year}_s{simpl}_{clusters}.csv",
         industrial_production_per_country_tomorrow="resources/industrial_production_per_country_tomorrow_{planning_horizons}.csv"
     output:
-        industrial_production_per_node="resources/industrial_production_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv"
+        industrial_production_per_node="resources/industrial_production_elec{weather_year}_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_production_per_node/{weatheryear}_s{simpl}_{clusters}_{planning_horizons}"
+    benchmark: "benchmarks/build_industrial_production_per_node/{weather_year}_s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_production_per_node.py'
 
 
 rule build_industrial_energy_demand_per_node:
     input:
         industry_sector_ratios="resources/industry_sector_ratios.csv",
-        industrial_production_per_node="resources/industrial_production_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec{weatheryear}_s{simpl}_{clusters}.csv"
+        industrial_production_per_node="resources/industrial_production_elec{weather_year}_s{simpl}_{clusters}_{planning_horizons}.csv",
+        industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec{weather_year}_s{simpl}_{clusters}.csv"
     output:
-        industrial_energy_demand_per_node="resources/industrial_energy_demand_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv"
+        industrial_energy_demand_per_node="resources/industrial_energy_demand_elec{weather_year}_s{simpl}_{clusters}_{planning_horizons}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_energy_demand_per_node/{weatheryear}_s{simpl}_{clusters}_{planning_horizons}"
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node/{weather_year}_s{simpl}_{clusters}_{planning_horizons}"
     script: 'scripts/build_industrial_energy_demand_per_node.py'
 
 
@@ -393,13 +399,13 @@ rule build_industrial_energy_demand_per_country_today:
 
 rule build_industrial_energy_demand_per_node_today:
     input:
-        industrial_distribution_key="resources/industrial_distribution_key_elec{weatheryear}_s{simpl}_{clusters}.csv",
+        industrial_distribution_key="resources/industrial_distribution_key_elec{weather_year}_s{simpl}_{clusters}.csv",
         industrial_energy_demand_per_country_today="resources/industrial_energy_demand_per_country_today.csv"
     output:
-        industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec{weatheryear}_s{simpl}_{clusters}.csv"
+        industrial_energy_demand_per_node_today="resources/industrial_energy_demand_today_elec{weather_year}_s{simpl}_{clusters}.csv"
     threads: 1
     resources: mem_mb=1000
-    benchmark: "benchmarks/build_industrial_energy_demand_per_node_today/{weatheryear}_s{simpl}_{clusters}"
+    benchmark: "benchmarks/build_industrial_energy_demand_per_node_today/{weather_year}_s{simpl}_{clusters}"
     script: 'scripts/build_industrial_energy_demand_per_node_today.py'
 
 
@@ -408,19 +414,19 @@ if config["sector"]["retrofitting"]["retro_endogen"]:
         input:
             building_stock="data/retro/data_building_stock.csv",
             data_tabula="data/retro/tabula-calculator-calcsetbuilding.csv",
-            air_temperature = "resources/temp_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
+            air_temperature = "resources/temp_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
             u_values_PL="data/retro/u_values_poland.csv",
             tax_w="data/retro/electricity_taxes_eu.csv",
             construction_index="data/retro/comparative_level_investment.csv",
             floor_area_missing="data/retro/floor_area_missing.csv",
-            clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv",
+            clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}_{clusters}.csv",
             cost_germany="data/retro/retro_cost_germany.csv",
             window_assumptions="data/retro/window_assumptions.csv",
         output:
-            retro_cost="resources/retro_cost_elec{weatheryear}_s{simpl}_{clusters}.csv",
-            floor_area="resources/floor_area_elec{weatheryear}_s{simpl}_{clusters}.csv"
+            retro_cost="resources/retro_cost_elec{weather_year}_s{simpl}_{clusters}.csv",
+            floor_area="resources/floor_area_elec{weather_year}_s{simpl}_{clusters}.csv"
         resources: mem_mb=1000
-        benchmark: "benchmarks/build_retro_cost/{weatheryear}_s{simpl}_{clusters}"
+        benchmark: "benchmarks/build_retro_cost/{weather_year}_s{simpl}_{clusters}"
         script: "scripts/build_retro_cost.py"
     build_retro_cost_output = rules.build_retro_cost.output
 else:
@@ -430,61 +436,61 @@ else:
 rule prepare_sector_network:
     input:
         overrides="data/override_component_attrs",
-        network=pypsaeur('networks/elec{weatheryear}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
+        network=pypsaeur('networks/elec{weather_year}_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
         energy_totals_name='resources/energy_totals.csv',
         co2_totals_name='resources/co2_totals.csv',
         transport_name='resources/transport_data.csv',
         traffic_data_KFZ="data/emobility/KFZ__count",
         traffic_data_Pkw="data/emobility/Pkw__count",
-        biomass_potentials='resources/biomass_potentials_s{simpl}_{clusters}.csv',
+        biomass_potentials='resources/biomass_potentials{weather_year}_s{simpl}_{clusters}.csv',
         heat_profile="data/heat_load_profile_BDEW.csv",
         costs=CDIR + "costs_{planning_horizons}.csv",
-        profile_offwind_ac=pypsaeur("resources/profile_offwind-ac.nc"),
-        profile_offwind_dc=pypsaeur("resources/profile_offwind-dc.nc"),
-        h2_cavern="resources/salt_cavern_potentials_s{simpl}_{clusters}.csv",
-        busmap_s=pypsaeur("resources/busmap_elec{weatheryear}_s{simpl}.csv"),
-        busmap=pypsaeur("resources/busmap_elec{weatheryear}_s{simpl}_{clusters}.csv"),
-        clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv",
-        simplified_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}.csv",
-        industrial_demand="resources/industrial_energy_demand_elec{weatheryear}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        heat_demand_urban="resources/heat_demand_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        heat_demand_rural="resources/heat_demand_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        heat_demand_total="resources/heat_demand_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_total="resources/temp_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_rural="resources/temp_soil_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_soil_urban="resources/temp_soil_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_total="resources/temp_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_rural="resources/temp_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        temp_air_urban="resources/temp_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_soil_total="resources/cop_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_soil_rural="resources/cop_soil_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_soil_urban="resources/cop_soil_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_total="resources/cop_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_rural="resources/cop_air_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        cop_air_urban="resources/cop_air_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        solar_thermal_total="resources/solar_thermal_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        solar_thermal_urban="resources/solar_thermal_urban_elec{weatheryear}_s{simpl}_{clusters}.nc",
-        solar_thermal_rural="resources/solar_thermal_rural_elec{weatheryear}_s{simpl}_{clusters}.nc",
+        profile_offwind_ac=pypsaeur("resources/profile{weather_year}_offwind-ac.nc"),
+        profile_offwind_dc=pypsaeur("resources/profile{weather_year}_offwind-dc.nc"),
+        h2_cavern="resources/salt_cavern_potentials{weather_year}_s{simpl}_{clusters}.csv",
+        busmap_s=pypsaeur("resources/busmap_elec{weather_year}_s{simpl}.csv"),
+        busmap=pypsaeur("resources/busmap_elec{weather_year}_s{simpl}_{clusters}.csv"),
+        clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}_{clusters}.csv",
+        simplified_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}.csv",
+        industrial_demand="resources/industrial_energy_demand_elec{weather_year}_s{simpl}_{clusters}_{planning_horizons}.csv",
+        heat_demand_urban="resources/heat_demand_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        heat_demand_rural="resources/heat_demand_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        heat_demand_total="resources/heat_demand_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_total="resources/temp_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_rural="resources/temp_soil_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_soil_urban="resources/temp_soil_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_total="resources/temp_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_rural="resources/temp_air_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        temp_air_urban="resources/temp_air_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_soil_total="resources/cop_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_soil_rural="resources/cop_soil_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_soil_urban="resources/cop_soil_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_total="resources/cop_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_rural="resources/cop_air_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
+        cop_air_urban="resources/cop_air_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        solar_thermal_total="resources/solar_thermal_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+        solar_thermal_urban="resources/solar_thermal_urban_elec{weather_year}_s{simpl}_{clusters}.nc",
+        solar_thermal_rural="resources/solar_thermal_rural_elec{weather_year}_s{simpl}_{clusters}.nc",
         **build_retro_cost_output,
         **build_biomass_transport_costs_output,
         **gas_infrastructure
-    output: RDIR + '/prenetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
+    output: RDIR + '/prenetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
     threads: 1
     resources: mem_mb=2000
-    benchmark: RDIR + "/benchmarks/prepare_network/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
+    benchmark: RDIR + "/benchmarks/prepare_network/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
     script: "scripts/prepare_sector_network.py"
 
 
 rule plot_network:
     input:
         overrides="data/override_component_attrs",
-        network=RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        network=RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
     output:
-        map=RDIR + "/maps/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
-        today=RDIR + "/maps/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}-today.pdf"
+        map=RDIR + "/maps/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+        today=RDIR + "/maps/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}-today.pdf"
     threads: 2
     resources: mem_mb=10000
-    benchmark: RDIR + "/benchmarks/plot_network/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
+    benchmark: RDIR + "/benchmarks/plot_network/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
     script: "scripts/plot_network.py"
 
 
@@ -500,12 +506,12 @@ rule make_summary:
     input:
         overrides="data/override_component_attrs",
         networks=expand(
-            RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config['scenario']
         ),
         costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
         plots=expand(
-            RDIR + "/maps/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+            RDIR + "/maps/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
             **config['scenario']
         )
     output:
@@ -550,18 +556,18 @@ if config["foresight"] == "overnight":
     rule solve_network:
         input:
             overrides="data/override_component_attrs",
-            network=RDIR + "/prenetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            network=RDIR + "/prenetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=CDIR + "costs_{planning_horizons}.csv",
             config=SDIR + '/configs/config.yaml'
-        output: RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        output: RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
         log:
-            solver=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
-            python=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
-            memory=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
+            solver=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
+            python=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
+            memory=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
         threads: config['solving']['solver'].get('threads', 4)
         resources: mem_mb=config['solving']['mem']
-        benchmark: RDIR + "/benchmarks/solve_network/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
+        benchmark: RDIR + "/benchmarks/solve_network/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         script: "scripts/solve_network.py"
 
 
@@ -570,25 +576,25 @@ if config["foresight"] == "myopic":
     rule add_existing_baseyear:
         input:
             overrides="data/override_component_attrs",
-            network=RDIR + '/prenetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
+            network=RDIR + '/prenetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             powerplants=pypsaeur('resources/powerplants.csv'),
-            busmap_s=pypsaeur("resources/busmap_elec{weatheryear}_s{simpl}.csv"),
-            busmap=pypsaeur("resources/busmap_elec{weatheryear}_s{simpl}_{clusters}.csv"),
-            clustered_pop_layout="resources/pop_layout_elec{weatheryear}_s{simpl}_{clusters}.csv",
+            busmap_s=pypsaeur("resources/busmap_elec{weather_year}_s{simpl}.csv"),
+            busmap=pypsaeur("resources/busmap_elec{weather_year}_s{simpl}_{clusters}.csv"),
+            clustered_pop_layout="resources/pop_layout_elec{weather_year}_s{simpl}_{clusters}.csv",
             costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
-            cop_soil_total="resources/cop_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
+            cop_soil_total="resources/cop_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+            cop_air_total="resources/cop_air_total_elec{weather_year}_s{simpl}_{clusters}.nc",
             existing_heating='data/existing_infrastructure/existing_heating_raw.csv',
             country_codes='data/Country_codes.csv',
             existing_solar='data/existing_infrastructure/solar_capacity_IRENA.csv',
             existing_onwind='data/existing_infrastructure/onwind_capacity_IRENA.csv',
             existing_offwind='data/existing_infrastructure/offwind_capacity_IRENA.csv',
-        output: RDIR + '/prenetworks-brownfield/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
+        output: RDIR + '/prenetworks-brownfield/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
         wildcard_constraints:
             planning_horizons=config['scenario']['planning_horizons'][0] #only applies to baseyear
         threads: 1
         resources: mem_mb=2000
-        benchmark: RDIR + '/benchmarks/add_existing_baseyear/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
+        benchmark: RDIR + '/benchmarks/add_existing_baseyear/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_existing_baseyear.py"
 
 
@@ -596,21 +602,21 @@ if config["foresight"] == "myopic":
         planning_horizons = config["scenario"]["planning_horizons"]
         i = planning_horizons.index(int(wildcards.planning_horizons))
         planning_horizon_p = str(planning_horizons[i-1])
-        return RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_" + planning_horizon_p + ".nc"
+        return RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_" + planning_horizon_p + ".nc"
 
 
     rule add_brownfield:
         input:
             overrides="data/override_component_attrs",
-            network=RDIR + '/prenetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
+            network=RDIR + '/prenetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             network_p=solved_previous_horizon, #solved network at previous time step
             costs=CDIR + "costs_{planning_horizons}.csv",
-            cop_soil_total="resources/cop_soil_total_elec{weatheryear}_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec{weatheryear}_s{simpl}_{clusters}.nc"
-        output: RDIR + "/prenetworks-brownfield/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+            cop_soil_total="resources/cop_soil_total_elec{weather_year}_s{simpl}_{clusters}.nc",
+            cop_air_total="resources/cop_air_total_elec{weather_year}_s{simpl}_{clusters}.nc"
+        output: RDIR + "/prenetworks-brownfield/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         threads: 4
         resources: mem_mb=10000
-        benchmark: RDIR + '/benchmarks/add_brownfield/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
+        benchmark: RDIR + '/benchmarks/add_brownfield/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}'
         script: "scripts/add_brownfield.py"
 
 
@@ -620,16 +626,16 @@ if config["foresight"] == "myopic":
     rule solve_network_myopic:
         input:
             overrides="data/override_component_attrs",
-            network=RDIR + "/prenetworks-brownfield/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            network=RDIR + "/prenetworks-brownfield/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=CDIR + "costs_{planning_horizons}.csv",
             config=SDIR + '/configs/config.yaml'
-        output: RDIR + "/postnetworks/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        output: RDIR + "/postnetworks/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
         log:
-            solver=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
-            python=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
-            memory=RDIR + "/logs/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
+            solver=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_solver.log",
+            python=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_python.log",
+            memory=RDIR + "/logs/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_memory.log"
         threads: 4
         resources: mem_mb=config['solving']['mem']
-        benchmark: RDIR + "/benchmarks/solve_network/elec{weatheryear}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
+        benchmark: RDIR + "/benchmarks/solve_network/elec{weather_year}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}"
         script: "scripts/solve_network.py"
