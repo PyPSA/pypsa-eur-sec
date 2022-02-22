@@ -85,13 +85,13 @@ if __name__ == "__main__":
             clusters=48,
             lv=1.0,
             sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
-            planning_horizons=2030,
+            investment_year=2030,
         )
 
     print(snakemake.input.network_p)
     logging.basicConfig(level=snakemake.config['logging_level'])
 
-    year = int(snakemake.wildcards.planning_horizons)
+    year = int(snakemake.wildcards.investment_year)
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)

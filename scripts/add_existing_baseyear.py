@@ -447,7 +447,7 @@ if __name__ == "__main__":
             lv=1.0,
             opts='',
             sector_opts='Co2L0-168H-T-H-B-I-solar+p3-dist1',
-            planning_horizons=2020,
+            investment_year=2020,
         )
 
     logging.basicConfig(level=snakemake.config['logging_level'])
@@ -455,7 +455,7 @@ if __name__ == "__main__":
     options = snakemake.config["sector"]
     opts = snakemake.wildcards.sector_opts.split('-')
 
-    baseyear= snakemake.config['scenario']["planning_horizons"][0]
+    baseyear= snakemake.config['scenario']["investment_year"][0]
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)

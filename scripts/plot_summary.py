@@ -381,7 +381,7 @@ def plot_carbon_budget_distribution():
     ax1 = plt.subplot(gs1[0,0])
     ax1.set_ylabel('CO$_2$ emissions (Gt per year)',fontsize=22)
     ax1.set_ylim([0,5])
-    ax1.set_xlim([1990,snakemake.config['scenario']['planning_horizons'][-1]+1])
+    ax1.set_xlim([1990,snakemake.config['scenario']['investment_year'][-1]+1])
 
     path_cb = snakemake.config['results_dir'] + snakemake.config['run'] + '/csvs/'
     countries=pd.read_csv(path_cb + 'countries.csv',  index_col=1)
@@ -438,7 +438,7 @@ if __name__ == "__main__":
         from helper import mock_snakemake
         snakemake = mock_snakemake('plot_summary')
         
-    n_header = 4
+    n_header = 5
 
     plot_costs()
 
