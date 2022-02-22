@@ -12,7 +12,7 @@ configfile: "config.yaml"
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
-    weather_year="[0-9]*", #"[a-zA-Z0-9]*", #"[0-9]*", #m?",  # "[0-9]*m?" * means that it can be empty + means it can only be nonempty
+    weather_year="[0-9]*",
     clusters="[0-9]+m?",
     lv="[a-z0-9\.]+",
     opts="[-+a-zA-Z0-9]*",
