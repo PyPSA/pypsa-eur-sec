@@ -699,7 +699,7 @@ if __name__ == "__main__":
             lv=1.5,
             opts='',
             sector_opts='Co2L0-168H-T-H-B-I-solar+p3-dist1',
-            planning_horizons=2030,
+            investment_year=2030,
         )
 
     overrides = override_component_attrs(snakemake.input.overrides)

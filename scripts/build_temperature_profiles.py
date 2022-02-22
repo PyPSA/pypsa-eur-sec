@@ -15,11 +15,17 @@ if __name__ == '__main__':
             clusters=48,
         )
 
-    # time = pd.date_range(freq='h', **snakemake.config['snapshots'])
-    time = pd.date_range(str(snakemake.wildcards.weather_year) + '-01-01',str(int(snakemake.wildcards.weather_year)+1) + '-01-01',freq='h')[0:-1]
-    
-    # cutout_config = snakemake.config['atlite']['cutout']
-    cutout = atlite.Cutout(snakemake.input.cutout).sel(time=time)
+    weather_year = snakemake.wildcards.weather_year
+    cutout_source = snakemake.config['cutout'].split('-')[1]
+
+    if len(weather_year) > 0:
+        time = pd.date_range(str(snakemake.wildcards.weather_year) + '-01-01',str(int(snakemake.wildcards.weather_year)+1) + '-01-01',freq='h')[0:-1]
+        cutout_name = '../pypsa-eur/cutouts/europe-' + str(weather_year) + '-' + cutout_source + '.nc'
+    else:
+        time = pd.date_range('2013-01-01','2014-01-01',freq='h')[0:-1]
+        cutout_name = '../pypsa-eur/cutouts/europe-2013-era5.nc'
+
+    cutout = atlite.Cutout(cutout_name).sel(time=time)  
 
     clustered_regions = gpd.read_file(
         snakemake.input.regions_onshore).set_index('name').buffer(0).squeeze()
