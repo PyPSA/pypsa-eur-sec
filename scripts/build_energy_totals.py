@@ -127,7 +127,7 @@ to_ipcc = {
 }
 
 
-def build_eurostat(countries, year):
+def build_eurostat(snakemake, countries, year):
     """Return multi-index for all countries' energy data in TWh/a."""
 
     report_year = snakemake.config["energy"]["eurostat_report_year"]
@@ -563,7 +563,7 @@ def build_energy_totals(countries, eurostat, swiss, idees):
     return df
 
 
-def build_eea_co2(year=1990):
+def build_eea_co2(snakemake, year=1990):
 
     # https://www.eea.europa.eu/data-and-maps/data/national-emissions-reported-to-the-unfccc-and-to-the-eu-greenhouse-gas-monitoring-mechanism-16
     # downloaded 201228 (modified by EEA last on 201221)
@@ -611,9 +611,9 @@ def build_eea_co2(year=1990):
     return emissions / 1e3
 
 
-def build_eurostat_co2(countries, year=1990):
+def build_eurostat_co2(snakemake, countries, year=1990):
 
-    eurostat = build_eurostat(countries, year)
+    eurostat = build_eurostat(snakemake, countries, year)
 
     specific_emissions = pd.Series(index=eurostat.columns, dtype=float)
 
@@ -633,6 +633,9 @@ def build_eurostat_co2(countries, year=1990):
 def build_co2_totals(countries, eea_co2, eurostat_co2):
 
     co2 = eea_co2.reindex(countries)
+
+    # Convert dtype of variable countries to pandas.index object to ensure following 'intersection' operation works even with numpy.ndarray as input
+    countries = pd.Index(countries)
 
     for ct in countries.intersection(["BA", "RS", "AL", "ME", "MK"]):
 
@@ -702,7 +705,7 @@ if __name__ == "__main__":
     idees_countries = countries.intersection(eu28)
 
     data_year = config["energy_totals_year"]
-    eurostat = build_eurostat(countries, data_year)
+    eurostat = build_eurostat(snakemake, countries, data_year)
     swiss = build_swiss(data_year)
     idees = build_idees(idees_countries, data_year)
 
@@ -710,8 +713,8 @@ if __name__ == "__main__":
     energy.to_csv(snakemake.output.energy_name)
 
     base_year_emissions = config["base_emissions_year"]
-    eea_co2 = build_eea_co2(base_year_emissions)
-    eurostat_co2 = build_eurostat_co2(countries, base_year_emissions)
+    eea_co2 = build_eea_co2(snakemake, base_year_emissions)
+    eurostat_co2 = build_eurostat_co2(snakemake, countries, base_year_emissions)
 
     co2 = build_co2_totals(countries, eea_co2, eurostat_co2)
     co2.to_csv(snakemake.output.co2_name)
