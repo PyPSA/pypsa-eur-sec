@@ -429,6 +429,8 @@ else:
 
 rule prepare_sector_network:
     input:
+        co2="data/eea/UNFCCC_v23.csv",
+        eurostat=input_eurostat,
         overrides="data/override_component_attrs",
         network=pypsaeur('networks/elec_s{simpl}_{clusters}_ec_lv{lv}_{opts}.nc'),
         energy_totals_name='resources/energy_totals.csv',
