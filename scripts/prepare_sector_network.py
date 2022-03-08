@@ -143,16 +143,16 @@ def co2_emissions_year(countries, opts, year):
     Calculate CO2 emissions in one specific year (e.g. 1990 or 2018).
     """
 
-    eea_co2 = build_eea_co2(year)
+    eea_co2 = build_eea_co2(snakemake, year)
 
     # TODO: read Eurostat data from year > 2014
     # this only affects the estimation of CO2 emissions for BA, RS, AL, ME, MK
     if year > 2014:
-        eurostat_co2 = build_eurostat_co2(year=2014)
+        eurostat_co2 = build_eurostat_co2(snakemake, countries, year=2014)
     else:
-        eurostat_co2 = build_eurostat_co2(year)
+        eurostat_co2 = build_eurostat_co2(snakemake, countries, year)
 
-    co2_totals = build_co2_totals(eea_co2, eurostat_co2)
+    co2_totals = build_co2_totals(countries, eea_co2, eurostat_co2)
 
     sectors = emission_sectors_from_opts(opts)
 
@@ -2411,8 +2411,8 @@ if __name__ == "__main__":
             simpl='',
             opts="",
             clusters="37",
-            lv=1.0,
-            sector_opts='Co2L0-168H-T-H-B-I-solar3-dist1',
+            lv=1.5,
+            sector_opts='cb40ex0-2000H-T-H-B-I-A',
             planning_horizons="2020",
         )
 
