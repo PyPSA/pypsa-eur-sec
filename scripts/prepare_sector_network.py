@@ -214,7 +214,7 @@ def build_carbon_budget(o, fn):
 
     # TODO log in Snakefile
     if not os.path.exists(fn):
-        os.makedirs(fn)
+        os.makedirs(os.path.dirname(fn))
     co2_cap.to_csv(fn, float_format='%.3f')
 
 
