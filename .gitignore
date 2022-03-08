@@ -46,3 +46,5 @@ config.yaml
 doc/_build
 
 *.xls
+data/h2_salt_caverns_GWh_per_sqkm.geojson
+data/pypsa-eur-sec-data-bundle.tar.gz
