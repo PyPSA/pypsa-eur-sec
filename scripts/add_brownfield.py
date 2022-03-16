@@ -101,5 +101,23 @@ if __name__ == "__main__":
     n_p = pypsa.Network(snakemake.input.network_p, override_component_attrs=overrides)
 
     add_brownfield(n, n_p, year)
+    
+    for carrier in n.stores.carrier.unique():
+        df = n.stores[n.stores.carrier == carrier]
+        df['ind'] = df.index
+        df['year'] = df['ind'].str.split('-',expand=True)[1]
+        df.drop(columns='ind',inplace=True)
+        if len(df['year'].unique()) > 1:
+            index_to_keep = ['EU '  + carrier + '-' + str(year)]
+            index_remove = df[~df.index.isin(index_to_keep)].index
+            df_remove = df.loc[index_remove]
+            # Set e_nom, e_nom_opt and e_initial for previous years stores
+            df_remove.e_nom = 0
+            df_remove.e_nom_opt = 0
+            df_remove.e_initial = 0
+            df.drop(index=df_remove.index ,inplace=True)
+            df = df.append(df_remove) 
+            n.stores[n.stores.carrier == carrier] = df
+            print(carrier + ' updated')
 
     n.export_to_netcdf(snakemake.output[0])
