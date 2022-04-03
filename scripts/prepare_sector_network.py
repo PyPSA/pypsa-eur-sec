@@ -1155,23 +1155,26 @@ def add_storage_and_grids(n, costs):
         # apply k_edge_augmentation weighted by length of complement edges
         k_edge = options.get("gas_network_connectivity_upgrade", 3)
         augmentation = k_edge_augmentation(G, k_edge, avail=complement_edges.values)
-        new_gas_pipes = pd.DataFrame(augmentation, columns=["bus0", "bus1"])
-        new_gas_pipes["length"] = new_gas_pipes.apply(haversine, axis=1)
 
-        new_gas_pipes.index = new_gas_pipes.apply(
-            lambda x: f"gas pipeline new {x.bus0} <-> {x.bus1}", axis=1)
+        if list(augmentation):
 
-        n.madd("Link",
-            new_gas_pipes.index,
-            bus0=new_gas_pipes.bus0 + " gas",
-            bus1=new_gas_pipes.bus1 + " gas",
-            p_min_pu=-1, # new gas pipes are bidirectional
-            p_nom_extendable=True,
-            length=new_gas_pipes.length,
-            capital_cost=new_gas_pipes.length * costs.at['CH4 (g) pipeline', 'fixed'],
-            carrier="gas pipeline new",
-            lifetime=costs.at['CH4 (g) pipeline', 'lifetime']
-        )
+            new_gas_pipes = pd.DataFrame(augmentation, columns=["bus0", "bus1"])
+            new_gas_pipes["length"] = new_gas_pipes.apply(haversine, axis=1)
+
+            new_gas_pipes.index = new_gas_pipes.apply(
+                lambda x: f"gas pipeline new {x.bus0} <-> {x.bus1}", axis=1)
+
+            n.madd("Link",
+                new_gas_pipes.index,
+                bus0=new_gas_pipes.bus0 + " gas",
+                bus1=new_gas_pipes.bus1 + " gas",
+                p_min_pu=-1, # new gas pipes are bidirectional
+                p_nom_extendable=True,
+                length=new_gas_pipes.length,
+                capital_cost=new_gas_pipes.length * costs.at['CH4 (g) pipeline', 'fixed'],
+                carrier="gas pipeline new",
+                lifetime=costs.at['CH4 (g) pipeline', 'lifetime']
+            )
 
     if options["H2_retrofit"]:
 
