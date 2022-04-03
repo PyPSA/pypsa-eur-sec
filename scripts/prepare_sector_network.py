@@ -685,7 +685,7 @@ def prepare_data(n):
 
     ## Get overall demand curve for all vehicles
 
-    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"], squeeze=True)
+    traffic = pd.read_csv(snakemake.input.traffic_data_KFZ, skiprows=2, usecols=["count"]).squeeze()
 
     #Generate profiles
     transport_shape = generate_periodic_profiles(
@@ -740,7 +740,7 @@ def prepare_data(n):
 
     ## derive plugged-in availability for PKW's (cars)
 
-    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"], squeeze=True)
+    traffic = pd.read_csv(snakemake.input.traffic_data_Pkw, skiprows=2, usecols=["count"]).squeeze()
 
     avail_max = options.get("bev_avail_max", 0.95)
     avail_mean = options.get("bev_avail_mean", 0.8)
@@ -1882,8 +1882,7 @@ def add_biomass(n, costs):
         transport_costs = pd.read_csv(
             snakemake.input.biomass_transport_costs,
             index_col=0,
-            squeeze=True
-        )
+        ).squeeze()
 
         # add biomass transport
         biomass_transport = create_network_topology(n, "biomass transport ", bidirectional=False)
@@ -2515,7 +2514,7 @@ if __name__ == "__main__":
         fn = snakemake.config['results_dir'] + snakemake.config['run'] + '/csvs/carbon_budget_distribution.csv'
         if not os.path.exists(fn):
             build_carbon_budget(o, fn)
-        co2_cap = pd.read_csv(fn, index_col=0, squeeze=True)
+        co2_cap = pd.read_csv(fn, index_col=0).squeeze()
         limit = co2_cap[investment_year]
         break
     for o in opts:
