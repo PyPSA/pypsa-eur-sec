@@ -52,6 +52,10 @@ datafiles = [
     "Industrial_Database.csv",
     "emobility/KFZ__count",
     "emobility/Pkw__count",
+    "eurostat-energy_balances-june_2016_edition",
+    "eurostat-energy_balances-may_2018_edition"
+    "jrc-idees-2015",
+    "h2_salt_caverns_GWh_per_sqkm.geojson",
 ]
 
 if config.get('retrieve_sector_databundle', True):
