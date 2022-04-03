@@ -91,5 +91,5 @@ jobs:
         run: |
           conda activate pypsa-eur
           conda list
-          snakemake -jall --configfile test/config.overnight.yaml solve_all_networks
-          snakemake -jall --configfile test/config.myopic.yaml solve_all_networks
+          snakemake solve_all_networks -jall --configfile test/config.overnight.yaml 
+          snakemake solve_all_networks -jall --configfile test/config.myopic.yaml
