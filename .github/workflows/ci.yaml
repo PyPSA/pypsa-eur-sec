@@ -55,7 +55,7 @@ jobs:
         run: |
           git clone https://github.com/pypsa/pypsa-eur ../pypsa-eur
           git clone https://github.com/pypsa/technology-data ../technology-data
-          cp ../pypsa-eur/test/config.test1.yaml  ../pypsa-eur/config.yaml
+          cp ../pypsa-eur/test/config.test1.yaml ../pypsa-eur/config.yaml
       
       - name: Setup secrets
         run: |
@@ -81,7 +81,7 @@ jobs:
         id: cache
         with:
           path: ${{ matrix.prefix }}
-          key: ${{ matrix.label }}-conda-${{ hashFiles('../pypsa-eur/envs/environment.yaml') }}-${{ env.DATE }}-${{ env.CACHE_NUMBER }}
+          key: ${{ matrix.label }}-conda-${{ env.DATE }}-${{ env.CACHE_NUMBER }}
 
       - name: Update environment due to outdated or unavailable cache
         run: mamba env update -n pypsa-eur -f ../pypsa-eur/envs/environment.yaml
