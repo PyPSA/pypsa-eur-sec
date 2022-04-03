@@ -147,7 +147,7 @@ def build_nuts2_shapes():
     missing = countries.loc[["AL", "RS", "BA"]]
     nuts2.rename(index={"ME00": "ME", "MK00": "MK"}, inplace=True)
 
-    return nuts2.append(missing)
+    return pd.concat([nuts2, missing])
 
 
 def area(gdf):
