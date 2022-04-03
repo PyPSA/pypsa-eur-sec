@@ -360,7 +360,8 @@ solving:
       - StorageUnit
 
   solver:
-    name: cbc
+    name: glpk
+    seed: 1
     # threads: 4
     # method: 2 # barrier
     # crossover: 0
