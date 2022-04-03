@@ -252,6 +252,7 @@ def create_network_topology(n, prefix, carriers=["DC"], connector=" -> ", bidire
 
     ln_attrs = ["bus0", "bus1", "length"]
     lk_attrs = ["bus0", "bus1", "length", "underwater_fraction"]
+    lk_attrs = n.links.columns.intersection(lk_attrs)
 
     candidates = pd.concat([
         n.lines[ln_attrs],
