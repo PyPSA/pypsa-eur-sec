@@ -45,22 +45,22 @@ rule prepare_sector_networks:
                **config['scenario'])
 
 datafiles = [
-    "eea/UNFCCC_v23.csv",
-    "switzerland-sfoe/switzerland-new_format.csv",
-    "nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson",
-    "myb1-2017-nitro.xls",
-    "Industrial_Database.csv",
-    "emobility/KFZ__count",
-    "emobility/Pkw__count",
-    "eurostat-energy_balances-june_2016_edition",
-    "eurostat-energy_balances-may_2018_edition",
-    "jrc-idees-2015",
-    "h2_salt_caverns_GWh_per_sqkm.geojson",
+    "data/eea/UNFCCC_v23.csv",
+    "data/switzerland-sfoe/switzerland-new_format.csv",
+    "data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson",
+    "data/myb1-2017-nitro.xls",
+    "data/Industrial_Database.csv",
+    "data/emobility/KFZ__count",
+    "data/emobility/Pkw__count",
+    "data/h2_salt_caverns_GWh_per_sqkm.geojson",
+    directory("data/eurostat-energy_balances-june_2016_edition"),
+    directory("data/eurostat-energy_balances-may_2018_edition"),
+    directory("data/jrc-idees-2015"),
 ]
 
 if config.get('retrieve_sector_databundle', True):
     rule retrieve_sector_databundle:
-        output:  expand('data/{file}', file=datafiles)
+        output: *datafiles
         log: "logs/retrieve_sector_databundle.log"
         script: 'scripts/retrieve_sector_databundle.py'
 
