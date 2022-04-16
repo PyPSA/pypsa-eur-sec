@@ -41,7 +41,6 @@ def _add_land_use_constraint_m(n):
     # if generators clustering is lower than network clustering, land_use accounting is at generators clusters
 
     planning_horizons = snakemake.config["scenario"]["planning_horizons"]
-
     grouping_years = snakemake.config["existing_capacities"]["grouping_years"]
     current_horizon = snakemake.wildcards.investment_year
 
@@ -284,6 +283,7 @@ if __name__ == "__main__":
             opts="",
             clusters="37",
             lv=1.0,
+<<<<<<< HEAD
 
             sector_opts='168H-T-H-B-I-A-solar+p3-dist1',
             planning_horizons="2030",
@@ -291,6 +291,11 @@ if __name__ == "__main__":
     print(snakemake.config['scenario']['weather_year'])
     print(len(snakemake.config['scenario']['weather_year']))
     print(len(snakemake.config['scenario']['weather_year'][0]))
+=======
+            sector_opts='168H-T-H-B-I-A-solar+p3-dist1',
+            planning_horizons="2030",
+        )
+>>>>>>> cdd56288ff73eb6626b7377f1170ba585c5ff939
 
     logging.basicConfig(filename=snakemake.log.python,
                         level=snakemake.config['logging_level'])
