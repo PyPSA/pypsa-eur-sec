@@ -168,21 +168,21 @@ def calculate_costs(n, label, costs):
 
 
 def calculate_cumulative_cost():
-    planning_horizons = snakemake.config['scenario']['planning_horizons']
+    investment_years = snakemake.config['scenario']['investment_year']
 
     cumulative_cost = pd.DataFrame(index = df["costs"].sum().index,
                                   columns=pd.Series(data=np.arange(0,0.1, 0.01), name='social discount rate'))
 
-    #discount cost and express them in money value of planning_horizons[0]
+    #discount cost and express them in money value of investment_years[0]
     for r in cumulative_cost.columns:
-        cumulative_cost[r]=[df["costs"].sum()[index]/((1+r)**(index[-1]-planning_horizons[0])) for index in cumulative_cost.index]
+        cumulative_cost[r]=[df["costs"].sum()[index]/((1+r)**(index[-1]-investment_years[0])) for index in cumulative_cost.index]
 
     #integrate cost throughout the transition path
     for r in cumulative_cost.columns:
         for cluster in cumulative_cost.index.get_level_values(level=0).unique():
             for lv in cumulative_cost.index.get_level_values(level=1).unique():
                 for sector_opts in cumulative_cost.index.get_level_values(level=2).unique():
-                    cumulative_cost.loc[(cluster, lv, sector_opts, 'cumulative cost'),r] = np.trapz(cumulative_cost.loc[idx[cluster, lv, sector_opts,planning_horizons],r].values, x=planning_horizons)
+                    cumulative_cost.loc[(cluster, lv, sector_opts, 'cumulative cost'),r] = np.trapz(cumulative_cost.loc[idx[cluster, lv, sector_opts,investment_years],r].values, x=investment_years)
 
     return cumulative_cost
 
@@ -528,7 +528,7 @@ def make_summaries(networks_dict):
 
     columns = pd.MultiIndex.from_tuples(
         networks_dict.keys(),
-        names=["cluster", "lv", "opt", "planning_horizon"]
+        names=["weather_year","cluster", "lv", "opt", "investment_year"]
     )
 
     df = {}
@@ -562,14 +562,15 @@ if __name__ == "__main__":
         snakemake = mock_snakemake('make_summary')
     
     networks_dict = {
-        (cluster, lv, opt+sector_opt, planning_horizon) :
-        snakemake.config['results_dir'] + snakemake.config['run'] + f'/postnetworks/elec_s{simpl}_{cluster}_lv{lv}_{opt}_{sector_opt}_{planning_horizon}.nc' \
+        (weather_year, cluster, lv, opt+sector_opt, investment_year) :
+        snakemake.config['results_dir'] + snakemake.config['run'] + f'/postnetworks/elec{weather_year}_s{simpl}_{cluster}_lv{lv}_{opt}_{sector_opt}_iy{investment_year}.nc' \
         for simpl in snakemake.config['scenario']['simpl'] \
+        for weather_year in snakemake.config['scenario']['weather_year'] \
         for cluster in snakemake.config['scenario']['clusters'] \
         for opt in snakemake.config['scenario']['opts'] \
         for sector_opt in snakemake.config['scenario']['sector_opts'] \
         for lv in snakemake.config['scenario']['lv'] \
-        for planning_horizon in snakemake.config['scenario']['planning_horizons']
+        for investment_year in snakemake.config['scenario']['investment_year']
     }
 
     print(networks_dict)

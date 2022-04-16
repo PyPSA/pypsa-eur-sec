@@ -14,7 +14,16 @@ if __name__ == '__main__':
         from helper import mock_snakemake
         snakemake = mock_snakemake('build_population_layouts')
 
-    cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
+    weather_year = snakemake.wildcards.weather_year
+    cutout_source = snakemake.config['cutout'].split('-')[1]
+    if len(weather_year) > 0:
+        cutout_name = '../pypsa-eur/cutouts/europe-' + str(weather_year) + '-' + cutout_source + '.nc'
+    else:
+        cutout_name = '../pypsa-eur/cutouts/europe-2013-era5.nc'
+
+    print(cutout_name)
+    cutout = atlite.Cutout(cutout_name)
+    # cutout = atlite.Cutout(snakemake.input.cutout)
 
     grid_cells = cutout.grid_cells()
 
@@ -33,7 +42,7 @@ if __name__ == '__main__':
 
     urban_fraction = pd.read_csv(snakemake.input.urban_percent,
                                 header=None, index_col=0,
-                                names=['fraction'], squeeze=True) / 100.
+                                names=['fraction']).squeeze() / 100.
 
     # fill missing Balkans values
     missing = ["AL", "ME", "MK"]
