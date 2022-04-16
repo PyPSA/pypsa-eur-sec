@@ -1,0 +1,5 @@
+__default__:
+    partition: q64,q32,q36,q24
+    name: "sector.{rule}.{wildcards}"
+    output: "logs/cluster/{rule}.{wildcards}.out"
+    error: "logs/cluster/{rule}.{wildcards}.err"

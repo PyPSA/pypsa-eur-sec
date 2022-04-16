@@ -7,19 +7,20 @@ retrieve_sector_databundle: true
 results_dir: results/
 summary_dir: results
 costs_dir: ../technology-data/outputs/
-run: your-run-name  # use this to keep track of runs with different settings
+run: your-run-name # use this to keep track of runs with different settings
 foresight: overnight # options are overnight, myopic, perfect (perfect is not yet implemented)
-# if you use myopic or perfect foresight, set the investment years in "planning_horizons" below
+# if you use myopic or perfect foresight, set the investment years in "investment_year" below
 
 scenario:
   simpl: # only relevant for PyPSA-Eur
     - ''
+  weather_year: # year (if empty: 2013) used for weather data (solar irradiance, wind velocity, water runoff, temperature) [1979-2021]
+    - '2004'
+    - '2013'
   lv: # allowed transmission line volume expansion, can be any float >= 1.0 (today) or "opt"
     - 1.0
-    - 1.5
   clusters: # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
-    - 45
-    - 50
+    - 37
   opts: # only relevant for PyPSA-Eur
     - ''
   sector_opts: # this is where the main scenario settings are
@@ -40,9 +41,12 @@ scenario:
   # planning_horizons), be:beta decay; ex:exponential decay
   # cb40ex0 distributes a carbon budget of 40 GtCO2 following an exponential
   # decay with initial growth rate 0
-  planning_horizons: # investment years for myopic and perfect; or costs year for overnight
+  investment_year: # investment and cost years for myopic or investment year for overnight
     - 2030
-  # for example, set to [2020, 2030, 2040, 2050] for myopic foresight
+    - 2040
+    - 2050
+
+  # For myopic, available years: 2020, 2025, 2030, 2035, 2040, 2045, 2050
 
 # CO2 budget as a fraction of 1990 emissions
 # this is over-ridden if CO2Lx is set in sector_opts
@@ -56,15 +60,7 @@ co2_budget:
   2045: 0.0322580645
   2050: 0
 
-# snapshots are originally set in PyPSA-Eur/config.yaml but used again by PyPSA-Eur-Sec
-snapshots:
-  # arguments to pd.date_range
-  start: "2013-01-01"
-  end: "2014-01-01"
-  closed: left # end is not inclusive
-
-atlite:
-  cutout: ../pypsa-eur/cutouts/europe-2013-era5.nc
+cutout: 'europe-era5'
 
 # this information is NOT used but needed as an argument for
 # pypsa-eur/scripts/add_electricity.py/load_costs in make_summary.py
@@ -72,6 +68,9 @@ electricity:
   max_hours:
     battery: 6
     H2: 168
+
+load:
+  year: 2013 # Year of historical electricity load 
 
 # regulate what components with which carriers are kept from PyPSA-Eur;
 # some technologies are removed because they are implemented differently
@@ -316,6 +315,7 @@ industry:
   # Material Economics (2019): https://materialeconomics.com/latest-updates/industrial-transformation-2050
 
 costs:
+  year: 2030 # Available cost years: 2020, 2025, 2030, 2035, 2040, 2045, 2050
   lifetime: 25 #default lifetime
   # From a Lion Hirth paper, also reflects average of Noothout et al 2016
   discountrate: 0.07

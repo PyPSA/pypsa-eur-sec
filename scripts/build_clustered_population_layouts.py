@@ -15,7 +15,15 @@ if __name__ == '__main__':
             clusters=48,
         )
 
-    cutout = atlite.Cutout(snakemake.config['atlite']['cutout'])
+    weather_year = snakemake.wildcards.weather_year
+    cutout_source = snakemake.config['cutout'].split('-')[1]
+    if len(weather_year) > 0:
+        cutout_name = '../pypsa-eur/cutouts/europe-' + str(weather_year) + '-' + cutout_source + '.nc'
+    else:
+        cutout_name = '../pypsa-eur/cutouts/europe-2013-era5.nc'
+
+    print(cutout_name)
+    cutout = atlite.Cutout(cutout_name)
 
     clustered_regions = gpd.read_file(
         snakemake.input.regions_onshore).set_index('name').buffer(0).squeeze()
