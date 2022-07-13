@@ -1310,10 +1310,15 @@ def build_heat_demand(n):
 
     heat_demand = pd.concat(heat_demand, axis=1)
     electric_heat_supply = pd.concat(electric_heat_supply, axis=1)
+    print("BUILD HEAT DEMAND")
+    print("total heat : ", heat_demand.sum().sum()/1e6)
+    
 
     # subtract from electricity load since heat demand already in heat_demand
     electric_nodes = n.loads.index[n.loads.carrier == "electricity"]
     n.loads_t.p_set[electric_nodes] = n.loads_t.p_set[electric_nodes] - electric_heat_supply.groupby(level=1, axis=1).sum()[electric_nodes]
+
+    print("electric heat total : ", electric_heat_supply.groupby(level=1, axis=1).sum()[electric_nodes].sum().sum()/1e6)
 
     return heat_demand
 
@@ -1324,7 +1329,9 @@ def add_heat(n, costs):
 
     sectors = ["residential", "services"]
 
+    debug_elec_demand(n, "pre build_heat")
     heat_demand = build_heat_demand(n)
+    debug_elec_demand(n, "post build_heat")
 
     nodes, dist_fraction, urban_fraction = create_nodes_for_heat_sector()
 
@@ -2287,6 +2294,25 @@ def limit_individual_line_extension(n, maxext):
     hvdc = n.links.index[n.links.carrier == 'DC']
     n.links.loc[hvdc, 'p_nom_max'] = n.links.loc[hvdc, 'p_nom'] + maxext
 
+
+def debug_elec_demand(n,outstr):
+    electric_nodes = n.loads.index[n.loads.carrier == "electricity"]
+    tot_elec = n.loads_t.p_set[electric_nodes].sum().sum()/1e6
+    print(outstr," : ",tot_elec)
+
+def scale_residual_elec_demand(n):
+    scaling = pd.read_csv(snakemake.input.elec_scaling,index_col=0)
+    scaling.fillna(1.0,inplace=True)
+    for ct in n.buses.country.dropna().unique():
+        # TODO map onto n.bus.country
+        loads_i = n.loads.index[(n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")]
+        if n.loads_t.p_set[loads_i].empty: continue
+        if snakemake.config["scaling"]["elec"]["by_nation"]:
+            factor = scaling.loc[ct,"scale"]
+        else:
+            factor = scaling.loc["all_countries","scale"]
+        n.loads_t.p_set[loads_i] *= factor
+
 #%%
 if __name__ == "__main__":
     if 'snakemake' not in globals():
@@ -2324,7 +2350,7 @@ if __name__ == "__main__":
     pop_weighted_energy_totals = pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
 
     patch_electricity_network(n)
-
+    
     spatial = define_spatial(pop_layout.index, options)
 
     if snakemake.config["foresight"] == 'myopic':
@@ -2338,9 +2364,9 @@ if __name__ == "__main__":
     add_co2_tracking(n, options)
 
     add_generation(n, costs)
-
+    
     add_storage_and_grids(n, costs)
-
+    
     # TODO merge with opts cost adjustment below
     for o in opts:
         if o[:4] == "wave":
@@ -2358,7 +2384,7 @@ if __name__ == "__main__":
 
     if "T" in opts:
         add_land_transport(n, costs)
-
+    
     if "H" in opts:
         add_heat(n, costs)
 
@@ -2367,12 +2393,14 @@ if __name__ == "__main__":
 
     if "I" in opts:
         add_industry(n, costs)
-
+    
     if "I" in opts and "H" in opts:
         add_waste_heat(n)
 
     if "A" in opts:  # requires H and I
         add_agriculture(n, costs)
+
+    scale_residual_elec_demand(n)
 
     if options['dac']:
         add_dac(n, costs)
