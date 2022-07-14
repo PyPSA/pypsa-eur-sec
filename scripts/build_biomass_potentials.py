@@ -183,7 +183,7 @@ def convert_nuts2_to_regions(bio_nuts2, regions):
     overlay["share"] = area(overlay) / overlay["area_nuts2"]
 
     # multiply all nuts2-level values with share of nuts2 inside region
-    adjust_cols = overlay.columns.difference({"name", "area_nuts2", "geometry", "share"})
+    adjust_cols = overlay.columns.difference({"name", "area_nuts2", "geometry", "share","country"})
     overlay[adjust_cols] = overlay[adjust_cols].multiply(overlay["share"], axis=0)
 
     bio_regions = overlay.groupby("name").sum()
@@ -196,7 +196,7 @@ def convert_nuts2_to_regions(bio_nuts2, regions):
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from helper import mock_snakemake
-        snakemake = mock_snakemake('build_biomass_potentials')
+        snakemake = mock_snakemake('build_biomass_potentials',simpl='',clusters=37)
 
     config = snakemake.config['biomass']
     year = config["year"]
