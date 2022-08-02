@@ -41,4 +41,4 @@ if __name__ == '__main__':
     nodal_df.index.name = "TWh/a (MtCO2/a)"
 
     fn = snakemake.output.industrial_energy_demand_per_node
-    nodal_df.to_csv(fn, float_format='%.2f')
+    nodal_df.to_csv(fn)

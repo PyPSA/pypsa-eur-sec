@@ -484,6 +484,7 @@ plotting:
     oil: '#c9c9c9'
     oil boiler: '#adadad'
     agriculture machinery oil: '#949494'
+    agriculture machinery electric: '#94b594'
     shipping oil: "#808080"
     land transport oil: '#afafaf'
     # nuclear

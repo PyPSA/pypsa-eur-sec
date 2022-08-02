@@ -49,4 +49,4 @@ if __name__ == '__main__':
     production["HVC"] *= get(config['HVC_primary_fraction'], investment_year)
 
     fn = snakemake.output.industrial_production_per_country_tomorrow
-    production.to_csv(fn, float_format='%.2f')
+    production.to_csv(fn)

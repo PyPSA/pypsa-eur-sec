@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Given a scaling folder, create a number of scaling folders that sweep from 0 scaling to those values
+Load the names of all levers, and the variables they sweep
 """
 
 import os
@@ -13,7 +13,7 @@ import numpy as np
 
 STEPS = 10
 noscaling_dir = "noscaling"
-scaling_dir = "Grubler"
+scaling_dir = "Tango"
 
 files = {}
 for f in glob.glob("../scaling/"+scaling_dir+"/*.csv"):
@@ -21,7 +21,7 @@ for f in glob.glob("../scaling/"+scaling_dir+"/*.csv"):
     
 for s in range(1,STEPS+1):
     try:
-        newdir="../scaling/"+scaling_dir+"-"+str(s)+"of"+str(STEPS)
+        newdir="../scaling/"+scaling_dir+"_"+str(s)+"of"+str(STEPS)
         os.mkdir(newdir)
         
     except OSError as error:

@@ -225,4 +225,4 @@ if __name__ == '__main__':
     separate_basic_chemicals(demand)
 
     fn = snakemake.output.industrial_production_per_country
-    demand.to_csv(fn, float_format='%.2f')
+    demand.to_csv(fn)

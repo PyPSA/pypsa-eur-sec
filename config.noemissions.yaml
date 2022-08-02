@@ -7,7 +7,7 @@ retrieve_sector_databundle: true
 results_dir: results/
 summary_dir: results
 costs_dir: ../technology-data/outputs/
-run: default_scaling_yaml  # use this to keep track of runs with different settings
+run: noemissions_default  # use this to keep track of runs with different settings
 foresight: overnight # options are overnight, myopic, perfect (perfect is not yet implemented)
 # if you use myopic or perfect foresight, set the investment years in "planning_horizons" below
 
@@ -18,38 +18,13 @@ scenario:
     - opt
   clusters: # number of nodes in Europe, any integer between 37 (1 node per country-zone) and several hundred
     - 37
-#    - 64
-#    - 96
-#    - 128
-#    - 256
   opts: # only relevant for PyPSA-Eur
     - ''
   scal:
     - noscaling
-    # - dallfreightaviation
-    # - dallfreighttransport
-    # - dallindustry
-    # - dallnavigation
-    # - dallpassengeraviation
-    # - dallpassengertransport
-    # - ddomesticheat
-    # - delec
-    # - dserviceheat
-    # - Grubler_1of10
-    # - Grubler_2of10
-    # - Grubler_3of10
-    # - Grubler_4of10
-    # - Grubler_5of10
-    # - Grubler_6of10
-    # - Grubler_7of10
-    # - Grubler_8of10
-    # - Grubler_9of10
-    # - Grubler_10of10
-
+    - Tango
   sector_opts: # this is where the main scenario settings are
-    - Co2L0p01-96H-T-H-B-I-A-solar+p3-dist1
-
-    
+    - Co2L0-96H-T-H-B-I-A-solar+p3-dist1
   # to really understand the options here, look in scripts/prepare_sector_network.py
   # Co2Lx specifies the CO2 target in x% of the 1990 values; default will give default (5%);
   # Co2L0p25 will give 25% CO2 emissions; Co2Lm0p05 will give 5% negative emissions
@@ -69,21 +44,6 @@ scenario:
   planning_horizons: # investment years for myopic and perfect; or costs year for overnight
     - 2050
   # for example, set to [2020, 2030, 2040, 2050] for myopic foresight
-
-scaling:
-    heat:
-        by_nation: false
-    industry:
-        by_nation: false
-        by_sector: true
-    transport:
-        by_nation: false
-    energy_totals:
-        by_nation: false
-        by_sector: true
-    elec:
-        by_nation: false
-
 
 # CO2 budget as a fraction of 1990 emissions
 # this is over-ridden if CO2Lx is set in sector_opts
@@ -142,7 +102,7 @@ energy:
   emissions: CO2 # "CO2" or "All greenhouse gases - (CO2 equivalent)"
 
 biomass:
-  year: 2030
+  year: 2050
   scenario: ENS_Med
   classes:
     solid biomass:
@@ -241,10 +201,10 @@ sector:
   time_dep_hp_cop: true #time dependent heat pump coefficient of performance
   heat_pump_sink_T: 55. # Celsius, based on DTU / large area radiators; used in build_cop_profiles.py
    # conservatively high to cover hot water and space heating in poorly-insulated buildings
-  reduce_space_heat_exogenously: false  # reduces space heat demand by a given factor (applied before losses in DH)
+  reduce_space_heat_exogenously: true  # reduces space heat demand by a given factor (applied before losses in DH)
   # this can represent e.g. building renovation, building demolition, or if
   # the factor is negative: increasing floor area, increased thermal comfort, population growth
-  reduce_space_heat_exogenously_factor: 0 #0.29 # per unit reduction in space heat demand
+  reduce_space_heat_exogenously_factor: 0.29 # per unit reduction in space heat demand
   # the default factors are determined by the LTS scenario from http://tool.european-calculator.eu/app/buildings/building-types-area/?levers=1ddd4444421213bdbbbddd44444ffffff11f411111221111211l212221
     # 2020: 0.10  # this results in a space heat demand reduction of 10%
     # 2025: 0.09  # first heat demand increases compared to 2020 because of larger floor area per capita
@@ -273,6 +233,7 @@ sector:
   marginal_cost_storage: 0. #1e-4
   methanation: true
   helmeth: true
+  coal_cc: false
   dac: false
   co2_vent: true
   SMR: true
@@ -302,13 +263,13 @@ sector:
   gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
   biomass_transport: false  # biomass transport between nodes
   conventional_generation: # generator : carrier
-    OCGT: gas
+    #OCGT: gas
 
 
 industry:
   St_primary_fraction: 0.3 # fraction of steel produced via primary route versus secondary route (scrap+EAF); today fraction is 0.6
     # 2020: 0.6
-    # 2025: 0.55H
+    # 2025: 0.55
     # 2030: 0.5
     # 2035: 0.45
     # 2040: 0.4
@@ -468,15 +429,15 @@ plotting:
     - resistive heater
     - CHP heat
     - CHP electric
-    - gas boiler
+    #- gas boiler
     - central heat pump
     - central resistive heater
     - central CHP heat
     - central CHP electric
-    - central gas boiler
+    #- central gas boiler
   heat_generators:
-    - gas boiler
-    - central gas boiler
+    #- gas boiler
+    #- central gas boiler
     - solar thermal collector
     - central solar thermal collector
   tech_colors:
@@ -525,7 +486,6 @@ plotting:
     oil boiler: '#adadad'
     agriculture machinery oil: '#949494'
     agriculture machinery electric: '#94b594'
-
     shipping oil: "#808080"
     land transport oil: '#afafaf'
     # nuclear

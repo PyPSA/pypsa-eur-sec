@@ -395,21 +395,33 @@ def add_carrier_buses(n, carrier, nodes=None):
     )
 
     #capital cost could be corrected to e.g. 0.2 EUR/kWh * annuity and O&M
-    n.madd("Store",
-        nodes + " Store",
-        bus=nodes,
-        e_nom_extendable=True,
-        e_cyclic=True,
-        carrier=carrier,
-    )
+    
+    if snakemake.config["sector"]["set_gas_limit"] and carrier == "gas":
+        n.madd("Store",
+            nodes + " Store",
+            bus=nodes,
+            e_nom_extendable=True,
+            e_cyclic=False,
+            e_initial=snakemake.config["sector"]["gas_limit"],
+            marginal_cost=costs.at[carrier, 'fuel'],
+            carrier=carrier,
+        )
+    else:
+        n.madd("Store",
+            nodes + " Store",
+            bus=nodes,
+            e_nom_extendable=True,
+            e_cyclic=True,
+            carrier=carrier,
+        )
 
-    n.madd("Generator",
-        nodes,
-        bus=nodes,
-        p_nom_extendable=True,
-        carrier=carrier,
-        marginal_cost=costs.at[carrier, 'fuel']
-    )
+        n.madd("Generator",
+            nodes,
+            bus=nodes,
+            p_nom_extendable=True,
+            carrier=carrier,
+            marginal_cost=costs.at[carrier, 'fuel']
+        )
 
 
 # TODO: PyPSA-Eur merge issue

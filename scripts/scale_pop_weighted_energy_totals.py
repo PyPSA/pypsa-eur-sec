@@ -91,4 +91,4 @@ agg_dict = {
 for sect in agg_dict.keys():
     data_new[sect] = data_new[agg_dict[sect]].sum(axis=1)
   
-data_new.to_csv(snakemake.output[0],float_format="%.4f")
+data_new.to_csv(snakemake.output[0])

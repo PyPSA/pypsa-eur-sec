@@ -7,7 +7,7 @@ retrieve_sector_databundle: true
 results_dir: results/
 summary_dir: results
 costs_dir: ../technology-data/outputs/
-run: default_scaling_yaml  # use this to keep track of runs with different settings
+run: Business_As_Usual  # use this to keep track of runs with different settings
 foresight: overnight # options are overnight, myopic, perfect (perfect is not yet implemented)
 # if you use myopic or perfect foresight, set the investment years in "planning_horizons" below
 
@@ -26,6 +26,7 @@ scenario:
     - ''
   scal:
     - noscaling
+    - Past_trends
     # - dallfreightaviation
     # - dallfreighttransport
     # - dallindustry
@@ -213,12 +214,12 @@ sector:
   bev_avail_mean: 0.8
   v2g: true #allows feed-in to grid from EV battery
   #what is not EV or FCEV is oil-fuelled ICE
-  land_transport_fuel_cell_share: 0.15 # 1 means all FCEVs
+  land_transport_fuel_cell_share: 0.001 # 1 means all FCEVs
     # 2020: 0
     # 2030: 0.05
     # 2040: 0.1
     # 2050: 0.15
-  land_transport_electric_share: 0.85 # 1 means all EVs
+  land_transport_electric_share: 0.022 # 1 means all EVs
     # 2020: 0
     # 2030: 0.25
     # 2040: 0.6
@@ -230,7 +231,7 @@ sector:
   agriculture_machinery_electric_efficiency: 0.3 # electricity per use
   shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011
   shipping_hydrogen_liquefaction: false # whether to consider liquefaction costs for shipping H2 demands
-  shipping_hydrogen_share: 1 # 1 means all hydrogen FC
+  shipping_hydrogen_share: 0 # 1 means all hydrogen FC
     # 2020: 0
     # 2025: 0
     # 2030: 0.05

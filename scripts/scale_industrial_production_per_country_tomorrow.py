@@ -43,4 +43,4 @@ else:
         #global scaling : all nations the same
         prod = prod * scale.loc["all_countries"]["all_sectors"]
         
-prod.to_csv(snakemake.output.industrial_production_per_country_tomorrow,float_format="%.4f")
+prod.to_csv(snakemake.output.industrial_production_per_country_tomorrow)
