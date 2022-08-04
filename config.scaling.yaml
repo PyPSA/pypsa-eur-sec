@@ -303,7 +303,8 @@ sector:
   biomass_transport: false  # biomass transport between nodes
   conventional_generation: # generator : carrier
     OCGT: gas
-
+  set_gas_limit: false
+  gas_limit: 1e9
 
 industry:
   St_primary_fraction: 0.3 # fraction of steel produced via primary route versus secondary route (scrap+EAF); today fraction is 0.6

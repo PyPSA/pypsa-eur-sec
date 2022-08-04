@@ -238,7 +238,7 @@ def add_co2_sequestration_limit(n, sns):
 
     define_constraints(n, lhs, sense, limit, 'GlobalConstraint',
                        'mu', axes=pd.Index([name]), spec=name)
-
+    print("CO2 Sequestration limit added : ",limit/1e6,"MtCO2")
 
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
@@ -283,7 +283,7 @@ if __name__ == "__main__":
             opts="",
             clusters="37",
             lv=1.0,
-            sector_opts='168H-T-H-B-I-A-solar+p3-dist1',
+            sector_opts='168H-T-H-B-I-A-solar+p3-dist1-seq800',
             planning_horizons="2030",
         )
 
@@ -294,7 +294,10 @@ if __name__ == "__main__":
     if tmpdir is not None:
         from pathlib import Path
         Path(tmpdir).mkdir(parents=True, exist_ok=True)
-    opts = snakemake.wildcards.opts.split('-')
+    #print(snakemake.wildcards)
+    #print(snakemake.wildcards.opts)
+    #print(snakemake.wildcards.sector_opts.split('-'))
+    opts = snakemake.wildcards.sector_opts.split('-')
     solve_opts = snakemake.config['solving']['options']
 
     fn = getattr(snakemake.log, 'memory', None)

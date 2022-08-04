@@ -406,6 +406,9 @@ def add_carrier_buses(n, carrier, nodes=None):
             marginal_cost=costs.at[carrier, 'fuel'],
             carrier=carrier,
         )
+        
+        print("adding gas limit of",snakemake.config["sector"]["gas_limit"]/1e6,"TWh")
+        
     else:
         n.madd("Store",
             nodes + " Store",
@@ -495,7 +498,7 @@ def add_co2_tracking(n, options):
     n.madd("Store",
         spatial.co2.nodes,
         e_nom_extendable=True,
-        e_nom_max=np.inf,
+        e_nom_max=np.inf, #snakemake.config["sector"]["co2_sequestration_potential"],
         capital_cost=options['co2_sequestration_cost'],
         carrier="co2 stored",
         bus=spatial.co2.nodes
@@ -1200,10 +1203,18 @@ def add_land_transport(n, costs):
     number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)["number cars"]
     avail_profile = pd.read_csv(snakemake.input.avail_profile, index_col=0, parse_dates=True)
     dsm_profile = pd.read_csv(snakemake.input.dsm_profile, index_col=0, parse_dates=True)
-
-    fuel_cell_share = get(options["land_transport_fuel_cell_share"], investment_year)
-    electric_share = get(options["land_transport_electric_share"], investment_year)
-    ice_share = 1 - fuel_cell_share - electric_share
+    
+    if not snakemake.config["sector"]["use_scenario_fuel_fractions"]:
+        fuel_cell_share = get(options["land_transport_fuel_cell_share"], investment_year)
+        electric_share = get(options["land_transport_electric_share"], investment_year)
+        
+    else:
+        scen = snakemake.wildcards.scal
+        fuel_cell_share = snakemake.config["sector"]["fuel_fractions"][scen]["land_transport_fuel_cell_share"]
+        electric_share = snakemake.config["sector"]["fuel_fractions"][scen]["land_transport_electric_share"]
+        
+        
+    ice_share = 1 - fuel_cell_share - electric_share    
 
     print("FCEV share", fuel_cell_share)
     print("EV share", electric_share)
@@ -2013,7 +2024,13 @@ def add_industry(n, costs):
 
     all_navigation = ["total international navigation", "total domestic navigation"]
     efficiency = options['shipping_average_efficiency'] / costs.at["fuel cell", "efficiency"]
-    shipping_hydrogen_share = get(options['shipping_hydrogen_share'], investment_year)
+    
+    if not snakemake.config["sector"]["use_scenario_fuel_fractions"]:
+        shipping_hydrogen_share = get(options['shipping_hydrogen_share'], investment_year)
+    else:
+        scen = snakemake.wildcards.scal
+        shipping_hydrogen_share = snakemake.config["sector"]["fuel_fractions"][scen]["shipping_hydrogen_share"]
+    
     p_set = shipping_hydrogen_share * pop_weighted_energy_totals.loc[nodes, all_navigation].sum(axis=1) * 1e6 * efficiency / 8760
 
     n.madd("Load",
@@ -2251,8 +2268,13 @@ def add_agriculture(n, costs):
     )
 
     # machinery
-
-    electric_share = get(options["agriculture_machinery_electric_share"], investment_year)
+    if not snakemake.config["sector"]["use_scenario_fuel_fractions"]:
+        electric_share = get(options["agriculture_machinery_electric_share"], investment_year)
+    else:
+        scen = snakemake.wildcards.scal
+        electric_share = snakemake.config["sector"]["fuel_fractions"][scen]["agriculture_machinery_electric_share"]
+    
+    
     assert electric_share <= 1.
     ice_share = 1 - electric_share
 
