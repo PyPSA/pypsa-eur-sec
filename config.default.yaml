@@ -48,6 +48,20 @@ scenario:
   # - 2040
   # - 2050
   # for myopic foresight
+    # MGA techs
+  mga_tech:
+    - Generator-onwind
+    - Generator-solar
+    - Link-H2 Electrolysis
+    - Link-heat pump
+  sense:
+    - min
+    - max
+  epsilon:
+    - 0.01
+  #  - 0.02
+  #  - 0.05
+    - 0.1
 
 # CO2 budget as a fraction of 1990 emissions
 # this is over-ridden if CO2Lx is set in sector_opts

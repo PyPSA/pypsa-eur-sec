@@ -191,7 +191,7 @@ def set_carbon_constraints(n, opts):
         n.add(
             "GlobalConstraint",
             "Co2neutral",
-            type="Co2constraint",
+            type="Co2Neutral",
             carrier_attribute="co2_emissions",
             investment_period=n.snapshots.levels[0][-1],
             sense="<=",

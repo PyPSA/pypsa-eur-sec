@@ -16,7 +16,9 @@ wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
     clusters="[0-9]+m?",
     opts="[-+a-zA-Z0-9]*",
-    sector_opts="[-+a-zA-Z0-9\.\s]*"
+    sector_opts="[-+a-zA-Z0-9\.\s]*",
+    planning_horizons="[0-9]+m?",
+    epsilon="[0-9\.]*",
 
 
 SDIR = config['summary_dir'] + '/' + config['run']
@@ -701,7 +703,7 @@ if config["foresight"] == "perfect":
             python=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_python.log",
             memory=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_memory.log"
         threads: 4
-        resources: mem_mb=config['solving']['mem']
+        resources: mem_mb=config['solving']['solver'].get('threads', 4)
         benchmark: RDIR + "/benchmarks/solve_network/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years"
         script: "scripts/solve_network.py"
 
@@ -755,5 +757,92 @@ if config["foresight"] == "perfect":
             capacities="results"  + '/' + config['run'] + '/graphs/capacities.pdf',
         threads: 2
         resources: mem_mb=10000
+        script: 'scripts/plot_summary_perfect.py'
+
+
+    # MODELLING TO GENERATE ALTERNATIVES
+
+    # At this checkpoint (https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#data-dependent-conditional-execution)
+    # based on the variables of the original problem the search directions of the MGA iterations are inferred.
+
+    # checkpoint generate_list_of_alternatives:
+    #     input: RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+    #     output: RDIR + "/alternatives/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}_cat-{category}.txt"
+    #     script: "scripts/mga/generate_list_of_alternatives.py"
+
+
+    rule solve_all_alternatives:
+        input:
+            expand(RDIR + "/alternatives/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}.nc",
+                   **config['scenario'])
+
+
+    rule generate_alternative:
+        input:
+            overrides="data/override_component_attrs",
+            network= RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years.nc",
+            costs=CDIR,
+            config=SDIR + '/configs/config.yaml'
+        output: RDIR + "/alternatives/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}.nc"
+        benchmark: RDIR + "/benchmarks/alternatives/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}_time"
+
+        log:
+            solver=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}_solver.log",
+            python=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}_python.log",
+            memory=RDIR + "/logs/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}_memory.log"
+        threads: config['solving']['solver'].get('threads', 4)
+        resources: mem_mb=config['solving']['mem']
+        script: "scripts/solve_network_mga.py"
+
+
+    rule make_summary_mga:
+        input:
+            networks=expand(RDIR + "/alternatives/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_brownfield_all_years_tol{epsilon}_obj+{mga_tech}+{sense}.nc",
+                     **config['scenario']),
+            costs=CDIR + "costs_2020.csv",
+            overrides="data/override_component_attrs",
+        output:
+            nodal_costs="results" + '/' + config['run'] + '/csvs/alternatives/nodal_costs.csv',
+            nodal_capacities="results"  + '/' + config['run'] + '/csvs/alternatives/nodal_capacities.csv',
+            nodal_cfs="results"  + '/' + config['run'] + '/csvs/alternatives/nodal_cfs.csv',
+            cfs="results"  + '/' + config['run'] + '/csvs/alternatives/cfs.csv',
+            costs="results"  + '/' + config['run'] + '/csvs/alternatives/costs.csv',
+            capacities="results"  + '/' + config['run'] + '/csvs/alternatives/capacities.csv',
+            curtailment="results"  + '/' + config['run'] + '/csvs/alternatives/curtailment.csv',
+            capital_cost="results"  + '/' + config['run'] + '/csvs/alternatives/capital_cost.csv',
+            energy="results"  + '/' + config['run'] + '/csvs/alternatives/energy.csv',
+            supply="results"  + '/' + config['run'] + '/csvs/alternatives/supply.csv',
+            supply_energy="results"  + '/' + config['run'] + '/csvs/alternatives/supply_energy.csv',
+            prices="results"  + '/' + config['run'] + '/csvs/alternatives/prices.csv',
+            weighted_prices="results"  + '/' + config['run'] + '/csvs/alternatives/weighted_prices.csv',
+            market_values="results"  + '/' + config['run'] + '/csvs/alternatives/market_values.csv',
+            price_statistics="results"  + '/' + config['run'] + '/csvs/alternatives/price_statistics.csv',
+            metrics="results"  + '/' + config['run'] + '/csvs/alternatives/metrics.csv',
+            co2_emissions="results"  + '/' + config['run'] + '/csvs/alternatives/co2_emissions.csv',
+        threads: 2
+        resources: mem_mb=10000
         script:
-            'scripts/plot_summary_perfect.py'
+            'scripts/make_summary_perfect.py'
+
+    rule plot_summary_mga:
+        input:
+            costs_csv="results"  + '/' + config['run'] + '/csvs/alternatives/costs.csv',
+            costs=CDIR,
+            energy="results"  + '/' + config['run'] + '/csvs/alternatives/energy.csv',
+            balances="results"  + '/' + config['run'] + '/csvs/alternatives/supply_energy.csv',
+            eea ="data/eea/UNFCCC_v24.csv",
+            countries="results"  + '/' + config['run'] + '/csvs/alternatives/nodal_capacities.csv',
+            co2_emissions="results"  + '/' + config['run'] + '/csvs/alternatives/co2_emissions.csv',
+            capacities="results"  + '/' + config['run'] + '/csvs/alternatives/capacities.csv',
+            capital_cost="results"  + '/' + config['run'] + '/csvs/alternatives/capital_cost.csv',
+        output:
+            costs1="results"  + '/' + config['run'] + '/graphs/alternatives/costs.pdf',
+            costs2="results"  + '/' + config['run'] + '/graphs/alternatives/costs2.pdf',
+            costs3="results"  + '/' + config['run'] + '/graphs/alternatives/total_costs_per_year.pdf',
+            # energy="results"  + '/' + config['run'] + '/graphs/energy.pdf',
+            balances="results"  + '/' + config['run'] + '/graphs/alternatives/balances-energy.pdf',
+            co2_emissions="results"  + '/' + config['run'] + '/graphs/alternatives/carbon_budget_plot.pdf',
+            capacities="results"  + '/' + config['run'] + '/graphs/alternatives/capacities.pdf',
+        threads: 2
+        resources: mem_mb=10000
+        script: 'scripts/plot_summary_perfect.py'

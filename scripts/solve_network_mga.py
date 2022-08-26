@@ -6,11 +6,14 @@ import numpy as np
 import pandas as pd
 import math
 
-from pypsa.linopt import get_var, linexpr, define_constraints
+from pypsa.linopt import get_var, linexpr, define_constraints, write_objective
 
-from pypsa.linopf import network_lopf, ilopf
+from pypsa.linopf import network_lopf, ilopf, lookup
 
-from pypsa.descriptors import get_active_assets, expand_series
+from pypsa.descriptors import (get_active_assets, expand_series, nominal_attrs,
+                               get_extendable_i, get_non_extendable_i)
+
+from pypsa.pf import get_switchable_as_dense as get_as_dense
 
 from vresutils.benchmark import memory_logger
 
@@ -28,17 +31,17 @@ pypsa.pf.logger.setLevel(logging.WARNING)
 
 def add_land_use_constraint(n):
 
+    if (snakemake.config["foresight"] == "perfect") and ('m' in snakemake.wildcards.clusters):
+        raise NotImplementedError(
+            "The clustermethod  m is not implemented for perfect foresight"
+        )
+
     if 'm' in snakemake.wildcards.clusters:
         _add_land_use_constraint_m(n)
     else:
         _add_land_use_constraint(n)
 
 def add_land_use_constraint_perfect(n):
-    if (snakemake.config["foresight"] == "perfect") and ('m' in snakemake.wildcards.clusters):
-        raise NotImplementedError(
-            "The clustermethod  m is not implemented for perfect foresight"
-        )
-    logger.info("Add land use constraint")
     c, attr = "Generator", "p_nom"
     investments = n.snapshots.levels[0]
     df = n.df(c).copy()
@@ -300,6 +303,29 @@ def add_co2_sequestration_limit(n, sns):
     define_constraints(n, lhs, sense, limit, 'GlobalConstraint',
                        'mu', axes=pd.Index([name]), spec=name)
 
+def add_carbon_neutral_constraint(n, snapshots):
+    glcs = n.global_constraints.query('type == "Co2Neutral"')
+    if glcs.empty:
+        return
+    for name, glc in glcs.iterrows():
+        rhs = glc.constant
+        carattr = glc.carrier_attribute
+        emissions = n.carriers.query(f"{carattr} != 0")[carattr]
+
+        if emissions.empty:
+            continue
+
+        # stores
+        n.stores["carrier"] = n.stores.bus.map(n.buses.carrier)
+        stores = n.stores.query("carrier in @emissions.index and not e_cyclic")
+        time_valid = int(glc.loc["investment_period"])
+        if not stores.empty:
+            final_e = get_var(n, "Store", "e").groupby(level=0).last()[stores.index]
+            lhs = linexpr(
+                (-1, final_e.shift().loc[time_valid]), (1, final_e.loc[time_valid])
+            )
+            define_constraints(n, lhs,  glc.sense, rhs,  "GlobalConstraint", "mu",
+                               axes=pd.Index([name]), spec=name)
 
 
 def add_carbon_constraint(n, snapshots):
@@ -328,30 +354,6 @@ def add_carbon_constraint(n, snapshots):
             define_constraints(n, lhs,  sense, rhs,  "GlobalConstraint", "mu",
                                axes=pd.Index([name]), spec=name)
 
-def add_carbon_neutral_constraint(n, snapshots):
-    glcs = n.global_constraints.query('type == "Co2Neutral"')
-    if glcs.empty:
-        return
-    logger.info("Add carbon neutrality constraint.")
-    for name, glc in glcs.iterrows():
-        rhs = glc.constant
-        carattr = glc.carrier_attribute
-        emissions = n.carriers.query(f"{carattr} != 0")[carattr]
-
-        if emissions.empty:
-            continue
-
-        # stores
-        n.stores["carrier"] = n.stores.bus.map(n.buses.carrier)
-        stores = n.stores.query("carrier in @emissions.index and not e_cyclic")
-        time_valid = int(glc.loc["investment_period"])
-        if not stores.empty:
-            final_e = get_var(n, "Store", "e").groupby(level=0).last()[stores.index]
-            lhs = linexpr(
-                (-1, final_e.shift().loc[time_valid]), (1, final_e.loc[time_valid])
-            )
-            define_constraints(n, lhs,  glc.sense, rhs,  "GlobalConstraint", "mu",
-                               axes=pd.Index([name]), spec=name)
 
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
@@ -363,7 +365,177 @@ def extra_functionality(n, snapshots):
         add_carbon_constraint(n, snapshots)
         add_carbon_neutral_constraint(n, snapshots)
 
+    # MGA
+    mga_tech = snakemake.wildcards.mga_tech.split("-")
+    logger.info('MGA tech {}'.format(mga_tech))
+    component = mga_tech[0]
+    carrier = mga_tech[1]
+    sense = snakemake.wildcards.sense
+    process_objective_wildcard(n, component, carrier, sense)
+    define_mga_constraint(n, snapshots)
+    define_mga_objective(n)
 
+
+def process_objective_wildcard(n, component, carrier, sense):
+    """
+    Parameters
+    ----------
+    n : pypsa.Network
+    n.mga_obj : list-like
+        [component, carrier, sense]
+    """
+    lookup_to_int = {"max": -1, "min": 1}
+
+    mga_obj = [component, carrier, lookup_to_int[sense]]
+
+    # attach to network
+    n.mga_obj = mga_obj
+    # print mga_obj to console
+    logger.info("MGA objective {}".format(mga_obj))
+
+
+def objective_constant(n, sns, ext=True, nonext=True):
+    """Add capital cost of existing capacities.
+    """
+
+    if not (ext or nonext):
+        return 0.0
+
+    if n._multi_invest:
+        period_weighting = n.investment_period_weightings.objective[
+                sns.unique("period")
+            ]
+    constant = 0.0
+    for c, attr in nominal_attrs.items():
+        i = pd.Index([])
+        if ext:
+            i = i.append(get_extendable_i(n, c))
+        if nonext:
+            i = i.append(get_non_extendable_i(n, c))
+        cost = n.df(c)[attr][i] @ n.df(c).capital_cost[i]
+        if n._multi_invest:
+            active = pd.concat(
+                {
+                    period: get_active_assets(n, c, period)[i]
+                    for period in sns.unique("period")
+                },
+                axis=1,
+            )
+            cost = active @ period_weighting * cost
+
+        constant += cost @ n.df(c)[attr][i]
+
+    return constant
+
+
+def define_mga_constraint(n, snapshots, epsilon=None, with_fix=None):
+    """Build constraint defining near-optimal feasible space
+    Parameters
+    ----------
+    n : pypsa.Network
+    snapshots : Series|list-like
+        snapshots
+    epsilon : float, optional
+        Allowed added cost compared to least-cost solution, by default None
+    with_fix : bool, optional
+        Calculation of allowed cost penalty should include cost of non-extendable components, by default None
+    """
+
+    if epsilon is None:
+        epsilon = float(snakemake.wildcards.epsilon)
+
+    if with_fix is None:
+        with_fix = snakemake.config.get("include_non_extendable", True)
+
+    if n._multi_invest:
+        period_weighting = n.investment_period_weightings.objective[
+            snapshots.unique("period")
+        ]
+
+    expr = pd.Series(dtype="object")
+    # marginal cost
+    if n._multi_invest:
+        weighting = n.snapshot_weightings.objective.mul(period_weighting, level=0).loc[
+            snapshots
+        ]
+    else:
+        weighting = n.snapshot_weightings.objective.loc[snapshots]
+
+    for c, attr in lookup.query("marginal_cost").index:
+        cost = (
+            get_as_dense(n, c, "marginal_cost", snapshots)
+            .loc[:, lambda ds: (ds != 0).all()]
+            .mul(weighting, axis=0)
+        )
+        if cost.empty:
+            continue
+        marginal_cost = linexpr((cost, get_var(n, c, attr).loc[snapshots, cost.columns])).sum()
+        expr = pd.concat([expr, marginal_cost])
+
+    # investment
+    for c, attr in nominal_attrs.items():
+        ext_i = get_extendable_i(n, c)
+        cost = n.df(c)["capital_cost"][ext_i]
+        if cost.empty:
+            continue
+
+        if n._multi_invest:
+            active = pd.concat(
+                {
+                    period: get_active_assets(n, c, period)[ext_i]
+                    for period in snapshots.unique("period")
+                },
+                axis=1,
+            )
+            cost = active @ period_weighting * cost
+
+        caps = get_var(n, c, attr).loc[ext_i]
+        expr = pd.concat([expr, linexpr((cost, caps))])
+
+    lhs = expr.sum()
+    if with_fix:
+        ext_const =  n.objective # objective_constant(n,snapshots, ext=True, nonext=False)
+        nonext_const = n.objective_constant # objective_constant(n, snapshots, ext=False, nonext=True)
+        limit = (1 + epsilon) * (n.objective + ext_const + nonext_const) - nonext_const
+    else:
+        ext_const = n.objective # objective_constant(n, snapshots)
+        limit = (1 + epsilon) * (n.objective + ext_const)
+
+    name = 'CostMax'
+    sense = '<='
+
+    logger.info('Add MGA constraint with epsilon: {} and limit {}'.format(epsilon, limit))
+
+    n.add("GlobalConstraint", name, sense=sense, constant=limit,
+          type=np.nan, carrier_attribute=np.nan)
+
+    define_constraints(n, lhs, sense, limit, "GlobalConstraint", 'mu_epsilon', spec=name)
+
+
+def define_mga_objective(n):
+
+    components, pattern, sense = n.mga_obj
+
+    if isinstance(components, str):
+        components = [components]
+
+    terms = []
+    for c in components:
+        if pattern == "heat pump":
+            variables = get_var(n, c, nominal_attrs[c])[n.df(c)["carrier"].str.contains(pattern)]
+        else:
+            variables = get_var(n, c, nominal_attrs[c])[n.df(c)["carrier"]==pattern]
+
+        if c in ["Link", "Line"] and pattern in ["", "LN|LK", "LK|LN"]:
+            coeffs = sense * n.df(c).loc[variables.index, "length"]
+        else:
+            coeffs = sense
+
+        terms.append(linexpr((coeffs, variables)))
+
+    joint_terms = pd.concat(terms)
+
+    write_objective(n, joint_terms)
 
 def solve_network(n, config, opts='', **kwargs):
     solver_options = config['solving']['solver'].copy()
@@ -402,12 +574,15 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from helper import mock_snakemake
         snakemake = mock_snakemake(
-            'solve_network_perfect',
+            'generate_alternative',
             simpl='',
             opts="",
             clusters="37",
             lv=1.0,
             sector_opts='365h-T-H-B-I-A-solar+p3-dist1-co2min',
+            mga_tech="Generator-solar",
+            sense="min",
+            epsilon=0.1,
         )
 
     logging.basicConfig(filename=snakemake.log.python,
@@ -427,12 +602,16 @@ if __name__ == "__main__":
 
         overrides = override_component_attrs(snakemake.input.overrides)
         n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
+        del n.global_constraints_t["land_use_constraint"]
+        n.mremove("GlobalConstraint", ["co2_sequestration_limit"])
 
         n = prepare_network(n, solve_opts)
 
+
         n = solve_network(n, config=snakemake.config, opts=opts,
                           solver_dir=tmpdir,
-                          solver_logfile=snakemake.log.solver)
+                          solver_logfile=snakemake.log.solver,
+                          skip_objective=True)
 
         if "lv_limit" in n.global_constraints.index:
             n.line_volume_limit = n.global_constraints.at["lv_limit", "constant"]
