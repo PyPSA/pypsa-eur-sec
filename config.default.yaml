@@ -150,130 +150,137 @@ existing_capacities:
 
 
 sector:
-  district_heating:
-    potential: 0.6  # maximum fraction of urban demand which can be supplied by district heating
-     # increase of today's district heating demand to potential maximum district heating share
-     # progress = 0 means today's district heating share, progress = 1 means maximum fraction of urban demand is supplied by district heating
-    progress: 1
-      # 2020: 0.0
-      # 2030: 0.3
+
+  transport: 
+    bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV DSM
+    bev_dsm_restriction_time: 7  #Time at which SOC of BEV has to be dsm_restriction_value
+    transport_heating_deadband_upper: 20.
+    transport_heating_deadband_lower: 15.
+    ICE_lower_degree_factor: 0.375  #in per cent increase in fuel consumption per degree above deadband
+    ICE_upper_degree_factor: 1.6
+    EV_lower_degree_factor: 0.98
+    EV_upper_degree_factor: 0.63
+    bev_dsm: true #turns on EV battery
+    bev_availability: 0.5  #How many cars do smart charging
+    bev_energy: 0.05  #average battery size in MWh
+    bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
+    bev_plug_to_wheel_efficiency: 0.2 #kWh/km from EPA https://www.fueleconomy.gov/feg/ for Tesla Model S
+    bev_charge_rate: 0.011 #3-phase charger with 11 kW
+    bev_avail_max: 0.95
+    bev_avail_mean: 0.8
+    v2g: true #allows feed-in to grid from EV battery
+    #what is not EV or FCEV is oil-fuelled ICE
+    land_transport_fuel_cell_share: 0.15 # 1 means all FCEVs
+      # 2020: 0
+      # 2030: 0.05
+      # 2040: 0.1
+      # 2050: 0.15
+    land_transport_electric_share: 0.85 # 1 means all EVs
+      # 2020: 0
+      # 2030: 0.25
       # 2040: 0.6
-      # 2050: 1.0
-    district_heating_loss: 0.15
-  bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV DSM
-  bev_dsm_restriction_time: 7  #Time at which SOC of BEV has to be dsm_restriction_value
-  transport_heating_deadband_upper: 20.
-  transport_heating_deadband_lower: 15.
-  ICE_lower_degree_factor: 0.375  #in per cent increase in fuel consumption per degree above deadband
-  ICE_upper_degree_factor: 1.6
-  EV_lower_degree_factor: 0.98
-  EV_upper_degree_factor: 0.63
-  bev_dsm: true #turns on EV battery
-  bev_availability: 0.5  #How many cars do smart charging
-  bev_energy: 0.05  #average battery size in MWh
-  bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
-  bev_plug_to_wheel_efficiency: 0.2 #kWh/km from EPA https://www.fueleconomy.gov/feg/ for Tesla Model S
-  bev_charge_rate: 0.011 #3-phase charger with 11 kW
-  bev_avail_max: 0.95
-  bev_avail_mean: 0.8
-  v2g: true #allows feed-in to grid from EV battery
-  #what is not EV or FCEV is oil-fuelled ICE
-  land_transport_fuel_cell_share: 0.15 # 1 means all FCEVs
-    # 2020: 0
-    # 2030: 0.05
-    # 2040: 0.1
-    # 2050: 0.15
-  land_transport_electric_share: 0.85 # 1 means all EVs
-    # 2020: 0
-    # 2030: 0.25
-    # 2040: 0.6
-    # 2050: 0.85
-  transport_fuel_cell_efficiency: 0.5
-  transport_internal_combustion_efficiency: 0.3
-  agriculture_machinery_electric_share: 0
-  agriculture_machinery_fuel_efficiency: 0.7 # fuel oil per use
-  agriculture_machinery_electric_efficiency: 0.3 # electricity per use
-  shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011
-  shipping_hydrogen_liquefaction: false # whether to consider liquefaction costs for shipping H2 demands
-  shipping_hydrogen_share: 1 # 1 means all hydrogen FC
-    # 2020: 0
-    # 2025: 0
-    # 2030: 0.05
-    # 2035: 0.15
-    # 2040: 0.3
-    # 2045: 0.6
-    # 2050: 1
-  time_dep_hp_cop: true #time dependent heat pump coefficient of performance
-  heat_pump_sink_T: 55. # Celsius, based on DTU / large area radiators; used in build_cop_profiles.py
-   # conservatively high to cover hot water and space heating in poorly-insulated buildings
-  reduce_space_heat_exogenously: true  # reduces space heat demand by a given factor (applied before losses in DH)
-  # this can represent e.g. building renovation, building demolition, or if
-  # the factor is negative: increasing floor area, increased thermal comfort, population growth
-  reduce_space_heat_exogenously_factor: 0.29 # per unit reduction in space heat demand
-  # the default factors are determined by the LTS scenario from http://tool.european-calculator.eu/app/buildings/building-types-area/?levers=1ddd4444421213bdbbbddd44444ffffff11f411111221111211l212221
-    # 2020: 0.10  # this results in a space heat demand reduction of 10%
-    # 2025: 0.09  # first heat demand increases compared to 2020 because of larger floor area per capita
-    # 2030: 0.09
-    # 2035: 0.11
-    # 2040: 0.16
-    # 2045: 0.21
-    # 2050: 0.29
-  retrofitting :  # co-optimises building renovation to reduce space heat demand
-    retro_endogen: false  # co-optimise space heat savings
-    cost_factor: 1.0   # weight costs for building renovation
-    interest_rate: 0.04  # for investment in building components
-    annualise_cost: true  # annualise the investment costs
-    tax_weighting: false   # weight costs depending on taxes in countries
-    construction_index: true   # weight costs depending on labour/material costs per country
-  tes: true
-  tes_tau: # 180 day time constant for centralised, 3 day for decentralised
-    decentral: 3
-    central: 180
-  boilers: true
-  oil_boilers: false
-  biomass_boiler: true
-  chp: true
-  micro_chp: false
-  solar_thermal: true
-  solar_cf_correction: 0.788457  # =  >>> 1/1.2683
-  marginal_cost_storage: 0. #1e-4
-  methanation: true
-  helmeth: true
-  coal_cc: false
-  dac: true
-  co2_vent: false
-  SMR: true
-  co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
-  co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
-  co2_network: false
-  cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
-  hydrogen_underground_storage: true
-  hydrogen_underground_storage_locations:
-    # - onshore  # more than 50 km from sea
-    - nearshore  # within 50 km of sea
-    # - offshore
-  use_fischer_tropsch_waste_heat: true
-  use_fuel_cell_waste_heat: true
-  electricity_distribution_grid: true
-  electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
-  electricity_grid_connection: true  # only applies to onshore wind and utility PV
-  H2_network: true
-  gas_network: false
-  H2_retrofit: false  # if set to True existing gas pipes can be retrofitted to H2 pipes
-  # according to hydrogen backbone strategy (April, 2020) p.15
-  # https://gasforclimate2050.eu/wp-content/uploads/2020/07/2020_European-Hydrogen-Backbone_Report.pdf
-  # 60% of original natural gas capacity could be used in cost-optimal case as H2 capacity
-  H2_retrofit_capacity_per_CH4: 0.6  # ratio for H2 capacity per original CH4 capacity of retrofitted pipelines
-  gas_network_connectivity_upgrade: 1 # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation
-  gas_distribution_grid: true
-  gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
-  biomass_transport: false  # biomass transport between nodes
-  conventional_generation: # generator : carrier
-    OCGT: gas
-  biomass_to_liquid: false
-  biosng: false
+      # 2050: 0.85
+    transport_fuel_cell_efficiency: 0.5
+    transport_internal_combustion_efficiency: 0.3
+    agriculture_machinery_electric_share: 0
+    agriculture_machinery_fuel_efficiency: 0.7 # fuel oil per use
+    agriculture_machinery_electric_efficiency: 0.3 # electricity per use
+    shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011
+    shipping_hydrogen_liquefaction: false # whether to consider liquefaction costs for shipping H2 demands
+    shipping_hydrogen_share: 1 # 1 means all hydrogen FC
+      # 2020: 0
+      # 2025: 0
+      # 2030: 0.05
+      # 2035: 0.15
+      # 2040: 0.3
+      # 2045: 0.6
+      # 2050: 1
 
+  heating:
+    district_heating:
+      potential: 0.6  # maximum fraction of urban demand which can be supplied by district heating
+      # increase of today's district heating demand to potential maximum district heating share
+      # progress = 0 means today's district heating share, progress = 1 means maximum fraction of urban demand is supplied by district heating
+      progress: 1
+        # 2020: 0.0
+        # 2030: 0.3
+        # 2040: 0.6
+        # 2050: 1.0
+      district_heating_loss: 0.15
 
+    time_dep_hp_cop: true #time dependent heat pump coefficient of performance
+    heat_pump_sink_T: 55. # Celsius, based on DTU / large area radiators; used in build_cop_profiles.py
+    # conservatively high to cover hot water and space heating in poorly-insulated buildings
+    reduce_space_heat_exogenously: true  # reduces space heat demand by a given factor (applied before losses in DH)
+    # this can represent e.g. building renovation, building demolition, or if
+    # the factor is negative: increasing floor area, increased thermal comfort, population growth
+    reduce_space_heat_exogenously_factor: 0.29 # per unit reduction in space heat demand
+    # the default factors are determined by the LTS scenario from http://tool.european-calculator.eu/app/buildings/building-types-area/?levers=1ddd4444421213bdbbbddd44444ffffff11f411111221111211l212221
+      # 2020: 0.10  # this results in a space heat demand reduction of 10%
+      # 2025: 0.09  # first heat demand increases compared to 2020 because of larger floor area per capita
+      # 2030: 0.09
+      # 2035: 0.11
+      # 2040: 0.16
+      # 2045: 0.21
+      # 2050: 0.29
+    retrofitting :  # co-optimises building renovation to reduce space heat demand
+      retro_endogen: false  # co-optimise space heat savings
+      cost_factor: 1.0   # weight costs for building renovation
+      interest_rate: 0.04  # for investment in building components
+      annualise_cost: true  # annualise the investment costs
+      tax_weighting: false   # weight costs depending on taxes in countries
+      construction_index: true   # weight costs depending on labour/material costs per country
+    tes: true
+    tes_tau: # 180 day time constant for centralised, 3 day for decentralised
+      decentral: 3
+      central: 180
+    boilers: true
+    oil_boilers: false
+    biomass_boiler: true
+    chp: true
+    micro_chp: false
+    solar_thermal: true
+    solar_cf_correction: 0.788457  # =  >>> 1/1.2683
+    marginal_cost_storage: 0. #1e-4
+
+  sector_techs:
+    methanation: true
+    helmeth: true
+    coal_cc: false
+    dac: true
+    co2_vent: false
+    SMR: true
+    co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
+    co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
+    co2_network: false
+    cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
+    hydrogen_underground_storage: true
+    hydrogen_underground_storage_locations:
+      # - onshore  # more than 50 km from sea
+      - nearshore  # within 50 km of sea
+      # - offshore
+    use_fischer_tropsch_waste_heat: true
+    use_fuel_cell_waste_heat: true
+    conventional_generation: # generator : carrier
+      OCGT: gas
+    biomass_to_liquid: false
+    biosng: false
+
+  networks:
+    electricity_distribution_grid: true
+    electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
+    electricity_grid_connection: true  # only applies to onshore wind and utility PV
+    H2_network: true
+    gas_network: false
+    H2_retrofit: false  # if set to True existing gas pipes can be retrofitted to H2 pipes
+    # according to hydrogen backbone strategy (April, 2020) p.15
+    # https://gasforclimate2050.eu/wp-content/uploads/2020/07/2020_European-Hydrogen-Backbone_Report.pdf
+    # 60% of original natural gas capacity could be used in cost-optimal case as H2 capacity
+    H2_retrofit_capacity_per_CH4: 0.6  # ratio for H2 capacity per original CH4 capacity of retrofitted pipelines
+    gas_network_connectivity_upgrade: 1 # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation
+    gas_distribution_grid: true
+    gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
+    biomass_transport: false  # biomass transport between nodes
 
 industry:
   St_primary_fraction: 0.3 # fraction of steel produced via primary route versus secondary route (scrap+EAF); today fraction is 0.6
