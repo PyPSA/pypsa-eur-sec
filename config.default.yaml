@@ -152,8 +152,8 @@ existing_capacities:
 sector:
 
   transport: 
-    bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV DSM
-    bev_dsm_restriction_time: 7  #Time at which SOC of BEV has to be dsm_restriction_value
+    bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV (battery electric vehicle) DSM (demand side management), [0,1]
+    bev_dsm_restriction_time: 7  #Time at which SOC (state of charge) of BEV has to be dsm_restriction_value
     transport_heating_deadband_upper: 20.
     transport_heating_deadband_lower: 15.
     ICE_lower_degree_factor: 0.375  #in per cent increase in fuel consumption per degree above deadband
