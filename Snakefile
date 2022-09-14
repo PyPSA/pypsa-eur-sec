@@ -6,10 +6,9 @@ from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
 
 if not exists("config.yaml"):
-    copyfile("config.default.yaml", "config.yaml")
+    copyfile("config.default.yaml","config.yaml")
 
-configfile: "config.yaml"
-
+configfile:"config.yaml"
 
 wildcard_constraints:
     lv="[a-z0-9\.]+",
@@ -623,14 +622,14 @@ if config["foresight"] == "myopic":
     rule add_existing_baseyear:
         input:
             overrides="data/override_component_attrs",
-            network=RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
+            network=RDIR + '/prenetworks/elec_sc_{scal}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             powerplants=pypsaeur('resources/powerplants.csv'),
             busmap_s=pypsaeur("resources/busmap_elec_s{simpl}.csv"),
             busmap=pypsaeur("resources/busmap_elec_s{simpl}_{clusters}.csv"),
             clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
             costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
-            cop_soil_total="resources/cop_soil_total_elec_sc_{scal}_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec_sc_{scal}_s{simpl}_{clusters}.nc",
+            cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
+            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
             existing_heating='data/existing_infrastructure/existing_heating_raw.csv',
             country_codes='data/Country_codes.csv',
             existing_solar='data/existing_infrastructure/solar_capacity_IRENA.csv',
@@ -658,8 +657,8 @@ if config["foresight"] == "myopic":
             network=RDIR + '/prenetworks/elec_sc_{scal}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             network_p=solved_previous_horizon, #solved network at previous time step
             costs=CDIR + "costs_{planning_horizons}.csv",
-            cop_soil_total="resources/cop_soil_total_elec_sc_{scal}_s{simpl}_{clusters}.nc",
-            cop_air_total="resources/cop_air_total_elec_sc_{scal}_s{simpl}_{clusters}.nc"
+            cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
+            cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc"
         output: RDIR + "/prenetworks-brownfield/elec_sc_{scal}_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         threads: 4
         resources: mem_mb=10000

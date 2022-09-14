@@ -2383,6 +2383,26 @@ def scale_residual_elec_demand(n):
             factor = scaling.loc["all_countries","scale"]
         n.loads_t.p_set[loads_i] *= factor
 
+def demand_side_functions():
+    return -1
+
+def flatten_loads(n):
+    heat_systems = [
+        "residential rural",
+        "services rural",
+        "residential urban decentral",
+        "services urban decentral",
+        "urban central"
+    ]
+    return n
+    #if snakemake.config["sector"]["flatten_loads"]:
+    
+    #else:
+    
+    
+    
+    
+
 #%%
 if __name__ == "__main__":
     if 'snakemake' not in globals():
@@ -2526,5 +2546,7 @@ if __name__ == "__main__":
 
     if options['electricity_grid_connection']:
         add_electricity_grid_connection(n, costs)
+
+    demand_side_functions()
 
     n.export_to_netcdf(snakemake.output[0])

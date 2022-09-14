@@ -13,7 +13,7 @@ import numpy as np
 
 STEPS = 10
 noscaling_dir = "noscaling"
-scaling_dir = "Tango"
+scaling_dir = "transportsweep"
 
 files = {}
 for f in glob.glob("../scaling/"+scaling_dir+"/*.csv"):
