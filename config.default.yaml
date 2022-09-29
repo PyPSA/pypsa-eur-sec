@@ -244,37 +244,41 @@ sector:
     tes_tau: # 180 day time constant for centralised, 3 day for decentralised. Incorporates temperature losses due to imperfect insulation
       decentral: 3
       central: 180
-    boilers: true # Set to True to include technology
-    oil_boilers: false # Set to True to include technology
-    biomass_boiler: true # Set to True to include technology
-    chp: true # Set to True to include technology
-    micro_chp: false # Set to True to include technology
-    solar_thermal: true # Set to True to include technology
+    boilers: true # Set to True to include this technology
+    oil_boilers: false # Set to True to include this technology
+    biomass_boiler: true # Set to True to include this technology
+    chp: true # Set to True to include this technology
+    micro_chp: false # Set to True to include this technology
+    solar_thermal: true # Set to True to include this technology
     solar_cf_correction: 0.788457  # =  >>> 1/1.2683 TODO what is the source?
     marginal_cost_storage: 0. #1e-4
 
   sector_techs:
-    methanation: true
-    helmeth: true
-    coal_cc: false
-    dac: true
-    co2_vent: false
-    SMR: true
+    #Abbreviations
+    # CC: Carbon Capture
+    # DAC: Direct Air Capture
+    # SMR: Steam methane reforming
+    methanation: true # Set to True to include the conversion from H2 + CO2 -> CH4
+    helmeth: true # Set to True to include the (more efficient) helmeth conversion from H2 + CO2 -> CH4 (http://www.helmeth.eu/)
+    coal_cc: false # Set to True to include this technology
+    dac: true # Set to True to include this technology
+    co2_vent: false # Set to True to include this technology
+    SMR: true # Set to True to include this technology
     co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
     co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
     co2_network: false
     cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
-    hydrogen_underground_storage: true
-    hydrogen_underground_storage_locations:
+    hydrogen_underground_storage: true # Set to True to allow underground storage of hydrogen
+    hydrogen_underground_storage_locations: # Specify which locations for underground storage are allowed
       # - onshore  # more than 50 km from sea
       - nearshore  # within 50 km of sea
       # - offshore
     use_fischer_tropsch_waste_heat: true
     use_fuel_cell_waste_heat: true
-    conventional_generation: # generator : carrier
+    conventional_generation: # generator : carrier TODO: investigate
       OCGT: gas
-    biomass_to_liquid: false
-    biosng: false
+    biomass_to_liquid: false # Set to True to include this technology
+    biosng: false # Set to True to include this technology
 
   networks:
     electricity_distribution_grid: true
