@@ -266,7 +266,6 @@ sector:
     SMR: true # Set to True to include this technology
     co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
     co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
-    co2_network: false
     cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
     hydrogen_underground_storage: true # Set to True to allow underground storage of hydrogen
     hydrogen_underground_storage_locations: # Specify which locations for underground storage are allowed
@@ -285,6 +284,7 @@ sector:
     electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
     electricity_grid_connection: true  # only applies to onshore wind and utility PV
     H2_network: true
+    co2_network: false
     gas_network: false
     H2_retrofit: false  # if set to True existing gas pipes can be retrofitted to H2 pipes
     # according to hydrogen backbone strategy (April, 2020) p.15
