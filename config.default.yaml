@@ -244,12 +244,12 @@ sector:
     tes_tau: # 180 day time constant for centralised, 3 day for decentralised. Incorporates temperature losses due to imperfect insulation
       decentral: 3
       central: 180
-    boilers: true # Set to True to include this technology
-    oil_boilers: false # Set to True to include this technology
-    biomass_boiler: true # Set to True to include this technology
-    chp: true # Set to True to include this technology
-    micro_chp: false # Set to True to include this technology
-    solar_thermal: true # Set to True to include this technology
+    boilers: true # set to True to include this technology
+    oil_boilers: false # set to True to include this technology
+    biomass_boiler: true # set to True to include this technology
+    chp: true # set to True to include this technology
+    micro_chp: false # set to True to include this technology
+    solar_thermal: true # set to True to include this technology
     solar_cf_correction: 0.788457  # =  >>> 1/1.2683 TODO what is the source?
     marginal_cost_storage: 0. #1e-4
 
@@ -258,16 +258,16 @@ sector:
     # CC: Carbon Capture
     # DAC: Direct Air Capture
     # SMR: Steam methane reforming
-    methanation: true # Set to True to include the conversion from H2 + CO2 -> CH4
-    helmeth: true # Set to True to include the (more efficient) helmeth conversion from H2 + CO2 -> CH4 (http://www.helmeth.eu/)
-    coal_cc: false # Set to True to include this technology
-    dac: true # Set to True to include this technology
-    co2_vent: false # Set to True to include this technology
-    SMR: true # Set to True to include this technology
-    co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
+    methanation: true # set to True to include the conversion from H2 + CO2 -> CH4
+    helmeth: true # set to True to include the (more efficient) helmeth conversion from H2 + CO2 -> CH4 (http://www.helmeth.eu/)
+    coal_cc: false # set to True to include this technology
+    dac: true # set to True to include this technology
+    co2_vent: false # set to True to include this technology
+    SMR: true # set to True to include this technology
+    co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europetrue
     co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
     cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
-    hydrogen_underground_storage: true # Set to True to allow underground storage of hydrogen
+    hydrogen_underground_storage: true # set to True to allow underground storage of hydrogen
     hydrogen_underground_storage_locations: # Specify which locations for underground storage are allowed
       # - onshore  # more than 50 km from sea
       - nearshore  # within 50 km of sea
@@ -276,23 +276,23 @@ sector:
     use_fuel_cell_waste_heat: true
     conventional_generation: # generator : carrier TODO: investigate
       OCGT: gas
-    biomass_to_liquid: false # Set to True to include this technology
-    biosng: false # Set to True to include this technology
+    biomass_to_liquid: false # set to True to include this technology
+    biosng: false # set to True to include this technology
 
   networks:
-    electricity_distribution_grid: true
+    electricity_distribution_grid: true # Include electricity distribution grid costs
     electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
     electricity_grid_connection: true  # only applies to onshore wind and utility PV
-    H2_network: true
-    co2_network: false
-    gas_network: false
+    H2_network: true # set to True to include this network
+    co2_network: false # set to True to include this network
+    gas_network: false # set to True to include this network
     H2_retrofit: false  # if set to True existing gas pipes can be retrofitted to H2 pipes
     # according to hydrogen backbone strategy (April, 2020) p.15
     # https://gasforclimate2050.eu/wp-content/uploads/2020/07/2020_European-Hydrogen-Backbone_Report.pdf
     # 60% of original natural gas capacity could be used in cost-optimal case as H2 capacity
     H2_retrofit_capacity_per_CH4: 0.6  # ratio for H2 capacity per original CH4 capacity of retrofitted pipelines
     gas_network_connectivity_upgrade: 1 # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation
-    gas_distribution_grid: true
+    gas_distribution_grid: true # Include gas distribution grid costs
     gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
     biomass_transport: false  # biomass transport between nodes
 
@@ -402,7 +402,7 @@ solving:
     Seed: 123
     AggFill: 0
     PreDual: 0
-    GURO_PAR_BARDENSETHRESH: 200
+    GURO_PAR_BARDENsetHRESH: 200
     #FeasibilityTol: 1.e-6
 
     #name: cplex
