@@ -402,7 +402,7 @@ solving:
     Seed: 123
     AggFill: 0
     PreDual: 0
-    GURO_PAR_BARDENsetHRESH: 200
+    GURO_PAR_BARDENSETHRESH: 200
     #FeasibilityTol: 1.e-6
 
     #name: cplex
