@@ -203,6 +203,10 @@ sector:
       # 2050: 1
 
   heating:
+    #Abbreviations
+    # COP: Coefficient of Performance ("efficiency" of heat pumps)
+    # DH: District heating
+    # TES: Thermal Energy Storage
     district_heating:
       potential: 0.6  # maximum fraction of urban demand which can be supplied by district heating
       # increase of today's district heating demand to potential maximum district heating share
@@ -212,7 +216,7 @@ sector:
         # 2030: 0.3
         # 2040: 0.6
         # 2050: 1.0
-      district_heating_loss: 0.15
+      district_heating_loss: 0.15 # Range [0, 1]
 
     time_dep_hp_cop: true #time dependent heat pump coefficient of performance
     heat_pump_sink_T: 55. # Celsius, based on DTU / large area radiators; used in build_cop_profiles.py
@@ -229,24 +233,24 @@ sector:
       # 2040: 0.16
       # 2045: 0.21
       # 2050: 0.29
-    retrofitting :  # co-optimises building renovation to reduce space heat demand
+    retrofitting:  # co-optimises building renovation to reduce space heat demand
       retro_endogen: false  # co-optimise space heat savings
       cost_factor: 1.0   # weight costs for building renovation
       interest_rate: 0.04  # for investment in building components
       annualise_cost: true  # annualise the investment costs
       tax_weighting: false   # weight costs depending on taxes in countries
       construction_index: true   # weight costs depending on labour/material costs per country
-    tes: true
-    tes_tau: # 180 day time constant for centralised, 3 day for decentralised
+    tes: true # enable thermal energy storage (tes) 
+    tes_tau: # 180 day time constant for centralised, 3 day for decentralised. Incorporates temperature losses due to imperfect insulation
       decentral: 3
       central: 180
-    boilers: true
-    oil_boilers: false
-    biomass_boiler: true
-    chp: true
-    micro_chp: false
-    solar_thermal: true
-    solar_cf_correction: 0.788457  # =  >>> 1/1.2683
+    boilers: true # Set to True to include technology
+    oil_boilers: false # Set to True to include technology
+    biomass_boiler: true # Set to True to include technology
+    chp: true # Set to True to include technology
+    micro_chp: false # Set to True to include technology
+    solar_thermal: true # Set to True to include technology
+    solar_cf_correction: 0.788457  # =  >>> 1/1.2683 TODO what is the source?
     marginal_cost_storage: 0. #1e-4
 
   sector_techs:
