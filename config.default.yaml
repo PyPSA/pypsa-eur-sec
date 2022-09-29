@@ -150,42 +150,48 @@ existing_capacities:
 
 
 sector:
-
   transport: 
-    bev_dsm_restriction_value: 0.75  #Set to 0 for no restriction on BEV (battery electric vehicle) DSM (demand side management), [0,1]
-    bev_dsm_restriction_time: 7  #Time at which SOC (state of charge) of BEV has to be dsm_restriction_value
-    transport_heating_deadband_upper: 20.
-    transport_heating_deadband_lower: 15.
-    ICE_lower_degree_factor: 0.375  #in per cent increase in fuel consumption per degree above deadband
+    #Abbreviations
+    # BEV: battery electric vehicle
+    # FCEV: fuel cell electric vehicle
+    # DSM: demand side management
+    # SOC: state of charge
+    # ICE: Internal Combustion Engine
+    # FC: Fuel cell
+    bev_dsm_restriction_value: 0.75  #set to 0 for no restriction on BEV DSM. Range [0,1]
+    bev_dsm_restriction_time: 7  #time at which SOC of BEV has to be dsm_restriction_value. Range [0,24]
+    transport_heating_deadband_upper: 20. #temperature in degree Celsius above which vehicle cooling is required
+    transport_heating_deadband_lower: 15. #temperature in degree Celsius below which vehicle heating is required
+    ICE_lower_degree_factor: 0.375  #in per cent increase in fuel consumption per degree above deadband for ICE
     ICE_upper_degree_factor: 1.6
     EV_lower_degree_factor: 0.98
     EV_upper_degree_factor: 0.63
-    bev_dsm: true #turns on EV battery
-    bev_availability: 0.5  #How many cars do smart charging
+    bev_dsm: true #turns on BEV battery and allows DSM
+    bev_availability: 0.5  #how many cars do smart charging. Range [0,1]
     bev_energy: 0.05  #average battery size in MWh
-    bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency
+    bev_charge_efficiency: 0.9  #BEV (dis-)charging efficiency. Range [0,1]
     bev_plug_to_wheel_efficiency: 0.2 #kWh/km from EPA https://www.fueleconomy.gov/feg/ for Tesla Model S
     bev_charge_rate: 0.011 #3-phase charger with 11 kW
-    bev_avail_max: 0.95
-    bev_avail_mean: 0.8
+    bev_avail_max: 0.95 # TODO 
+    bev_avail_mean: 0.8 # TODO
     v2g: true #allows feed-in to grid from EV battery
-    #what is not EV or FCEV is oil-fuelled ICE
+    #what is not EV or FCEV is oil-fuelled ICE (land_transport_ice_share = 1 - land_transport_fuel_cell_share - land_transport_electric_share)
     land_transport_fuel_cell_share: 0.15 # 1 means all FCEVs
       # 2020: 0
       # 2030: 0.05
       # 2040: 0.1
       # 2050: 0.15
-    land_transport_electric_share: 0.85 # 1 means all EVs
+    land_transport_electric_share: 0.85 # 1 means all BEVs
       # 2020: 0
       # 2030: 0.25
       # 2040: 0.6
       # 2050: 0.85
-    transport_fuel_cell_efficiency: 0.5
-    transport_internal_combustion_efficiency: 0.3
-    agriculture_machinery_electric_share: 0
-    agriculture_machinery_fuel_efficiency: 0.7 # fuel oil per use
-    agriculture_machinery_electric_efficiency: 0.3 # electricity per use
-    shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011
+    transport_fuel_cell_efficiency: 0.5 # range [0,1]
+    transport_internal_combustion_efficiency: 0.3 # range [0,1]
+    agriculture_machinery_electric_share: 0 #Share of electric agriculture machinery. Range [0,1]
+    agriculture_machinery_fuel_efficiency: 0.7 # fuel oil per use. Range [0,1]
+    agriculture_machinery_electric_efficiency: 0.3 # electricity per use. Range [0,1]
+    shipping_average_efficiency: 0.4 #For conversion of fuel oil to propulsion in 2011. Range [0,1]
     shipping_hydrogen_liquefaction: false # whether to consider liquefaction costs for shipping H2 demands
     shipping_hydrogen_share: 1 # 1 means all hydrogen FC
       # 2020: 0
