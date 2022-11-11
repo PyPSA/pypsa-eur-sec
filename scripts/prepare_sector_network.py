@@ -2581,6 +2581,16 @@ def set_temporal_aggregation(n, opts, solver_name):
             n = apply_time_segmentation(n, segments, solver_name=solver_name)
             break
     return n
+
+
+def add_enhanced_geothermal():
+    pass
+
+
+
+
+
+
 #%%
 if __name__ == "__main__":
     if 'snakemake' not in globals():

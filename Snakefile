@@ -308,6 +308,23 @@ rule build_ammonia_production:
     script: 'scripts/build_ammonia_production.py'
 
 
+# =====================================================
+
+rule build_egs_potential:
+    input:
+        egs_potential="lukas_resources/mm3.xlsx",
+        egs_cost="lukas_resources/Geothermal_CapexOpex_Europe.xlsx",
+        shapes="resources/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+    output:
+        egs_potential_50="resources/egs_potential_profiles_50.nc"
+        egs_potential_100="resources/egs_potential_profiles_100.nc"
+        egs_potential_150="resources/egs_potential_profiles_150.nc"
+    resources: mem_mb=2000
+    script: "scripts/build_egs_potential.py"
+
+# =====================================================
+
+
 rule build_industry_sector_ratios:
     input:
         ammonia_production="resources/ammonia_production.csv",
