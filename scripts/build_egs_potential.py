@@ -26,6 +26,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+import xarray as xr
 import geopandas as gpd
 import pycountry
 from copy import deepcopy
@@ -154,9 +155,9 @@ class MegaMockSnakemake:
     input_shape = respath / 'regions_onshore_elec_s_256.geojson'
     
     output = dict(
-        egs_potential_50=respath/"egs_potential_profiles_50.csv",
-        egs_potential_100=respath/"egs_potential_profiles_100.csv",
-        egs_potential_150=respath/"egs_potential_profiles_150.csv",
+        egs_lcoe_50=respath/"egs_data_lcoe_50.nc",
+        egs_lcoe_100=respath/"egs_data_lcoe_100.nc",
+        egs_lcoe_150=respath/"egs_data_lcoe_150.nc",
         )
 
     def __init__(self):
@@ -172,6 +173,23 @@ if __name__ == "__main__":
         mms.input_shape 
         )
     
-    for cutoff in ['50', '100', '150']:
+    for cutoff in ["50", "100", "150"]:
         data = egs_data[cutoff]
-        data.to_csv(mms.output[f"egs_potential_{cutoff}"])
+
+        time = data["sus_potential"].index
+        countries = data["sus_potential"].columns
+        dims = ["time", "countries"]
+
+        ds = xr.Dataset(
+            data_vars=dict(
+                sustainable_potential=(dims, data["sus_potential"]),
+                marginal_cost=(dims, data["marginal_cost"]),
+                capital_cost=(dims, data["capital_cost"]),
+                ),
+            coords={
+                'time': (("time"), time),
+                'countries': (("countries"), countries),
+                },
+            attrs=dict(units='Fill in units!'))
+
+        ds.to_netcdf(mms.output[f"egs_lcoe_{cutoff}"])
