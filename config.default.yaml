@@ -77,6 +77,7 @@ electricity:
   max_hours:
     battery: 6
     H2: 168
+  include_egs: true
 
 # regulate what components with which carriers are kept from PyPSA-Eur;
 # some technologies are removed because they are implemented differently
@@ -129,9 +130,6 @@ biomass:
     biogas:
       - Manure solid, liquid
       - Sludge
-
-egs:
-  include: true
 
 solar_thermal:
   clearsky_model: simple  # should be "simple" or "enhanced"?

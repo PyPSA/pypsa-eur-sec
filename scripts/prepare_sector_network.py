@@ -2616,7 +2616,7 @@ def add_egs_potential(n, cutoff, egs_data):
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
-        emission=120, #kg/MWh_el
+        emission=0.12, #tCO2/MWh_el
     )
 
 

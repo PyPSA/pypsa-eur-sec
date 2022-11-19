@@ -313,9 +313,9 @@ rule build_ammonia_production:
 
 rule build_egs_potential:
     input:
-        egs_potential="lukas_resources/mmc3.xlsx",
-        egs_cost="lukas_resources/Geothermal_CapexOpex_Europe.xlsx",
-        shapes="resources/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        egs_potential="data/egs_data/egs_global_potential.xlsx",
+        egs_cost="data/egs_data/egs_costs.xlsx",
+        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
     output:
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
