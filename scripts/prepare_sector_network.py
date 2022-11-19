@@ -2660,6 +2660,20 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
+    if snakemake.config["egs"]["include"]:
+        
+        egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"]) 
+        test = egs_data["capital_cost"].to_pandas()
+
+        for cutoff in ["50", "100", "150"]:
+            if test.reindex(n.snapshots, method="ffill").isna().sum() > 0:
+                logger.warning((f"Not adding EGS; snapshots {n.snapshots[0]}"
+                    f"-{n.snapshots[-1]} outside EGS coverage 2015-2050."))
+                break
+
+            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"]) 
+            add_egs_potential(n, cutoff, egs_data)
+
     spatial = define_spatial(pop_layout.index, options)
 
     if snakemake.config["foresight"] == 'myopic':
