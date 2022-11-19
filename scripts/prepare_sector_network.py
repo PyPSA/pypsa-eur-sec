@@ -1799,7 +1799,6 @@ def create_nodes_for_heat_sector():
         f"possible is increased by a progress factor of\n{progress}",
         f"resulting in a district heating share of\n{dist_fraction_node}"
     )
-
     return nodes, dist_fraction_node, urban_fraction
 
 
@@ -2583,9 +2582,37 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_enhanced_geothermal():
-    pass
+def add_egs_potential(n, cutoff, egs_data):
+    """
+    Adds EGS potential to model.
+    Built in scripts/build_egs_potential.py
+    """ 
+    p_nom = egs_data["sustainable_potential"].to_pandas()
+    marginal_cost = egs_data["marginal_cost"].to_pandas()
+    capital_cost = egs_data["capital_cost"].to_pandas()
 
+    p_nom = p_nom.reindex(n.shapshots, method="ffill")
+    marginal_cost = marginal_cost.reindex(n.shapshots, method="ffill")
+    capital_cost = capital_cost.reindex(n.shapshots, method="ffill")
+
+    buses = p_nom.columns
+    
+    egs_names = buses + f" egs_cutoff_{cutoff}" 
+
+    n.madd(
+        "Generator",
+        egs_names,
+        bus=buses,
+        carrier="electricity",
+        p_nom=p_nom,
+        p_max_pu=1.,
+        p_min_pu=0.,
+        marginal_cost=marginal_cost,
+        capital_cost=capital_cost,
+        p_nom_extendable=True,
+        unit="MWh_el",
+        emission=TBD,
+    )
 
 
 
@@ -2612,6 +2639,8 @@ if __name__ == "__main__":
     options = snakemake.config["sector"]
 
     opts = snakemake.wildcards.sector_opts.split('-')
+
+    logger.info("opts: ", opts)
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
 

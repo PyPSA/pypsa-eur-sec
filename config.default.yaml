@@ -130,6 +130,8 @@ biomass:
       - Manure solid, liquid
       - Sludge
 
+egs:
+  include: true
 
 solar_thermal:
   clearsky_model: simple  # should be "simple" or "enhanced"?

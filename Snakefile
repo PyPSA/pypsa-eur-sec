@@ -310,17 +310,18 @@ rule build_ammonia_production:
 
 # =====================================================
 
+
 rule build_egs_potential:
     input:
-        egs_potential="lukas_resources/mm3.xlsx",
+        egs_potential="lukas_resources/mmc3.xlsx",
         egs_cost="lukas_resources/Geothermal_CapexOpex_Europe.xlsx",
         shapes="resources/regions_onshore_elec_s{simpl}_{clusters}.geojson",
     output:
-        egs_potential_50="resources/egs_potential_profiles_50.nc"
-        egs_potential_100="resources/egs_potential_profiles_100.nc"
-        egs_potential_150="resources/egs_potential_profiles_150.nc"
-    resources: mem_mb=2000
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
     script: "scripts/build_egs_potential.py"
+
 
 # =====================================================
 
@@ -518,6 +519,9 @@ rule prepare_sector_network:
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
         **build_retro_cost_output,
         **build_biomass_transport_costs_output,
         **gas_infrastructure
