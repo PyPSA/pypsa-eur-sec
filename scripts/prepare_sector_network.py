@@ -2587,21 +2587,26 @@ def add_egs_potential(n, cutoff, egs_data):
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
     """ 
+
+    nodes = pop_layout.index
+
     p_nom = egs_data["sustainable_potential"].to_pandas()
     marginal_cost = egs_data["marginal_cost"].to_pandas()
     capital_cost = egs_data["capital_cost"].to_pandas()
 
-    p_nom = p_nom.reindex(n.shapshots, method="ffill")
-    marginal_cost = marginal_cost.reindex(n.shapshots, method="ffill")
-    capital_cost = capital_cost.reindex(n.shapshots, method="ffill")
+    # p_nom conversion GW -> MW
+    # marginal_cost conversion Euro/kW -> Euro/MW
+    # capital_cost conversion Euro/kW -> Euro/MW
+    p_nom = p_nom.reindex(n.shapshots, method="ffill") * 1000. 
+    marginal_cost = marginal_cost.reindex(n.shapshots, method="ffill") * 1000.
+    capital_cost = capital_cost.reindex(n.shapshots, method="ffill") * 1000.
 
     buses = p_nom.columns
-    
-    egs_names = buses + f" egs_cutoff_{cutoff}" 
 
     n.madd(
         "Generator",
-        egs_names,
+        nodes,
+        suffix=f" egs_cutoff_{cutoff}",
         bus=buses,
         carrier="electricity",
         p_nom=p_nom,
@@ -2611,7 +2616,7 @@ def add_egs_potential(n, cutoff, egs_data):
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
-        emission=TBD,
+        emission=120, #kg/MWh_el
     )
 
 
@@ -2673,6 +2678,11 @@ if __name__ == "__main__":
 
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"]) 
             add_egs_potential(n, cutoff, egs_data)
+
+    from pathlib import Path
+    n.generators.to_csv(Path.cwd() + "generators_pypsaeursec.csv")
+    n.generators_t["marginal_cost"].to_csv(Path.cwd() + "generators_t_pypsaeursec_marginal.csv")
+    n.generators_t["capital_cost"].to_csv(Path.cwd() + "generators_t_pypsaeursec_capital.csv")
 
     spatial = define_spatial(pop_layout.index, options)
 
