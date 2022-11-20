@@ -1,10 +1,10 @@
 """
 Inputs
 ------
-- ``mmmc3.xlsx``: for potential of electricity from enhanced geothermal in 5 year
+- ``data/egs_data/egs_global_potential.xlsx``: for potential of electricity from enhanced geothermal in 5 year
 steps between 2015 and 2015 in a country-resolution (from "From hot rock to useful...")
 
-- ``Geothermal_CapexOpexEurope.xlsx``: Marginal and capital cost
+- ``data/egs_data/egs_costs.xlsx``: Marginal and capital cost
 
 Note the data comes in three steps of LCOE: 50, 100, 150 Euro/MWh
 For each three we have: Maximal nominal power, marginal cost, capital cost
@@ -16,10 +16,7 @@ Used data comes from the paper
 
 Outputs
 -------
-
-- ``lukas_resources/egs_potential_profiles_50.nc``
-- ``lukas_resources/egs_potential_profiles_100.nc``
-- ``lukas_resources/egs_potential_profiles_150.nc``
+(see Snakefile)
 """
 
 import logging
@@ -37,10 +34,6 @@ countryname_mapper = {
     'Bosnia and Herz.': 'Bosnia and Herzegovina',
     'Czech Republic': 'Czechia',
 }
-
-# for i, row in pypsa_countries.iterrows():
-#     if row.full_names in countryname_mapper:
-#         pypsa_countries.at[i, 'full_names'] = countryname_mapper[row.full_names]
 
 def get_egs_potentials(potentials_file, costs_file, shapes_file):
     """
@@ -138,39 +131,32 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
 
     return egs_data
 
-
-
 logger = logging.getLogger(__name__)
 
-from pathlib import Path
-
-### temporary mess
-pypsa_eur_path = Path.cwd() / '..' / '..' / 'lab_pypsa_eur_sec' / 'pypsa-eur'
-respath = pypsa_eur_path / 'resources' 
-egspath = Path.cwd() / "lukas_resources"
-
-class MegaMockSnakemake:
-    egs_potential = egspath / 'mmc3.xlsx'
-    egs_cost = egspath / 'Geothermal_CapexOpex_Europe.xlsx'
-    input_shape = respath / 'regions_onshore_elec_s_256.geojson'
-    
-    output = dict(
-        egs_lcoe_50=respath/"egs_data_lcoe_50.nc",
-        egs_lcoe_100=respath/"egs_data_lcoe_100.nc",
-        egs_lcoe_150=respath/"egs_data_lcoe_150.nc",
-        )
-
-    def __init__(self):
-        pass
-
-
 if __name__ == "__main__":
-    mms = MegaMockSnakemake()
     
+    if "snakemake" not in globals():
+        from helper import mock_snakemake
+        snakemake = mock_snakemake(
+            "build_egs_potential",
+            simpl="",
+            clusters=48,
+        )
+    
+    if "snakemake" not in globals():
+        from vresutils import Dict
+        import yaml
+        snakemake = Dict()
+        
+        with open("config.yaml") as f:
+            snakemake.config = yaml.safe_load(f) 
+        snakemake.input = Dict()
+        snakemake.output = Dict()
+     
     egs_data = get_egs_potentials(
-        mms.egs_potential,
-        mms.egs_cost,
-        mms.input_shape 
+        snakemake.input["egs_potential"],
+        snakemake.input["egs_cost"],
+        snakemake.input["shapes"],
         )
     
     for cutoff in ["50", "100", "150"]:
@@ -192,4 +178,4 @@ if __name__ == "__main__":
                 },
             attrs=dict(units='Fill in units!'))
 
-        ds.to_netcdf(mms.output[f"egs_lcoe_{cutoff}"])
+        ds.to_netcdf(snakemake.output[f"egs_potential_{cutoff}"])
