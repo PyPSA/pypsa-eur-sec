@@ -38,7 +38,7 @@ countryname_mapper = {
 def get_egs_potentials(potentials_file, costs_file, shapes_file):
     """
     Disaggregates data to the provided shapefile
-    
+
     Args:
         potentials_file(str or pathlib.Path): file with potentials
         costs_file(str or pathlib.Path): file with capital and marginal costs
@@ -50,7 +50,7 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
 
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()
-    
+
     for cutoff in cost_cutoffs:
         inner = dict()
         inner['sus_potential'] = pd.DataFrame(index=times, columns=shapes['name'])
@@ -63,7 +63,7 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
         lambda name: pycountry.countries.get(alpha_2=name[:2]).name)
 
     areas = pd.DataFrame(shapes.groupby('country').sum()['area'])
-    
+
     def get_overlap(country_row, shape_row):
         if shape_row.country != country_row.name:
             return 0.
@@ -89,7 +89,7 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
             potential = potential[[col for col in potential.columns if 'Power' in col]]
 
             potential = potential.loc["Afghanistan":"Zimbabwe"]
-            potential = potential.rename(index=countryname_mapper)     
+            potential = potential.rename(index=countryname_mapper)
 
             potential = potential.loc[areas.index]
             potential = potential[potential.columns[cutoff_slice]]
@@ -98,7 +98,7 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
             potential = country_shares.transpose() @ potential
 
             egs_data[cutoff]['sus_potential'].loc[time] = potential
-    
+
     # loading capex and opex at difference LCOE cutoffs
     cutoff_skiprows = [1, 44, 87]
     capex_usecols = slice(1, 9)
@@ -108,11 +108,11 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
         prices = pd.read_excel(costs_file,
                             sheet_name=1,
                             index_col=0,
-                            skiprows=skiprows, 
+                            skiprows=skiprows,
                             )
 
         prices = prices.iloc[:38]
-        prices = prices.rename(index=countryname_mapper) 
+        prices = prices.rename(index=countryname_mapper)
         prices = prices.loc[areas.index]
 
         capex = prices[prices.columns[capex_usecols]]
@@ -123,8 +123,8 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
 
         for col in capex.columns:
 
-            capex_by_shape = assigner.transpose() @ capex[col] 
-            opex_by_shape = assigner.transpose() @ opex[col] 
+            capex_by_shape = assigner.transpose() @ capex[col]
+            opex_by_shape = assigner.transpose() @ opex[col]
 
             egs_data[cutoff]['capital_cost'].loc[col] = capex_by_shape
             egs_data[cutoff]['marginal_cost'].loc[col] = opex_by_shape
@@ -134,7 +134,7 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    
+
     if "snakemake" not in globals():
         from helper import mock_snakemake
         snakemake = mock_snakemake(
@@ -142,23 +142,23 @@ if __name__ == "__main__":
             simpl="",
             clusters=48,
         )
-    
+
     if "snakemake" not in globals():
         from vresutils import Dict
         import yaml
         snakemake = Dict()
-        
+
         with open("config.yaml") as f:
-            snakemake.config = yaml.safe_load(f) 
+            snakemake.config = yaml.safe_load(f)
         snakemake.input = Dict()
         snakemake.output = Dict()
-     
+
     egs_data = get_egs_potentials(
         snakemake.input["egs_potential"],
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
         )
-    
+
     for cutoff in ["50", "100", "150"]:
         data = egs_data[cutoff]
 

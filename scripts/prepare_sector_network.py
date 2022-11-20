@@ -2586,7 +2586,7 @@ def add_egs_potential(n, cutoff, egs_data):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
-    """ 
+    """
 
     nodes = pop_layout.index
 
@@ -2595,9 +2595,9 @@ def add_egs_potential(n, cutoff, egs_data):
     capital_cost = egs_data["capital_cost"].to_pandas()
 
     # p_nom conversion GW -> MW
-    # marginal_cost conversion Euro/kW -> Euro/MW
+    # marginal_cost conversion Euro/kWh -> Euro/MWh
     # capital_cost conversion Euro/kW -> Euro/MW
-    p_nom = p_nom.reindex(n.shapshots, method="ffill") * 1000. 
+    p_nom = p_nom.reindex(n.shapshots, method="ffill") * 1000.
     marginal_cost = marginal_cost.reindex(n.shapshots, method="ffill") * 1000.
     capital_cost = capital_cost.reindex(n.shapshots, method="ffill") * 1000.
 
@@ -2618,9 +2618,6 @@ def add_egs_potential(n, cutoff, egs_data):
         unit="MWh_el",
         emission=0.12, #tCO2/MWh_el
     )
-
-
-
 
 
 #%%
@@ -2665,9 +2662,9 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
-    if snakemake.config["egs"]["include"]:
-        
-        egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"]) 
+    if snakemake.config["electricity"]["include_egs"]:
+
+        egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"])
         test = egs_data["capital_cost"].to_pandas()
 
         for cutoff in ["50", "100", "150"]:
@@ -2676,7 +2673,7 @@ if __name__ == "__main__":
                     f"-{n.snapshots[-1]} outside EGS coverage 2015-2050."))
                 break
 
-            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"]) 
+            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(n, cutoff, egs_data)
 
     from pathlib import Path
