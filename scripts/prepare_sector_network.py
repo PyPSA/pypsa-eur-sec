@@ -1127,6 +1127,22 @@ def add_storage_and_grids(n, costs):
             lifetime=costs.at['H2 (g) pipeline', 'lifetime']
         )
 
+    # Losses for natural gas pipeline network
+    if options["gas_network_losses"] > 0:
+        add_pipeline_losses(n, carrier_names=["gas pipeline", "gas pipeline new"], specific_losses=options["gas_network_losses"])
+   
+    # Losses for H2 pipeline network
+    if options["H2_network_losses"] > 0:
+        add_pipeline_losses(n, carrier_names=["H2 pipeline", "H2 pipeline retrofitted"], specific_losses=options["H2_network_losses"])
+
+        # 1. Add twin for all bidirectional pipelines
+        #    * Rename from <-> to <- and ->
+        #    * Add "reversed flag"?
+        # (only these pipes need to be coupled with constraint later)
+        # 2. Add loses for all pipelines based on length
+        #    warn for pipelines without length?
+        # 3. Check if all pipes, incl. import pipes, are affected by efficiencies
+
     n.add("Carrier", "battery")
 
     n.madd("Bus",
@@ -2670,7 +2686,40 @@ def add_import_options(
             p_nom=1e7,
         )
 
+def add_pipeline_losses(n, carrier_names, specific_losses):
+        """
+        Add pipeline losses for a specific type of pipelines which have one of the specified carrier names.
+        As a side effect, bidirectional pipelines need to be split into pairs of unidirectional pipelines
+        each with the respective transport efficiency and appropriate p_min_pu setting. Only one pipeline 
+        carries the capital_cost. Pipeline pairs are connected to each other via an extra_functionality 
+        in solve_network to ensure identical capacities.
+        """
 
+        idx = n.links.loc[(n.links.carrier.isin(carrier_names)) & (n.links.p_min_pu < 0)].index # relevant bidirectional pipelines
+        logger.info(f"Converting {len(idx)} bidirectional pipelines to pairs of unidirectional pipelines to add losses for: {carrier_names}")
+        
+        # Construct reverse flow pipelines and add to network
+        reversed_pipes = n.links.loc[idx].copy()
+        reversed_pipes.index = reversed_pipes.index.str.replace("<->", "<=")
+        reversed_pipes = reversed_pipes.rename({"bus0": "bus1", "bus1": "bus0"}, axis=1)
+        reversed_pipes["reverse_pipe"] = idx.str.replace("<->", "=>")
+        reversed_pipes["p_max_pu"] = (-1) * reversed_pipes["p_min_pu"] # Transfer p_min_pu for reverse flow pipeline
+        reversed_pipes["p_min_pu"] = 0
+        reversed_pipes["capital_cost"] = 0 # Only forward flow pipeline is associated with cost
+
+        # Set existing pipelines to unidirectional and rename accordingly
+        n.links.loc[idx, "p_min_pu"] = 0
+        n.links.loc[idx, "reverse_pipe"] = reversed_pipes.index
+        n.links = n.links.rename(index={old:old.replace("<->", "=>") for old in idx}, errors="raise") # Indicate pipelines with "<bus0> => <bus1>"
+
+        # Add new links to network
+        n.links = pd.concat([n.links, reversed_pipes], sort=False)
+
+        # Modify efficiencies of links to add losses 
+        idx = n.links.loc[n.links.carrier.isin(carrier_names)].index
+        logger.info(f"Adding losses for {len(idx)} pipelines: {carrier_names}")
+        n.links.loc[idx, "efficiency"] = 1 - specific_losses*n.links.loc[idx, "length"]
+ 
 def maybe_adjust_costs_and_potentials(n, opts):
 
     for o in opts:
