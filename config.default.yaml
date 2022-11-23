@@ -262,6 +262,12 @@ sector:
   gas_network_connectivity_upgrade: 1 # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation
   gas_distribution_grid: true
   gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
+  # Losses for H2 and natural gas pipelines in %/km
+  # Only transport losses from energy demand for pressure boosting, not fill losses for pipelines
+  # (assume pipeline carrier is used as energy source instead of electricity)
+  H2_network_losses: 3.75e-5 # 2.1%/1000 km of HHV converted to LHV (Danish Energy Agency, Technology Data for Energy Transport (2021), Excel datasheet: H2 140.)
+  gas_network_losses: 2.5e-5 # 0.4%/100 miles (https://aperc.or.jp/file/2010/9/26/Natural_Gas_Infrastructure_Development_Northeast_Asia_2000.pdf , Table 49.)
+  
   biomass_transport: false  # biomass transport between nodes
   conventional_generation: # generator : carrier
     OCGT: gas
