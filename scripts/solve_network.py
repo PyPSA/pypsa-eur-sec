@@ -212,7 +212,7 @@ def add_pipe_retrofit_constraint(n):
     lhs.rename(basename, inplace=True)
     define_constraints(n, lhs, "=", pipe_capacity, 'Link', 'pipe_retrofit')
 
-def add_pipe_losses_constraint(n):
+def add_pipeline_pairs_constraint(n):
     """Add constraint for tieing pairs of unidirectional pipelines which form a bidirectional
     pipeline back together such that their capacities (p_nom_opt) is shared.
 
@@ -220,14 +220,17 @@ def add_pipe_losses_constraint(n):
     splits bidirectional pipelines into pairs of unidirectional pipelines and sets their 
     `reverse_pipe` attribute to the index of the reverse flow partner pipeline.
     """
+    if "reverse_pipe" not in n.links.columns:
+        return
+
     pipeline_pairs = n.links.loc[(~n.links.reverse_pipe.isna())
                                     & (n.links.p_nom_extendable == True)
                                     & (n.links.index.str.contains("=>"))
                                     ]["reverse_pipe"]
 
     if pipeline_pairs.empty:
-        return        
-
+        return
+    
     link_p_nom = get_var(n, "Link", "p_nom")
 
     lhs = linexpr((1,link_p_nom[pipeline_pairs.index].values),
@@ -291,7 +294,7 @@ def add_energy_import_limit(n, sns):
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    add_pipe_losses_constraint(n)
+    add_pipeline_pairs_constraint(n)
     add_co2_sequestration_limit(n, snapshots)
     add_energy_import_limit(n, snapshots)
 
