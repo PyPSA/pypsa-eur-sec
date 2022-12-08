@@ -77,7 +77,6 @@ electricity:
   max_hours:
     battery: 6
     H2: 168
-  include_egs: true
 
 # regulate what components with which carriers are kept from PyPSA-Eur;
 # some technologies are removed because they are implemented differently
@@ -273,6 +272,7 @@ sector:
     OCGT: gas
   biomass_to_liquid: false
   biosng: false
+  egs: true
 
 
 
