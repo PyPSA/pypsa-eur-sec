@@ -143,16 +143,6 @@ if __name__ == "__main__":
             clusters=48,
         )
 
-    if "snakemake" not in globals():
-        from vresutils import Dict
-        import yaml
-        snakemake = Dict()
-
-        with open("config.yaml") as f:
-            snakemake.config = yaml.safe_load(f)
-        snakemake.input = Dict()
-        snakemake.output = Dict()
-
     egs_data = get_egs_potentials(
         snakemake.input["egs_potential"],
         snakemake.input["egs_cost"],
