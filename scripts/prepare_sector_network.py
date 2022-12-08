@@ -2662,13 +2662,14 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
+    logger.info('------------------------------------------------------------------------------')
     if snakemake.config["electricity"]["include_egs"]:
 
         egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"])
         test = egs_data["capital_cost"].to_pandas()
 
         for cutoff in ["50", "100", "150"]:
-            if test.reindex(n.snapshots, method="ffill").isna().sum() > 0:
+            if test.reindex(n.snapshots, method="ffill").isna().sum().sum() > 0:
                 logger.warning((f"Not adding EGS; snapshots {n.snapshots[0]}"
                     f"-{n.snapshots[-1]} outside EGS coverage 2015-2050."))
                 break
@@ -2676,10 +2677,14 @@ if __name__ == "__main__":
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(n, cutoff, egs_data)
 
+    
+    logger.info('------------------------------------------------------------------------------')
+    logger.info(n.carriers)
     from pathlib import Path
-    n.generators.to_csv(Path.cwd() + "generators_pypsaeursec.csv")
-    n.generators_t["marginal_cost"].to_csv(Path.cwd() + "generators_t_pypsaeursec_marginal.csv")
-    n.generators_t["capital_cost"].to_csv(Path.cwd() + "generators_t_pypsaeursec_capital.csv")
+
+    
+    n.generators.to_csv(Path.cwd() / "generators_pypsaeursec.csv")
+    n.generators_t["marginal_cost"].to_csv(Path.cwd() / "generators_t_pypsaeursec_marginal.csv")
 
     spatial = define_spatial(pop_layout.index, options)
 
