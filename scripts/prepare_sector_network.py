@@ -2609,7 +2609,8 @@ def add_egs_potential(n, cutoff, egs_data):
         suffix=f" egs_cutoff_{cutoff}",
         bus=buses,
         carrier="electricity",
-        p_nom=p_nom,
+        p_nom=0,
+        p_nom_max=p_nom,
         p_max_pu=1.,
         p_min_pu=0.,
         marginal_cost=marginal_cost,
@@ -2662,8 +2663,10 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
+
     logger.info('------------------------------------------------------------------------------')
-    if snakemake.config["electricity"]["include_egs"]:
+    
+    if options["egs"]:
 
         egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"])
         test = egs_data["capital_cost"].to_pandas()
@@ -2671,20 +2674,23 @@ if __name__ == "__main__":
         for cutoff in ["50", "100", "150"]:
             if test.reindex(n.snapshots, method="ffill").isna().sum().sum() > 0:
                 logger.warning((f"Not adding EGS; snapshots {n.snapshots[0]}"
-                    f"-{n.snapshots[-1]} outside EGS coverage 2015-2050."))
+                    f" - {n.snapshots[-1]} outside EGS coverage 2015-2050."))
                 break
 
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(n, cutoff, egs_data)
-
     
     logger.info('------------------------------------------------------------------------------')
     logger.info(n.carriers)
-    from pathlib import Path
 
-    
-    n.generators.to_csv(Path.cwd() / "generators_pypsaeursec.csv")
-    n.generators_t["marginal_cost"].to_csv(Path.cwd() / "generators_t_pypsaeursec_marginal.csv")
+    logger.info(f"Current path: {os.getcwd()}")
+    print(type(n.links))
+    print(n.links)
+    n.links.to_csv(os.path.join(os.getcwd(), "links.csv "))
+    n.generators.to_csv(os.path.join(os.getcwd(), "generators.csv "))
+    logger.info("Data contained in generators_t")
+    logger.info(list(n.generators_t))
+    n.generators_t["marginal_cost"].to_csv(os.path.join(os.getcwd(), "generators_t_pypsaeursec_marginal.csv"))
 
     spatial = define_spatial(pop_layout.index, options)
 
