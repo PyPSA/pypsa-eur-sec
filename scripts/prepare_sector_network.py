@@ -2582,35 +2582,43 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, cutoff, egs_data):
+def add_egs_potential(n, egs_data, cutoff, year):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
     """
 
-    nodes = pop_layout.index
+    year = str(year)
 
-    p_nom = egs_data["sustainable_potential"].to_pandas()
+    p_nom_max = egs_data["sustainable_potential"].to_pandas()
     marginal_cost = egs_data["marginal_cost"].to_pandas()
     capital_cost = egs_data["capital_cost"].to_pandas()
 
     # p_nom conversion GW -> MW
+    # the document of units is mistaken here
     # marginal_cost conversion Euro/kWh -> Euro/MWh
     # capital_cost conversion Euro/kW -> Euro/MW
-    p_nom = p_nom.reindex(n.shapshots, method="ffill") * 1000.
-    marginal_cost = marginal_cost.reindex(n.shapshots, method="ffill") * 1000.
-    capital_cost = capital_cost.reindex(n.shapshots, method="ffill") * 1000.
 
-    buses = p_nom.columns
+    p_nom_max = p_nom_max.loc[:year].iloc[-1] * 1000.
+    marginal_cost = marginal_cost.loc[:year].iloc[-1] * 1
+    capital_cost = capital_cost.loc[:year].iloc[-1] * 1000.
+
+    # take subset with p_nom_max != 0
+    buses = p_nom_max.loc[p_nom_max != 0].index
+    nodes = buses
+    
+    p_nom_max = p_nom_max.loc[buses] 
+    marginal_cost = marginal_cost.loc[buses] 
+    capital_cost = capital_cost.loc[buses]
 
     n.madd(
         "Generator",
         nodes,
-        suffix=f" egs_cutoff_{cutoff}",
+        suffix=f" egs_lcoe_{cutoff}",
         bus=buses,
-        carrier="electricity",
+        carrier="egs_el",
         p_nom=0,
-        p_nom_max=p_nom,
+        p_nom_max=p_nom_max,
         p_max_pu=1.,
         p_min_pu=0.,
         marginal_cost=marginal_cost,
@@ -2663,34 +2671,30 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
-
-    logger.info('------------------------------------------------------------------------------')
-    
     if options["egs"]:
 
-        egs_data = xr.open_dataset(snakemake.input[f"egs_potential_50"])
-        test = egs_data["capital_cost"].to_pandas()
+        n.add("Carrier", "egs_el")
+
+        logging.info("Adding Enhanced Geothermal Potential")
+        year = snakemake.config["costs"]["year"]
+        logger.info('------------------------------------------------------------------------------')
+        logger.info(f"year: {year}")
 
         for cutoff in ["50", "100", "150"]:
-            if test.reindex(n.snapshots, method="ffill").isna().sum().sum() > 0:
-                logger.warning((f"Not adding EGS; snapshots {n.snapshots[0]}"
-                    f" - {n.snapshots[-1]} outside EGS coverage 2015-2050."))
-                break
-
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, cutoff, egs_data)
+            add_egs_potential(n, egs_data, cutoff, year)
     
     logger.info('------------------------------------------------------------------------------')
     logger.info(n.carriers)
 
     logger.info(f"Current path: {os.getcwd()}")
-    print(type(n.links))
-    print(n.links)
-    n.links.to_csv(os.path.join(os.getcwd(), "links.csv "))
-    n.generators.to_csv(os.path.join(os.getcwd(), "generators.csv "))
+
+    n.generators.to_csv("iwannaseethegenerators.csv")
+    n.links.to_csv("iwannaseelinks.csv")
+        
+    logger.info("gen shape: ", n.generators.shape)
     logger.info("Data contained in generators_t")
     logger.info(list(n.generators_t))
-    n.generators_t["marginal_cost"].to_csv(os.path.join(os.getcwd(), "generators_t_pypsaeursec_marginal.csv"))
 
     spatial = define_spatial(pop_layout.index, options)
 
