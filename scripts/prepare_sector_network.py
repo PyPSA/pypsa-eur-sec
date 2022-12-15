@@ -2673,12 +2673,12 @@ if __name__ == "__main__":
 
     if options["egs"]:
 
-        # should ideally be set much earlier in the workflow
+        # should probably be set much earlier in the workflow
         n.add("Carrier",
               "egs_el",
               nice_name="Enhanced Geothermal",
-              co2_emissions=0.12,
-              color=snakemake.config["plotting"]["tech_colors"]["egs"],
+              co2_emissions=snakemake.config[""]["tech_colors"]["egs"],
+              color=snakemake.config["sector"]["egs_co2_emission"],
               )
 
         logging.info("Adding Enhanced Geothermal Potential")
