@@ -2673,7 +2673,13 @@ if __name__ == "__main__":
 
     if options["egs"]:
 
-        n.add("Carrier", "egs_el")
+        # should ideally be set much earlier in the workflow
+        n.add("Carrier",
+              "egs_el",
+              nice_name="Enhanced Geothermal",
+              co2_emissions=0.12,
+              color=snakemake.config["plotting"]["tech_colors"]["egs"],
+              )
 
         logging.info("Adding Enhanced Geothermal Potential")
         year = snakemake.config["costs"]["year"]
