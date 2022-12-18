@@ -2677,7 +2677,7 @@ if __name__ == "__main__":
         n.add("Carrier",
               "egs_el",
               nice_name="Enhanced Geothermal",
-              color=snakemake.config["plotting"]["tech_colors"]["egs"],
+              color=snakemake.config["plotting"]["tech_colors"]["egs_el"],
               co2_emissions=snakemake.config["sector"]["egs_co2_emission"],
               )
 
