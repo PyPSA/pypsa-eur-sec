@@ -35,7 +35,11 @@ countryname_mapper = {
     'Czech Republic': 'Czechia',
 }
 
-def get_egs_potentials(potentials_file, costs_file, shapes_file):
+def get_egs_potentials(potentials_file,
+                       costs_file,
+                       shapes_file, 
+                       network, 
+                       config):
     """
     Disaggregates data to the provided shapefile
 
@@ -43,10 +47,39 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
         potentials_file(str or pathlib.Path): file with potentials
         costs_file(str or pathlib.Path): file with capital and marginal costs
         shapes_file(pathlib.Path): path to shapefiles to which data is disagreggated
+        network(pypsa.Network): network used; only used to obtain Nyears
+        config(dict): Run configuration as in config.yaml
     """
     shapes = gpd.read_file(shapes_file)
 
     times = pd.date_range('2015-01-01', '2055-01-01', freq='5y')
+
+    # Concerning the cost of egs:
+    # The originating paper (see above) provides LCOE as a sum of
+    # (CAPEX + OPEX_fixed) / E + OPEX_var
+    # where OPEX_var is zero (see the paper's supp).
+    # Upon request, the authors shared CAPEX and OPEX_fixed on a 
+    # country level.
+    # CAPEX is interpreted as investment cost as in pypsa-eur/data/costs.csv
+    # OPEX_fixed is interpreted as FOM as in pypsa-eur/data/costs.csv
+    # OPEX_var is interpreted as VOM as in pypsa-eur/data/costs.csv
+    # from this, Nyears is obtained from the network, discount rate from
+    # config.yaml
+    # The procedure to compute capital and marginal cost for the optimization
+    # is copied from pypsa-eur/scripts/add_electricity.py (see load_costs(...))
+
+    # obtain number of optimization years and discount rate
+    Nyears = network.snapshots_weightings.generators.sum() / 8760
+    dr = config["costs"]["discountrate"]
+    lt = config["sector"]["egs_lifetime"]
+
+    logger.info("number of years inferred: ", Nyears)
+    logger.info("discountrate inferred: ", dr)
+    logger.info("lifetime inferred: ", lt)
+
+    annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
+
+    logger.info("lifetime computed: ", annuity)
 
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()
@@ -105,6 +138,10 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
     opex_usecols = slice(10, 18)
 
     for cutoff, skiprows in zip(cost_cutoffs, cutoff_skiprows):
+
+        logger.info("000000000--------------------------------------000000000000")
+        logger.info("curr cutoff: ", cutoff)
+
         prices = pd.read_excel(costs_file,
                             sheet_name=1,
                             index_col=0,
@@ -121,13 +158,22 @@ def get_egs_potentials(potentials_file, costs_file, shapes_file):
         opex.columns = times
         capex.columns = times
 
+        logger.info("before capex")
+        logger.info(capex)
+        logger.info("before opex")
+        logger.info(opex)
+
+        # correct unit: 
+
+
+
         for col in capex.columns:
 
             capex_by_shape = assigner.transpose() @ capex[col]
             opex_by_shape = assigner.transpose() @ opex[col]
 
-            egs_data[cutoff]['capital_cost'].loc[col] = capex_by_shape
-            egs_data[cutoff]['marginal_cost'].loc[col] = opex_by_shape
+            egs_data[cutoff]['capex'].loc[col] = capex_by_shape
+            egs_data[cutoff]['opex_fixed'].loc[col] = opex_by_shape
 
     return egs_data
 
@@ -147,6 +193,8 @@ if __name__ == "__main__":
         snakemake.input["egs_potential"],
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
+        snakemake.input["network"],
+        snakemake.config,
         )
 
     for cutoff in ["50", "100", "150"]:
@@ -159,8 +207,8 @@ if __name__ == "__main__":
         ds = xr.Dataset(
             data_vars=dict(
                 sustainable_potential=(dims, data["sus_potential"]),
-                marginal_cost=(dims, data["marginal_cost"]),
-                capital_cost=(dims, data["capital_cost"]),
+                marginal_cost=(dims, data["opex_fixed"]),
+                capital_cost=(dims, data["capex"]),
                 ),
             coords={
                 'time': (("time"), time),

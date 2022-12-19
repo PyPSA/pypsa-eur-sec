@@ -2582,7 +2582,7 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, egs_data, cutoff, year):
+def add_egs_potential(n, egs_data, cutoff, year, config):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
@@ -2591,25 +2591,49 @@ def add_egs_potential(n, egs_data, cutoff, year):
     year = str(year)
 
     p_nom_max = egs_data["sustainable_potential"].to_pandas()
-    marginal_cost = egs_data["marginal_cost"].to_pandas()
-    capital_cost = egs_data["capital_cost"].to_pandas()
+    opex_fixed = egs_data["opex_fixed"].to_pandas()
+    capex = egs_data["capex"].to_pandas()
+
+    Nyears = n.snapshots_weightings.generators.sum() / 8760
+    dr = config["costs"]["discountrate"]
+    lt = config["sector"]["egs_lifetime"]
 
     # p_nom conversion GW -> MW
     # the document of units is mistaken here
-    # marginal_cost conversion Euro/kWh -> Euro/MWh
+    # marginal_cost conversion Euro/kW -> Euro/MW
     # capital_cost conversion Euro/kW -> Euro/MW
 
     p_nom_max = p_nom_max.loc[:year].iloc[-1] * 1000.
-    marginal_cost = marginal_cost.loc[:year].iloc[-1] * 1
-    capital_cost = capital_cost.loc[:year].iloc[-1] * 1000.
+    opex_fixed = opex_fixed.loc[:year].iloc[-1] * 1000.
+    capex = capex.loc[:year].iloc[-1] * 1000.
 
     # take subset with p_nom_max != 0
     buses = p_nom_max.loc[p_nom_max != 0].index
     nodes = buses
     
     p_nom_max = p_nom_max.loc[buses] 
-    marginal_cost = marginal_cost.loc[buses] 
-    capital_cost = capital_cost.loc[buses]
+    opex_fixed = opex_fixed.loc[buses] 
+    capex = capex.loc[buses]
+
+    if dr > 0:
+        annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
+    else:
+        annuity = 1 / lt
+
+    capital_cost = (
+        (annuity + opex_fixed / (capex + opex_fixed))
+        * capex
+        * Nyears
+    )
+
+    marginal_cost = pd.Series(
+        np.zeros_like(capital_cost),
+        index=capital_cost.index
+    )
+
+    logger.info(f"Capital Cost for cutoff {cutoff}")
+    logger.info(capital_cost)
+    logger.info("-------------------------------------------------------")
 
     n.madd(
         "Generator",
@@ -2688,7 +2712,7 @@ if __name__ == "__main__":
 
         for cutoff in ["50", "100", "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, egs_data, cutoff, year)
+            add_egs_potential(n, egs_data, cutoff, year, snakemake.config)
     
     logger.info('------------------------------------------------------------------------------')
     logger.info(n.carriers)
