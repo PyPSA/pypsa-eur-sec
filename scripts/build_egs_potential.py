@@ -38,8 +38,7 @@ countryname_mapper = {
 def get_egs_potentials(potentials_file,
                        costs_file,
                        shapes_file, 
-                       network, 
-                       config):
+                       ):
     """
     Disaggregates data to the provided shapefile
 
@@ -47,8 +46,6 @@ def get_egs_potentials(potentials_file,
         potentials_file(str or pathlib.Path): file with potentials
         costs_file(str or pathlib.Path): file with capital and marginal costs
         shapes_file(pathlib.Path): path to shapefiles to which data is disagreggated
-        network(pypsa.Network): network used; only used to obtain Nyears
-        config(dict): Run configuration as in config.yaml
     """
     shapes = gpd.read_file(shapes_file)
 
@@ -69,17 +66,17 @@ def get_egs_potentials(potentials_file,
     # is copied from pypsa-eur/scripts/add_electricity.py (see load_costs(...))
 
     # obtain number of optimization years and discount rate
-    Nyears = network.snapshots_weightings.generators.sum() / 8760
-    dr = config["costs"]["discountrate"]
-    lt = config["sector"]["egs_lifetime"]
+    # Nyears = network.snapshots_weightings.generators.sum() / 8760
+    # dr = config["costs"]["discountrate"]
+    # lt = config["sector"]["egs_lifetime"]
 
-    logger.info("number of years inferred: ", Nyears)
-    logger.info("discountrate inferred: ", dr)
-    logger.info("lifetime inferred: ", lt)
+    # logger.info("number of years inferred: ", Nyears)
+    # logger.info("discountrate inferred: ", dr)
+    # logger.info("lifetime inferred: ", lt)
 
-    annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
+    # annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
 
-    logger.info("lifetime computed: ", annuity)
+    # logger.info("lifetime computed: ", annuity)
 
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()
@@ -87,8 +84,8 @@ def get_egs_potentials(potentials_file,
     for cutoff in cost_cutoffs:
         inner = dict()
         inner['sus_potential'] = pd.DataFrame(index=times, columns=shapes['name'])
-        inner['marginal_cost'] = deepcopy(inner['sus_potential'])
-        inner['capital_cost'] = deepcopy(inner['sus_potential'])
+        inner['opex_fixed'] = deepcopy(inner['sus_potential'])
+        inner['capex'] = deepcopy(inner['sus_potential'])
         egs_data[cutoff] = inner
 
     shapes['area'] = shapes.geometry.apply(lambda geom: geom.area)
@@ -163,10 +160,6 @@ def get_egs_potentials(potentials_file,
         logger.info("before opex")
         logger.info(opex)
 
-        # correct unit: 
-
-
-
         for col in capex.columns:
 
             capex_by_shape = assigner.transpose() @ capex[col]
@@ -193,8 +186,6 @@ if __name__ == "__main__":
         snakemake.input["egs_potential"],
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
-        snakemake.input["network"],
-        snakemake.config,
         )
 
     for cutoff in ["50", "100", "150"]:
@@ -207,8 +198,8 @@ if __name__ == "__main__":
         ds = xr.Dataset(
             data_vars=dict(
                 sustainable_potential=(dims, data["sus_potential"]),
-                marginal_cost=(dims, data["opex_fixed"]),
-                capital_cost=(dims, data["capex"]),
+                opex_fixed=(dims, data["opex_fixed"]),
+                capex=(dims, data["capex"]),
                 ),
             coords={
                 'time': (("time"), time),

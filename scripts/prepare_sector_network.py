@@ -2594,7 +2594,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
     opex_fixed = egs_data["opex_fixed"].to_pandas()
     capex = egs_data["capex"].to_pandas()
 
-    Nyears = n.snapshots_weightings.generators.sum() / 8760
+    Nyears = n.snapshot_weightings.generators.sum() / 8760
     dr = config["costs"]["discountrate"]
     lt = config["sector"]["egs_lifetime"]
 
@@ -2626,6 +2626,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         * Nyears
     )
 
+    # should be done in analogy to marginal costs of wind/solar etc
     marginal_cost = pd.Series(
         np.zeros_like(capital_cost),
         index=capital_cost.index
@@ -2633,6 +2634,8 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
 
     logger.info(f"Capital Cost for cutoff {cutoff}")
     logger.info(capital_cost)
+    logger.info(f"Marginal Cost for cutoff {cutoff}")
+    logger.info(marginal_cost)
     logger.info("-------------------------------------------------------")
 
     n.madd(
