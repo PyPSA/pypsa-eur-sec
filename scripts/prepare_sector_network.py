@@ -2599,7 +2599,6 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
     lt = config["sector"]["egs_lifetime"]
 
     # p_nom conversion GW -> MW
-    # the document of units is mistaken here
     # marginal_cost conversion Euro/kW -> Euro/MW
     # capital_cost conversion Euro/kW -> Euro/MW
 
@@ -2652,6 +2651,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
+        # emission=0.12, #tCO2/MWh_el
         emission=0.12, #tCO2/MWh_el
     )
 
@@ -2722,9 +2722,6 @@ if __name__ == "__main__":
 
     logger.info(f"Current path: {os.getcwd()}")
 
-    n.generators.to_csv("iwannaseethegenerators.csv")
-    n.links.to_csv("iwannaseelinks.csv")
-        
     logger.info("gen shape: ", n.generators.shape)
     logger.info("Data contained in generators_t")
     logger.info(list(n.generators_t))
@@ -2836,4 +2833,10 @@ if __name__ == "__main__":
         add_electricity_grid_connection(n, costs)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
+    n.generators.to_csv("iwannaseethegenerators.csv")
+    n.links.to_csv("iwannaseelinks.csv")
+    n.carriers.to_csv("iwannaseecarriers.csv")
+    n.loads.to_csv("iwannaseeloads.csv")
+    n.buses.to_csv("iwannaseebuses.csv")
+        
     n.export_to_netcdf(snakemake.output[0])
