@@ -2637,21 +2637,24 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
     logger.info(marginal_cost)
     logger.info("-------------------------------------------------------")
 
+    logger.info("obtained p nom max")    
+    print(p_nom_max)
+
     n.madd(
         "Generator",
         nodes,
         suffix=f" egs_lcoe_{cutoff}",
         bus=buses,
-        carrier="egs_el",
+        carrier="enhanced geothermal",
         p_nom=0,
-        p_nom_max=p_nom_max,
+        # p_nom_max=p_nom_max,
+        p_nom_max=0.,
         p_max_pu=1.,
         p_min_pu=0.,
         marginal_cost=marginal_cost,
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
-        # emission=0.12, #tCO2/MWh_el
         emission=0.12, #tCO2/MWh_el
     )
 
@@ -2704,7 +2707,7 @@ if __name__ == "__main__":
         n.add("Carrier",
               "egs_el",
               nice_name="Enhanced Geothermal",
-              color=snakemake.config["plotting"]["tech_colors"]["egs_el"],
+              color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
               co2_emissions=snakemake.config["sector"]["egs_co2_emission"],
               )
 
