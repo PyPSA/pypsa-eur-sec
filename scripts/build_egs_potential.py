@@ -136,9 +136,6 @@ def get_egs_potentials(potentials_file,
 
     for cutoff, skiprows in zip(cost_cutoffs, cutoff_skiprows):
 
-        logger.info("000000000--------------------------------------000000000000")
-        logger.info("curr cutoff: ", cutoff)
-
         prices = pd.read_excel(costs_file,
                             sheet_name=1,
                             index_col=0,
@@ -154,11 +151,6 @@ def get_egs_potentials(potentials_file,
 
         opex.columns = times
         capex.columns = times
-
-        logger.info("before capex")
-        logger.info(capex)
-        logger.info("before opex")
-        logger.info(opex)
 
         for col in capex.columns:
 
