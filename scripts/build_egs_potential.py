@@ -52,9 +52,10 @@ def get_egs_potentials(potentials_file,
     times = pd.date_range('2015-01-01', '2055-01-01', freq='5y')
 
     # Concerning the cost of egs:
-    # The originating paper (see above) provides LCOE as a sum of
+    # The originating paper (see above) provides LCOE via 
     # (CAPEX + OPEX_fixed) / E + OPEX_var
-    # where OPEX_var is zero (see the paper's supp).
+    # where OPEX_var is zero (see the paper's supp)
+    # E is the total energy generated during lifetime
     # Upon request, the authors shared CAPEX and OPEX_fixed on a 
     # country level.
     # CAPEX is interpreted as investment cost as in pypsa-eur/data/costs.csv
@@ -65,18 +66,8 @@ def get_egs_potentials(potentials_file,
     # The procedure to compute capital and marginal cost for the optimization
     # is copied from pypsa-eur/scripts/add_electricity.py (see load_costs(...))
 
-    # obtain number of optimization years and discount rate
-    # Nyears = network.snapshots_weightings.generators.sum() / 8760
-    # dr = config["costs"]["discountrate"]
-    # lt = config["sector"]["egs_lifetime"]
-
-    # logger.info("number of years inferred: ", Nyears)
-    # logger.info("discountrate inferred: ", dr)
-    # logger.info("lifetime inferred: ", lt)
-
-    # annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
-
-    # logger.info("lifetime computed: ", annuity)
+    # The conversion from opex, capex -> capital, marginal cost is executed 
+    # in scripts/prepare_sector_network.py
 
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()

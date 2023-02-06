@@ -2614,6 +2614,10 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
     opex_fixed = opex_fixed.loc[buses] 
     capex = capex.loc[buses]
 
+    # Please find 
+    # scripts/build_egs_potential.py 
+    # for a discussion of the following steps
+
     if dr > 0:
         annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
     else:
@@ -2625,20 +2629,11 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         * Nyears
     )
 
-    # should be done in analogy to marginal costs of wind/solar etc
+    # should be done in analogy to marginal costs of wind/solar etc.
     marginal_cost = pd.Series(
         np.zeros_like(capital_cost),
         index=capital_cost.index
     )
-
-    logger.info(f"Capital Cost for cutoff {cutoff}")
-    logger.info(capital_cost)
-    logger.info(f"Marginal Cost for cutoff {cutoff}")
-    logger.info(marginal_cost)
-    logger.info("-------------------------------------------------------")
-
-    logger.info("obtained p nom max")    
-    print(p_nom_max)
 
     n.madd(
         "Generator",
@@ -2710,23 +2705,12 @@ if __name__ == "__main__":
               co2_emissions=snakemake.config["sector"]["egs_co2_emission"],
               )
 
-        logging.info("Adding Enhanced Geothermal Potential")
+        logger.info("Adding Enhanced Geothermal Potential")
         year = snakemake.config["costs"]["year"]
-        logger.info('------------------------------------------------------------------------------')
-        logger.info(f"year: {year}")
 
         for cutoff in ["50", "100", "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(n, egs_data, cutoff, year, snakemake.config)
-    
-    logger.info('------------------------------------------------------------------------------')
-    logger.info(n.carriers)
-
-    logger.info(f"Current path: {os.getcwd()}")
-
-    logger.info("gen shape: ", n.generators.shape)
-    logger.info("Data contained in generators_t")
-    logger.info(list(n.generators_t))
 
     spatial = define_spatial(pop_layout.index, options)
 
@@ -2835,10 +2819,5 @@ if __name__ == "__main__":
         add_electricity_grid_connection(n, costs)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
-    n.generators.to_csv("iwannaseethegenerators.csv")
-    n.links.to_csv("iwannaseelinks.csv")
-    n.carriers.to_csv("iwannaseecarriers.csv")
-    n.loads.to_csv("iwannaseeloads.csv")
-    n.buses.to_csv("iwannaseebuses.csv")
         
     n.export_to_netcdf(snakemake.output[0])
