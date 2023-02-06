@@ -44,6 +44,13 @@ rule prepare_sector_networks:
         expand(RDIR + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
                **config['scenario'])
 
+
+rule plot_all_networks:
+    input:
+        expand(RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
+               **config['scenario'])
+
+
 datafiles = [
     "data/eea/UNFCCC_v23.csv",
     "data/switzerland-sfoe/switzerland-new_format.csv",
@@ -162,34 +169,26 @@ else:
 
 rule build_heat_demands:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout="resources/pop_layout_{scope}.nc",
         regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson")
     output:
-        heat_demand_urban="resources/heat_demand_urban_elec_s{simpl}_{clusters}.nc",
-        heat_demand_rural="resources/heat_demand_rural_elec_s{simpl}_{clusters}.nc",
-        heat_demand_total="resources/heat_demand_total_elec_s{simpl}_{clusters}.nc"
+        heat_demand="resources/heat_demand_{scope}_elec_s{simpl}_{clusters}.nc"
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_heat_demands/s{simpl}_{clusters}"
+    threads: 8
+    benchmark: "benchmarks/build_heat_demands/{scope}_s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
 
 
 rule build_temperature_profiles:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout="resources/pop_layout_{scope}.nc",
         regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson")
     output:
-        temp_soil_total="resources/temp_soil_total_elec_s{simpl}_{clusters}.nc",
-        temp_soil_rural="resources/temp_soil_rural_elec_s{simpl}_{clusters}.nc",
-        temp_soil_urban="resources/temp_soil_urban_elec_s{simpl}_{clusters}.nc",
-        temp_air_total="resources/temp_air_total_elec_s{simpl}_{clusters}.nc",
-        temp_air_rural="resources/temp_air_rural_elec_s{simpl}_{clusters}.nc",
-        temp_air_urban="resources/temp_air_urban_elec_s{simpl}_{clusters}.nc"
+        temp_soil="resources/temp_soil_{scope}_elec_s{simpl}_{clusters}.nc",
+        temp_air="resources/temp_air_{scope}_elec_s{simpl}_{clusters}.nc",
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_temperature_profiles/s{simpl}_{clusters}"
+    threads: 8
+    benchmark: "benchmarks/build_temperature_profiles/{scope}_s{simpl}_{clusters}"
     script: "scripts/build_temperature_profiles.py"
 
 
@@ -215,16 +214,13 @@ rule build_cop_profiles:
 
 rule build_solar_thermal_profiles:
     input:
-        pop_layout_total="resources/pop_layout_total.nc",
-        pop_layout_urban="resources/pop_layout_urban.nc",
-        pop_layout_rural="resources/pop_layout_rural.nc",
+        pop_layout="resources/pop_layout_{scope}.nc",
         regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson")
     output:
-        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc"
+        solar_thermal="resources/solar_thermal_{scope}_elec_s{simpl}_{clusters}.nc",
     resources: mem_mb=20000
-    benchmark: "benchmarks/build_solar_thermal_profiles/s{simpl}_{clusters}"
+    threads: 16
+    benchmark: "benchmarks/build_solar_thermal_profiles/{scope}_s{simpl}_{clusters}"
     script: "scripts/build_solar_thermal_profiles.py"
 
 
@@ -256,9 +252,9 @@ rule build_biomass_potentials:
         enspreso_biomass=HTTP.remote("https://cidportal.jrc.ec.europa.eu/ftp/jrc-opendata/ENSPRESO/ENSPRESO_BIOMASS.xlsx", keep_local=True),
         nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson", # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
         regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
-        nuts3_population=pypsaeur("data/bundle/nama_10r_3popgdp.tsv.gz"),
-        swiss_cantons=pypsaeur("data/bundle/ch_cantons.csv"),
-        swiss_population=pypsaeur("data/bundle/je-e-21.03.02.xls"),
+        nuts3_population="../pypsa-eur/data/bundle/nama_10r_3popgdp.tsv.gz",
+        swiss_cantons="../pypsa-eur/data/bundle/ch_cantons.csv",
+        swiss_population="../pypsa-eur/data/bundle/je-e-21.03.02.xls",
         country_shapes=pypsaeur('resources/country_shapes.geojson')
     output:
         biomass_potentials_all='resources/biomass_potentials_all_s{simpl}_{clusters}.csv',
@@ -308,9 +304,6 @@ rule build_ammonia_production:
     script: 'scripts/build_ammonia_production.py'
 
 
-# =====================================================
-
-
 rule build_egs_potential:
     input:
         egs_potential="data/egs_data/egs_global_potential.xlsx",
@@ -321,9 +314,6 @@ rule build_egs_potential:
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
     script: "scripts/build_egs_potential.py"
-
-
-# =====================================================
 
 
 rule build_industry_sector_ratios:
@@ -459,6 +449,18 @@ rule build_population_weighted_energy_totals:
     script: "scripts/build_population_weighted_energy_totals.py"
 
 
+rule build_shipping_demand:
+    input:
+        ports="data/attributed_ports.json",
+        scope=pypsaeur("resources/europe_shape.geojson"),
+        regions=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+        demand="resources/energy_totals.csv"
+    output: "resources/shipping_demand_s{simpl}_{clusters}.csv"
+    threads: 1
+    resources: mem_mb=2000
+    script: "scripts/build_shipping_demand.py"
+
+
 rule build_transport_demand:
     input:
         clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
@@ -484,6 +486,7 @@ rule prepare_sector_network:
         energy_totals_name='resources/energy_totals.csv',
         eurostat=input_eurostat,
         pop_weighted_energy_totals="resources/pop_weighted_energy_totals_s{simpl}_{clusters}.csv",
+        shipping_demand="resources/shipping_demand_s{simpl}_{clusters}.csv",
         transport_demand="resources/transport_demand_s{simpl}_{clusters}.csv",
         transport_data="resources/transport_data_s{simpl}_{clusters}.csv",
         avail_profile="resources/avail_profile_s{simpl}_{clusters}.csv",
@@ -516,9 +519,9 @@ rule prepare_sector_network:
         cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
         cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
         cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc",
+        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
+        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
+        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
@@ -535,7 +538,8 @@ rule prepare_sector_network:
 rule plot_network:
     input:
         overrides="data/override_component_attrs",
-        network=RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        network=RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        regions=pypsaeur('resources/regions_onshore_elec_s{simpl}_{clusters}.geojson')
     output:
         map=RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
         today=RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}-today.pdf"
@@ -620,7 +624,7 @@ if config["foresight"] == "overnight":
             network=RDIR + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             costs=CDIR + "costs_{}.csv".format(config['costs']['year']),
             config=SDIR + '/configs/config.yaml',
-            env=SDIR + '/configs/environment.yaml',
+            #env=SDIR + '/configs/environment.yaml',
         output: RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
         log:
