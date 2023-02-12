@@ -35,10 +35,16 @@ countryname_mapper = {
     'Czech Republic': 'Czechia',
 }
 
-def get_egs_potentials(potentials_file,
-                       costs_file,
-                       shapes_file, 
-                       ):
+potentials_file = data / 'egs_global_potential.xlsx'
+sustainable_potentials_file = data / 'sustainable_egs_potential.xlsx'
+costs_file = data / 'egs_costs.xlsx'
+shapes_file = data / ".." / ".." / 'pypsa-eur' / "resources" / "regions_onshore_elec_s_37.geojson"
+
+def get_egs_potentials():# potentials_file,
+                       # sustainable_potentials_file,
+                       # costs_file,
+                       # shapes_file,
+                       # ):
     """
     Disaggregates data to the provided shapefile
 
@@ -72,7 +78,7 @@ def get_egs_potentials(potentials_file,
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()
 
-    for cutoff in cost_cutoffs:
+    for cutoff in cost_cutoffs[1:]:
         inner = dict()
         inner['sus_potential'] = pd.DataFrame(index=times, columns=shapes['name'])
         inner['opex_fixed'] = deepcopy(inner['sus_potential'])
@@ -103,18 +109,34 @@ def get_egs_potentials(potentials_file,
     cutoff_slices = [slice(18,19), slice(8,18), slice(0,8)]
 
     # print("Potential data is not correct yet!")
-    for cutoff, cutoff_slice in zip(cost_cutoffs, cutoff_slices):
+    print("Currently considering only the first two cost cutoffs!")
+    sus_cols = [
+                "EGS sustainable power capacity potential, excl. economic constraint (GW)",
+                "EGS sustainable power capacity potential (GW)",
+                ]
+
+    for cutoff, cutoff_slice, sus_col in zip(cost_cutoffs[1:], cutoff_slices[1:], sus_cols):
+
         for i, time in enumerate(times):
+
+            sus_potential = pd.read_excel(sustainable_potentials_file, sheet_name=(i+1), index_col=0)
+            sus_potential = sus_potential.loc["Afghanistan":"Zimbabwe"]
+            sus_potential = sus_potential.rename(index=countryname_mapper)
+            sus_potential = sus_potential.loc[areas.index][sus_col]
 
             potential = pd.read_excel(potentials_file, sheet_name=(i+1), index_col=0)
             potential = potential[[col for col in potential.columns if 'Power' in col]]
-
             potential = potential.loc["Afghanistan":"Zimbabwe"]
             potential = potential.rename(index=countryname_mapper)
 
             potential = potential.loc[areas.index]
             potential = potential[potential.columns[cutoff_slice]]
             potential = potential.sum(axis=1)
+            
+            potential = pd.DataFrame({
+                "potential": potential,
+                "sus_potential": sus_potential
+                }).min(axis=1)
 
             potential = country_shares.transpose() @ potential
 
@@ -125,7 +147,7 @@ def get_egs_potentials(potentials_file,
     capex_usecols = slice(1, 9)
     opex_usecols = slice(10, 18)
 
-    for cutoff, skiprows in zip(cost_cutoffs, cutoff_skiprows):
+    for cutoff, skiprows in zip(cost_cutoffs[1:], cutoff_skiprows[1:]):
 
         prices = pd.read_excel(costs_file,
                             sheet_name=1,
@@ -153,6 +175,7 @@ def get_egs_potentials(potentials_file,
 
     return egs_data
 
+
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
@@ -167,6 +190,7 @@ if __name__ == "__main__":
 
     egs_data = get_egs_potentials(
         snakemake.input["egs_potential"],
+        snakemake.input["egs_sustainable_potential"],
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
         )

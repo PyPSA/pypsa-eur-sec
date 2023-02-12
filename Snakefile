@@ -307,6 +307,7 @@ rule build_ammonia_production:
 rule build_egs_potential:
     input:
         egs_potential="data/egs_global_potential.xlsx",
+        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
         egs_cost="data/egs_costs.xlsx",
         shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
     output:
