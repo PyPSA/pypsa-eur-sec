@@ -1,6 +1,6 @@
 
 from os.path import exists
-from shutil import copyfile
+from shutil import copyfile, move
 
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 HTTP = HTTPRemoteProvider()
@@ -21,7 +21,6 @@ wildcard_constraints:
 
 SDIR = config['summary_dir'] + '/' + config['run']
 RDIR = config['results_dir'] + config['run']
-CDIR = config['costs_dir']
 
 
 subworkflow pypsaeur:
@@ -70,6 +69,15 @@ if config.get('retrieve_sector_databundle', True):
         output: *datafiles
         log: "logs/retrieve_sector_databundle.log"
         script: 'scripts/retrieve_sector_databundle.py'
+
+
+if config.get("retrieve_cost_data", True):
+    rule retrieve_cost_data:
+        input: HTTP.remote("raw.githubusercontent.com/PyPSA/technology-data/{}/outputs/".format(config['costs']['version']) + "costs_{year}.csv", keep_local=True)
+        output: "data/costs_{year}.csv"
+        log: "logs/" + RDIR + "retrieve_cost_data_{year}.log",
+        resources: mem_mb=1000,
+        run: move(input[0], output[0])
 
 
 rule build_population_layouts:
@@ -177,6 +185,19 @@ rule build_heat_demands:
     threads: 8
     benchmark: "benchmarks/build_heat_demands/{scope}_s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
+
+
+rule build_egs_potential:
+    input:
+        egs_potential="data/egs_global_potential.xlsx",
+        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
+        egs_cost="data/egs_costs.xlsx",
+        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+    output:
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        # egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+    script: "scripts/build_egs_potential.py"
 
 
 rule build_temperature_profiles:
@@ -302,19 +323,6 @@ rule build_ammonia_production:
     resources: mem_mb=1000
     benchmark: "benchmarks/build_ammonia_production"
     script: 'scripts/build_ammonia_production.py'
-
-
-rule build_egs_potential:
-    input:
-        egs_potential="data/egs_global_potential.xlsx",
-        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
-        egs_cost="data/egs_costs.xlsx",
-        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
-    output:
-        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
-        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        # egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
-    script: "scripts/build_egs_potential.py"
 
 
 rule build_industry_sector_ratios:
@@ -496,7 +504,7 @@ rule prepare_sector_network:
         co2="data/eea/UNFCCC_v23.csv",
         biomass_potentials='resources/biomass_potentials_s{simpl}_{clusters}.csv',
         heat_profile="data/heat_load_profile_BDEW.csv",
-        costs=CDIR + "costs_{}.csv".format(config['costs']['year']) if config["foresight"] == "overnight" else CDIR + "costs_{planning_horizons}.csv",
+        costs="data/costs_{}.csv".format(config['costs']['year']) if config["foresight"] == "overnight" else "data/costs_{planning_horizons}.csv",
         profile_offwind_ac=pypsaeur("resources/profile_offwind-ac.nc"),
         profile_offwind_dc=pypsaeur("resources/profile_offwind-dc.nc"),
         h2_cavern="resources/salt_cavern_potentials_s{simpl}_{clusters}.csv",
@@ -520,12 +528,12 @@ rule prepare_sector_network:
         cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
         cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
         cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
-        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
-        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
-        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         #egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
+        solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
+        solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         **build_retro_cost_output,
         **build_biomass_transport_costs_output,
         **gas_infrastructure
@@ -573,7 +581,7 @@ rule make_summary:
             RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config['scenario']
         ),
-        costs=CDIR + "costs_{}.csv".format(config['costs']['year']) if config["foresight"] == "overnight" else CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
+        costs="data/costs_{}.csv".format(config['costs']['year']) if config["foresight"] == "overnight" else "data/costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
         plots=expand(
             RDIR + "/maps/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}-costs-all_{planning_horizons}.pdf",
             **config['scenario']
@@ -623,7 +631,7 @@ if config["foresight"] == "overnight":
         input:
             overrides="data/override_component_attrs",
             network=RDIR + "/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
-            costs=CDIR + "costs_{}.csv".format(config['costs']['year']),
+            costs="data/costs_{}.csv".format(config['costs']['year']),
             config=SDIR + '/configs/config.yaml',
             #env=SDIR + '/configs/environment.yaml',
         output: RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -648,7 +656,7 @@ if config["foresight"] == "myopic":
             busmap_s=pypsaeur("resources/busmap_elec_s{simpl}.csv"),
             busmap=pypsaeur("resources/busmap_elec_s{simpl}_{clusters}.csv"),
             clustered_pop_layout="resources/pop_layout_elec_s{simpl}_{clusters}.csv",
-            costs=CDIR + "costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
+            costs="data/costs_{}.csv".format(config['scenario']['planning_horizons'][0]),
             cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
             cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
             existing_heating='data/existing_infrastructure/existing_heating_raw.csv',
@@ -677,7 +685,7 @@ if config["foresight"] == "myopic":
             overrides="data/override_component_attrs",
             network=RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc',
             network_p=solved_previous_horizon, #solved network at previous time step
-            costs=CDIR + "costs_{planning_horizons}.csv",
+            costs="data/costs_{planning_horizons}.csv",
             cop_soil_total="resources/cop_soil_total_elec_s{simpl}_{clusters}.nc",
             cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc"
         output: RDIR + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -694,7 +702,7 @@ if config["foresight"] == "myopic":
         input:
             overrides="data/override_component_attrs",
             network=RDIR + "/prenetworks-brownfield/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc",
-            costs=CDIR + "costs_{planning_horizons}.csv",
+            costs="data/costs_{planning_horizons}.csv",
             config=SDIR + '/configs/config.yaml'
         output: RDIR + "/postnetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc"
         shadow: "shallow"
