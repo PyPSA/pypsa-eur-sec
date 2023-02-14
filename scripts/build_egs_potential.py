@@ -35,16 +35,12 @@ countryname_mapper = {
     'Czech Republic': 'Czechia',
 }
 
-potentials_file = data / 'egs_global_potential.xlsx'
-sustainable_potentials_file = data / 'sustainable_egs_potential.xlsx'
-costs_file = data / 'egs_costs.xlsx'
-shapes_file = data / ".." / ".." / 'pypsa-eur' / "resources" / "regions_onshore_elec_s_37.geojson"
 
-def get_egs_potentials():# potentials_file,
-                       # sustainable_potentials_file,
-                       # costs_file,
-                       # shapes_file,
-                       # ):
+def get_egs_potentials(potentials_file,
+                       sustainable_potentials_file,
+                       costs_file,
+                       shapes_file,
+                       ):
     """
     Disaggregates data to the provided shapefile
 
@@ -195,7 +191,7 @@ if __name__ == "__main__":
         snakemake.input["shapes"],
         )
 
-    for cutoff in ["50", "100", "150"]:
+    for cutoff in ["50", "100"]:#, "150"]:
         data = egs_data[cutoff]
 
         time = data["sus_potential"].index

@@ -313,7 +313,7 @@ rule build_egs_potential:
     output:
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        # egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
     script: "scripts/build_egs_potential.py"
 
 
@@ -525,7 +525,7 @@ rule prepare_sector_network:
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        #egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
         **build_retro_cost_output,
         **build_biomass_transport_costs_output,
         **gas_infrastructure

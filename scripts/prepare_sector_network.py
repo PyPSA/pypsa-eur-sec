@@ -2897,7 +2897,7 @@ if __name__ == "__main__":
         logger.info("Adding Enhanced Geothermal Potential")
         year = snakemake.config["costs"]["year"]
 
-        for cutoff in ["50", "100", "150"]:
+        for cutoff in ["50", "100"]:#, "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(n, egs_data, cutoff, year, snakemake.config)
 
@@ -3013,6 +3013,7 @@ if __name__ == "__main__":
     if options.get("cluster_heat_buses", False) and not first_year_myopic:
         cluster_heat_buses(n)
 
+    n.generators.to_csv("pre_optimization_generators.csv")
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
         
