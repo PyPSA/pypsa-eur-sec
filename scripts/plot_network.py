@@ -306,12 +306,14 @@ def plot_h2_map(network, regions):
         h2_retro_wo_new.index = h2_retro_wo_new.index_orig
 
         to_concat = [h2_new, h2_retro_w_new, h2_retro_wo_new]
-        h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
+        h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum().sum()
 
     else:
 
         h2_total = h2_new
 
+    print(f"h2_total: {h2_total}")
+    # link_widths_total = float(h2_total) / linewidth_factor
     link_widths_total = h2_total / linewidth_factor
 
     n.links.rename(index=lambda x: x.split("-2")[0], inplace=True)
