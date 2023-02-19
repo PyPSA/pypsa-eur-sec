@@ -2771,7 +2771,7 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, egs_data, cutoff, year, config):
+def add_egs_potential(n, egs_data, cutoff, year, config, costs):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
@@ -2785,7 +2785,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
 
     Nyears = n.snapshot_weightings.generators.sum() / 8760
     dr = config["costs"]["discountrate"]
-    lt = config["sector"]["egs_lifetime"]
+    lt = costs.at["geothermal", "lifetime"]
 
     # p_nom conversion GW -> MW
     # marginal_cost conversion Euro/kW -> Euro/MW
@@ -2818,11 +2818,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         * Nyears
     )
 
-    # should be done in analogy to marginal costs of wind/solar etc.
-    marginal_cost = pd.Series(
-        np.zeros_like(capital_cost),
-        index=capital_cost.index
-    )
+    marginal_cost = 0.
 
     n.madd(
         "Generator",
@@ -2830,7 +2826,6 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         suffix=f" egs_lcoe_{cutoff}",
         bus=buses,
         carrier="enhanced geothermal",
-        p_nom=0,
         p_nom_max=p_nom_max,
         p_max_pu=1.,
         p_min_pu=0.,
@@ -2838,7 +2833,7 @@ def add_egs_potential(n, egs_data, cutoff, year, config):
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
-        emission=0.12, #tCO2/MWh_el
+        emission=costs.at["geothermal", "co2 intensity"]
     )
 
 
@@ -2884,6 +2879,8 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
+    costs.to_csv("prepared_costs.csv") 
+
     if options["egs"]:
 
         # should probably be set much earlier in the workflow
@@ -2899,7 +2896,7 @@ if __name__ == "__main__":
 
         for cutoff in ["50", "100"]:#, "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, egs_data, cutoff, year, snakemake.config)
+            add_egs_potential(n, egs_data, cutoff, year, snakemake.config, costs)
 
     spatial = define_spatial(pop_layout.index, options)
 
@@ -3013,8 +3010,5 @@ if __name__ == "__main__":
     if options.get("cluster_heat_buses", False) and not first_year_myopic:
         cluster_heat_buses(n)
 
-    n.generators.to_csv("pre_optimization_generators.csv")
-
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
-        
     n.export_to_netcdf(snakemake.output[0])

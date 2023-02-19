@@ -281,8 +281,6 @@ sector:
   biomass_to_liquid: false
   biosng: false
   egs: true
-  egs_lifetime: 30 # estimate from 'From hot rock to useful energy:...' !!Currently at odds with pypsa-eur/data/costs.csv!!
-  egs_co2_emission: 0.12 #tCO2/MWh, pessimistic estimation from 'From hot rock to useful energy:...'; Technology improvements may lead to 0.01 #tCO2/MWh
 
 
 industry:
@@ -487,7 +485,7 @@ plotting:
     solar thermal: '#ffbf2b'
     solar rooftop: '#ffea80'
     # geothermal
-    egs: '#c19e01'
+    enhanced geothermal: '#c19e01'
     # gas
     OCGT: '#e0986c'
     OCGT marginal: '#e0986c'
