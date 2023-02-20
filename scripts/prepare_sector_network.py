@@ -2771,13 +2771,13 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, egs_data, cutoff, year, config, costs):
+def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
     """
 
-    year = str(year)
+    costs_year = str(costs_year)
 
     p_nom_max = egs_data["sustainable_potential"].to_pandas()
     opex_fixed = egs_data["opex_fixed"].to_pandas()
@@ -2791,9 +2791,9 @@ def add_egs_potential(n, egs_data, cutoff, year, config, costs):
     # marginal_cost conversion Euro/kW -> Euro/MW
     # capital_cost conversion Euro/kW -> Euro/MW
 
-    p_nom_max = p_nom_max.loc[:year].iloc[-1] * 1000.
-    opex_fixed = opex_fixed.loc[:year].iloc[-1] * 1000.
-    capex = capex.loc[:year].iloc[-1] * 1000.
+    p_nom_max = p_nom_max.loc[:costs_year].iloc[-1] * 1000.
+    opex_fixed = opex_fixed.loc[:costs_year].iloc[-1] * 1000.
+    capex = capex.loc[:costs_year].iloc[-1] * 1000.
 
     # take subset with p_nom_max != 0
     buses = p_nom_max.loc[p_nom_max != 0].index
@@ -2883,7 +2883,6 @@ if __name__ == "__main__":
 
     if options["egs"]:
 
-        # should probably be set much earlier in the workflow
         n.add("Carrier",
               "egs_el",
               nice_name="Enhanced Geothermal",
@@ -2892,11 +2891,11 @@ if __name__ == "__main__":
               )
 
         logger.info("Adding Enhanced Geothermal Potential")
-        year = snakemake.config["costs"]["year"]
+        costs_year = snakemake.config["costs"]["year"]
 
         for cutoff in ["50", "100"]:#, "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, egs_data, cutoff, year, snakemake.config, costs)
+            add_egs_potential(n, egs_data, cutoff, costs_year, snakemake.config, costs)
 
     spatial = define_spatial(pop_layout.index, options)
 
