@@ -2798,9 +2798,9 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # take subset with p_nom_max != 0
     buses = p_nom_max.loc[p_nom_max != 0].index
     nodes = buses
-    
-    p_nom_max = p_nom_max.loc[buses] 
-    opex_fixed = opex_fixed.loc[buses] 
+
+    p_nom_max = p_nom_max.loc[buses]
+    opex_fixed = opex_fixed.loc[buses]
     capex = capex.loc[buses]
 
     # Please find 
@@ -2833,7 +2833,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         capital_cost=capital_cost,
         p_nom_extendable=True,
         unit="MWh_el",
-        emission=costs.at["geothermal", "co2 intensity"]
+        emission=costs.at["geothermal", "CO2 intensity"]
     )
 
 
@@ -2879,15 +2879,12 @@ if __name__ == "__main__":
 
     patch_electricity_network(n)
 
-    costs.to_csv("prepared_costs.csv") 
-
     if options["egs"]:
-
         n.add("Carrier",
               "egs_el",
               nice_name="Enhanced Geothermal",
               color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
-              co2_emissions=snakemake.config["sector"]["egs_co2_emission"],
+              co2_emissions=costs.loc["geothermal", "CO2 intensity"]
               )
 
         logger.info("Adding Enhanced Geothermal Potential")
