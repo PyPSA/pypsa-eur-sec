@@ -2827,7 +2827,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         * Nyears
     )
 
-    bus_names = nodes + f"geothermal heat lcoe {cutoff}"
+    bus_names = nodes + f" geothermal heat lcoe {cutoff}"
 
     n.madd("Bus",
         bus_names,
@@ -2859,9 +2859,9 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # emission <- emission * eta_el
     # capital_cost <- capital_cost * eta_el
     
-    print(costs.loc["geothermal"])
     eta_el = costs.at["geothermal", "efficiency electricity"]
     capital_cost = capital_cost * eta_el
+    capital_cost.index = nodes + f" geothermal CHP {cutoff}"
     co2_intensity = costs.at["geothermal", "CO2 intensity"] * eta_el
 
     n.madd(
@@ -2869,7 +2869,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         nodes,
         suffix=f" egs_lcoe_{cutoff}",
         bus=buses,
-        carrier="enhanced geothermal heat",
+        carrier="geothermal heat",
         p_nom_max=p_nom_max / eta_el,
         p_max_pu=1.,
         p_min_pu=0.,
@@ -3073,11 +3073,6 @@ if __name__ == "__main__":
                 costs,
                 )
 
-
-    n.generators.to_csv("pre_solve_generators.csv")        
-    n.links.to_csv("pre_solve_links.csv")        
-    n.buses.to_csv("pre_solve_buses.csv")        
-    n.loads.to_csv("pre_solve_loads.csv")        
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])
