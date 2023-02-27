@@ -196,7 +196,7 @@ rule build_egs_potential:
     output:
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        # egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
     script: "scripts/build_egs_potential.py"
 
 
@@ -530,7 +530,7 @@ rule prepare_sector_network:
         cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        #egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],

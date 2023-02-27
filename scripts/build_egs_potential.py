@@ -74,11 +74,11 @@ def get_egs_potentials(potentials_file,
     cost_cutoffs = ["150", "100", "50"]
     egs_data = dict()
 
-    for cutoff in cost_cutoffs[1:]:
+    for cutoff in cost_cutoffs:
         inner = dict()
-        inner['sus_potential'] = pd.DataFrame(index=times, columns=shapes['name'])
-        inner['opex_fixed'] = deepcopy(inner['sus_potential'])
-        inner['capex'] = deepcopy(inner['sus_potential'])
+        inner['potential'] = pd.DataFrame(index=times, columns=shapes['name'])
+        inner['opex_fixed'] = deepcopy(inner['potential'])
+        inner['capex'] = deepcopy(inner['potential'])
         egs_data[cutoff] = inner
 
     shapes['area'] = shapes.geometry.apply(lambda geom: geom.area)
@@ -105,13 +105,12 @@ def get_egs_potentials(potentials_file,
     cutoff_slices = [slice(18,19), slice(8,18), slice(0,8)]
 
     # print("Potential data is not correct yet!")
-    print("Currently considering only the first two cost cutoffs!")
     sus_cols = [
                 "EGS sustainable power capacity potential, excl. economic constraint (GW)",
                 "EGS sustainable power capacity potential (GW)",
                 ]
 
-    for cutoff, cutoff_slice, sus_col in zip(cost_cutoffs[1:], cutoff_slices[1:], sus_cols):
+    for cutoff, cutoff_slice, sus_col in zip(cost_cutoffs, cutoff_slices, sus_cols):
 
         for i, time in enumerate(times):
 
@@ -129,21 +128,21 @@ def get_egs_potentials(potentials_file,
             potential = potential[potential.columns[cutoff_slice]]
             potential = potential.sum(axis=1)
             
-            potential = pd.DataFrame({
-                "potential": potential,
-                "sus_potential": sus_potential
-                }).min(axis=1)
+            # potential = pd.DataFrame({
+            #     "potential": potential,
+            #     "sus_potential": sus_potential
+            #     }).min(axis=1)
 
             potential = country_shares.transpose() @ potential
 
-            egs_data[cutoff]['sus_potential'].loc[time] = potential
+            egs_data[cutoff]['potential'].loc[time] = potential
 
     # loading capex and opex at difference LCOE cutoffs
     cutoff_skiprows = [1, 44, 87]
     capex_usecols = slice(1, 9)
     opex_usecols = slice(10, 18)
 
-    for cutoff, skiprows in zip(cost_cutoffs[1:], cutoff_skiprows[1:]):
+    for cutoff, skiprows in zip(cost_cutoffs, cutoff_skiprows):
 
         prices = pd.read_excel(costs_file,
                             sheet_name=1,
@@ -191,16 +190,16 @@ if __name__ == "__main__":
         snakemake.input["shapes"],
         )
 
-    for cutoff in ["50", "100"]:#, "150"]:
+    for cutoff in ["50", "100", "150"]:
         data = egs_data[cutoff]
 
-        time = data["sus_potential"].index
-        countries = data["sus_potential"].columns
+        time = data["potential"].index
+        countries = data["potential"].columns
         dims = ["time", "countries"]
 
         ds = xr.Dataset(
             data_vars=dict(
-                sustainable_potential=(dims, data["sus_potential"]),
+                potential=(dims, data["potential"]),
                 opex_fixed=(dims, data["opex_fixed"]),
                 capex=(dims, data["capex"]),
                 ),

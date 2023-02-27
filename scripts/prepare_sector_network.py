@@ -2787,7 +2787,8 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
 
     costs_year = str(costs_year)
 
-    p_nom_max = egs_data["sustainable_potential"].to_pandas()
+    # p_nom_max = egs_data["sustainable_potential"].to_pandas()
+    p_nom_max = egs_data["potential"].to_pandas()
     opex_fixed = egs_data["opex_fixed"].to_pandas()
     capex = egs_data["capex"].to_pandas()
 
@@ -2858,7 +2859,8 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # emission <- emission * eta_el
     # capital_cost <- capital_cost * eta_el
     
-    eta_el = costs.at["geothermal", "efficiency electricty"]
+    print(costs.loc["geothermal"])
+    eta_el = costs.at["geothermal", "efficiency electricity"]
     capital_cost = capital_cost * eta_el
     co2_intensity = costs.at["geothermal", "CO2 intensity"] * eta_el
 
@@ -2881,7 +2883,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         "Link",
         nodes + f" geothermal CHP {cutoff}",
         bus0=bus_names,
-        bus1=nodes + "urban central heat",
+        bus1=nodes + " urban central heat",
         bus2=nodes,
         bus3="co2 atmosphere",
         carrier="geothermal heat",
@@ -3062,7 +3064,14 @@ if __name__ == "__main__":
 
         for cutoff in ["50", "100"]:#, "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, egs_data, cutoff, costs_year, snakemake.config, costs)
+            add_egs_potential(
+                n,
+                egs_data,
+                cutoff,
+                costs_year,
+                snakemake.config,
+                costs,
+                )
 
 
     n.generators.to_csv("pre_solve_generators.csv")        
