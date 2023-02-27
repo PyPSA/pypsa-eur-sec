@@ -109,6 +109,14 @@ def define_spatial(nodes, options):
             spatial.ammonia.locations = ["EU"]
 
         spatial.ammonia.df = pd.DataFrame(vars(spatial.ammonia), index=nodes)
+    
+    # enhanced geothermal
+    
+    if options.get("egs"):
+        spatial.egs = SimpleNamespace()
+        spatial.egs.nodes_50 = nodes + " geothermal lcoe 50"
+        spatial.egs.nodes_100 = nodes + " geothermal lcoe 100"
+        spatial.egs.locations = nodes
 
     # hydrogen
     spatial.h2 = SimpleNamespace()
@@ -2818,22 +2826,72 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         * Nyears
     )
 
-    marginal_cost = 0.
+    bus_names = nodes + f"geothermal heat lcoe {cutoff}"
+
+    n.madd("Bus",
+        bus_names,
+        location=nodes,
+        carrier="geothermal heat",
+        )
+    
+    # The format of the source paper (from hot rock to useful energy...)
+    # only provided available electricity generation.
+    # We are however also interested in available heat for district heating.
+    # For this we reverse engineer total available heat
+    # and model heat extracted from the ground as a generator, and
+    # the CHP as a link connecting extracted heat to both
+    # electricity and district central thermal loads.
+    # The given data is W \equiv available electricity [GW] 
+    # We assume this electricity is generated with an efficiency eta_el of
+    # ~ 10 percent, following the literature.
+    # The low efficiency is explained by the steam temperatures between
+    # 150 and 300 degrees.
+    # We compute from this p_nom_max of total available generated heat via
+    # p_nom_max = W / eta_el
+    # The combined heat and power is modelled through a link
+    # with electricity and thermal efficiency. 
+    # The capital cost of the CHP is modeled through the
+    # link, i.e. the CHP (organic rankine cycle) plant, hence
+    # capital cost of the generator are set to (approx) zero.
+    # Concerning capital cost and emission of the chp,
+    # these are modeled per MWh_el, hence the new values are 
+    # emission <- emission * eta_el
+    # capital_cost <- capital_cost * eta_el
+    
+    eta_el = costs.at["geothermal", "efficiency electricty"]
+    capital_cost = capital_cost * eta_el
+    co2_intensity = costs.at["geothermal", "CO2 intensity"] * eta_el
 
     n.madd(
         "Generator",
         nodes,
         suffix=f" egs_lcoe_{cutoff}",
         bus=buses,
-        carrier="enhanced geothermal",
-        p_nom_max=p_nom_max,
+        carrier="enhanced geothermal heat",
+        p_nom_max=p_nom_max / eta_el,
         p_max_pu=1.,
         p_min_pu=0.,
-        marginal_cost=marginal_cost,
-        capital_cost=capital_cost,
+        marginal_cost=0.,
+        capital_cost=0.001, # to prevent arbitrary sizing, costs are accrued through CHP Link
         p_nom_extendable=True,
-        unit="MWh_el",
-        emission=costs.at["geothermal", "CO2 intensity"]
+        unit="MWh_th",
+    )
+
+    n.madd(
+        "Link",
+        nodes + f" geothermal CHP {cutoff}",
+        bus0=bus_names,
+        bus1=nodes + "urban central heat",
+        bus2=nodes,
+        bus3="co2 atmosphere",
+        carrier="geothermal heat",
+        p_nom_extendable=True,
+        capital_cost=capital_cost,
+        marginal_cost=0.,
+        efficiency=costs.at["geothermal", "efficiency residential heat"],
+        efficiency2=costs.at["geothermal", "efficiency electricity"],
+        efficiency3=co2_intensity,
+        lifetime=costs.at["geothermal", "lifetime"]
     )
 
 
@@ -2878,21 +2936,6 @@ if __name__ == "__main__":
     pop_weighted_energy_totals = pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
 
     patch_electricity_network(n)
-
-    if options["egs"]:
-        n.add("Carrier",
-              "egs_el",
-              nice_name="Enhanced Geothermal",
-              color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
-              co2_emissions=costs.loc["geothermal", "CO2 intensity"]
-              )
-
-        logger.info("Adding Enhanced Geothermal Potential")
-        costs_year = snakemake.config["costs"]["year"]
-
-        for cutoff in ["50", "100"]:#, "150"]:
-            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
-            add_egs_potential(n, egs_data, cutoff, costs_year, snakemake.config, costs)
 
     spatial = define_spatial(pop_layout.index, options)
 
@@ -3005,6 +3048,27 @@ if __name__ == "__main__":
 
     if options.get("cluster_heat_buses", False) and not first_year_myopic:
         cluster_heat_buses(n)
+
+    if options.get("egs"):
+        n.add("Carrier",
+              "geothermal heat",
+              nice_name="Enhanced Geothermal",
+              color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
+              co2_emissions=costs.loc["geothermal", "CO2 intensity"]
+              )
+
+        logger.info("Adding Enhanced Geothermal Potential")
+        costs_year = snakemake.config["costs"]["year"]
+
+        for cutoff in ["50", "100"]:#, "150"]:
+            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
+            add_egs_potential(n, egs_data, cutoff, costs_year, snakemake.config, costs)
+
+
+    n.generators.to_csv("pre_solve_generators.csv")        
+    n.links.to_csv("pre_solve_links.csv")        
+    n.buses.to_csv("pre_solve_buses.csv")        
+    n.loads.to_csv("pre_solve_loads.csv")        
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])
