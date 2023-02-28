@@ -111,11 +111,11 @@ def define_spatial(nodes, options):
         spatial.ammonia.df = pd.DataFrame(vars(spatial.ammonia), index=nodes)
     
     # enhanced geothermal
+    # bus names are not defined here since, they are only initialized if a location
+    # has potential for enhanced geothermal 
     
     if options.get("egs"):
         spatial.egs = SimpleNamespace()
-        spatial.egs.nodes_50 = nodes + " geothermal lcoe 50"
-        spatial.egs.nodes_100 = nodes + " geothermal lcoe 100"
         spatial.egs.locations = nodes
 
     # hydrogen
@@ -1824,6 +1824,7 @@ def create_nodes_for_heat_sector():
         f"possible is increased by a progress factor of\n{progress}",
         f"resulting in a district heating share of\n{dist_fraction_node}"
     )
+
     return nodes, dist_fraction_node, urban_fraction
 
 
@@ -2875,7 +2876,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         p_max_pu=1.,
         p_min_pu=0.,
         marginal_cost=0.,
-        capital_cost=0.001, # to prevent arbitrary sizing, costs are accrued through CHP Link
+        capital_cost=0.001, # to prevent arbitrary sizing; costs are modeled through CHP Link
         p_nom_extendable=True,
         unit="MWh_th",
     )
@@ -2919,8 +2920,6 @@ if __name__ == "__main__":
     options = snakemake.config["sector"]
 
     opts = snakemake.wildcards.sector_opts.split('-')
-
-    logger.info("opts: ", opts)
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
 
@@ -3056,7 +3055,7 @@ if __name__ == "__main__":
         n.add("Carrier",
               "geothermal heat",
               nice_name="Geothermal Heat",
-              color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
+              color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
               co2_emissions=costs.loc["geothermal", "CO2 intensity"],
               )
 
@@ -3074,5 +3073,10 @@ if __name__ == "__main__":
                 costs,
                 )
 
+    n.links.to_csv("pre_solve_links.csv")
+    n.generators.to_csv("pre_solve_generators.csv")
+    n.buses.to_csv("pre_solve_buses.csv")
+
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
+
     n.export_to_netcdf(snakemake.output[0])

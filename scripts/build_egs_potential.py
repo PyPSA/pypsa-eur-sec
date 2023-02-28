@@ -8,11 +8,19 @@ steps between 2015 and 2015 in a country-resolution (from "From hot rock to usef
 
 Note the data comes in three steps of LCOE: 50, 100, 150 Euro/MWh
 For each three we have: Maximal nominal power, marginal cost, capital cost
-An approach to modelling this would be splitting the steps into 3 generators
+The current approach models this by splitting the steps into 3 generators
 
 Used data comes from the paper
 "From hot rock to useful energy: A global estimate of enhanced geothermal potential"
 ~ Aghahosseini, Breyer (2020)
+
+Other useful resources:
+    For estimations of used efficiencies:
+    "Overcoming challenges in the classification of deep geothermal potential"
+    ~ Breede et al. 2015
+    For organic rankine cycles relevant at the production temperatures of 150-300 degrees:
+    "Techno-economic survey of Organic Rankine Cycle (ORC) systems"
+    ~ Quoilin et al. 2013
 
 Outputs
 -------
@@ -64,7 +72,7 @@ def get_egs_potentials(potentials_file,
     # CAPEX is interpreted as investment cost as in pypsa-eur/data/costs.csv
     # OPEX_fixed is interpreted as FOM as in pypsa-eur/data/costs.csv
     # OPEX_var is interpreted as VOM as in pypsa-eur/data/costs.csv
-    # from this, Nyears is obtained from the network, discount rate from
+    # from this, Nyears is the egs lifetime, discount rate is taken from
     # config.yaml
     # The procedure to compute capital and marginal cost for the optimization
     # is copied from pypsa-eur/scripts/add_electricity.py (see load_costs(...))

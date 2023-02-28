@@ -485,7 +485,7 @@ plotting:
     solar thermal: '#ffbf2b'
     solar rooftop: '#ffea80'
     # geothermal
-    enhanced geothermal: '#c19e01'
+    geothermal heat: '#c19e01'
     # gas
     OCGT: '#e0986c'
     OCGT marginal: '#e0986c'
