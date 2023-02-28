@@ -46,6 +46,7 @@ def get_egs_potentials(potentials_file,
 
     Args:
         potentials_file(str or pathlib.Path): file with potentials
+        sustainable_potentials_file(str or pathlib.Path): currently not considered
         costs_file(str or pathlib.Path): file with capital and marginal costs
         shapes_file(pathlib.Path): path to shapefiles to which data is disagreggated
     """
@@ -104,20 +105,9 @@ def get_egs_potentials(potentials_file,
 
     cutoff_slices = [slice(18,19), slice(8,18), slice(0,8)]
 
-    # print("Potential data is not correct yet!")
-    sus_cols = [
-                "EGS sustainable power capacity potential, excl. economic constraint (GW)",
-                "EGS sustainable power capacity potential (GW)",
-                ]
-
-    for cutoff, cutoff_slice, sus_col in zip(cost_cutoffs, cutoff_slices, sus_cols):
+    for cutoff, cutoff_slice in zip(cost_cutoffs, cutoff_slices):
 
         for i, time in enumerate(times):
-
-            sus_potential = pd.read_excel(sustainable_potentials_file, sheet_name=(i+1), index_col=0)
-            sus_potential = sus_potential.loc["Afghanistan":"Zimbabwe"]
-            sus_potential = sus_potential.rename(index=countryname_mapper)
-            sus_potential = sus_potential.loc[areas.index][sus_col]
 
             potential = pd.read_excel(potentials_file, sheet_name=(i+1), index_col=0)
             potential = potential[[col for col in potential.columns if 'Power' in col]]
@@ -128,11 +118,6 @@ def get_egs_potentials(potentials_file,
             potential = potential[potential.columns[cutoff_slice]]
             potential = potential.sum(axis=1)
             
-            # potential = pd.DataFrame({
-            #     "potential": potential,
-            #     "sus_potential": sus_potential
-            #     }).min(axis=1)
-
             potential = country_shares.transpose() @ potential
 
             egs_data[cutoff]['potential'].loc[time] = potential

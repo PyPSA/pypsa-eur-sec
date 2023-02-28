@@ -2827,12 +2827,13 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         * Nyears
     )
 
-    bus_names = nodes + f" geothermal heat lcoe {cutoff}"
+    geothermal_bus_names = nodes + f" geothermal heat lcoe {cutoff}"
 
     n.madd("Bus",
-        bus_names,
+        geothermal_bus_names,
         location=nodes,
         carrier="geothermal heat",
+        unit="MWh_th",
         )
     
     # The format of the source paper (from hot rock to useful energy...)
@@ -2858,7 +2859,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # these are modeled per MWh_el, hence the new values are 
     # emission <- emission * eta_el
     # capital_cost <- capital_cost * eta_el
-    
+
     eta_el = costs.at["geothermal", "efficiency electricity"]
     capital_cost = capital_cost * eta_el
     capital_cost.index = nodes + f" geothermal CHP {cutoff}"
@@ -2867,8 +2868,8 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     n.madd(
         "Generator",
         nodes,
-        suffix=f" egs_lcoe_{cutoff}",
-        bus=buses,
+        suffix=f" geothermal heat below lcoe {cutoff}",
+        bus=geothermal_bus_names,
         carrier="geothermal heat",
         p_nom_max=p_nom_max / eta_el,
         p_max_pu=1.,
@@ -2882,7 +2883,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     n.madd(
         "Link",
         nodes + f" geothermal CHP {cutoff}",
-        bus0=bus_names,
+        bus0=geothermal_bus_names,
         bus1=nodes + " urban central heat",
         bus2=nodes,
         bus3="co2 atmosphere",
@@ -3054,15 +3055,15 @@ if __name__ == "__main__":
     if options.get("egs"):
         n.add("Carrier",
               "geothermal heat",
-              nice_name="Enhanced Geothermal",
+              nice_name="Geothermal Heat",
               color=snakemake.config["plotting"]["tech_colors"]["enhanced geothermal"],
-              co2_emissions=costs.loc["geothermal", "CO2 intensity"]
+              co2_emissions=costs.loc["geothermal", "CO2 intensity"],
               )
 
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
 
-        for cutoff in ["50", "100"]:#, "150"]:
+        for cutoff in ["50", "100", "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
             add_egs_potential(
                 n,
@@ -3072,7 +3073,6 @@ if __name__ == "__main__":
                 snakemake.config,
                 costs,
                 )
-
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])
