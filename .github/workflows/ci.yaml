@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: : 2021 The PyPSA-Eur Authors
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
 #
 # SPDX-License-Identifier: CC0-1.0
 
@@ -102,7 +102,5 @@ jobs:
         run: |
           conda activate pypsa-eur
           conda list
-          cp test/config.overnight.yaml config.yaml
-          snakemake -call
-          cp test/config.myopic.yaml config.yaml
-          snakemake -call
+          snakemake -call --configfile test/config.overnight.yaml
+          snakemake -call --configfile test/config.myopic.yaml

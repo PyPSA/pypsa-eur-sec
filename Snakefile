@@ -146,10 +146,9 @@ if config["sector"]["gas_network"] or config["sector"]["H2_retrofit"]:
 
     rule build_gas_input_locations:
         input:
-            lng="data/gas_network/scigrid-gas/data/IGGIELGN_LNGs.geojson",
+            lng=HTTP.remote("https://globalenergymonitor.org/wp-content/uploads/2022/09/Europe-Gas-Tracker-August-2022.xlsx", keep_local=True),
             entry="data/gas_network/scigrid-gas/data/IGGIELGN_BorderPoints.geojson",
             production="data/gas_network/scigrid-gas/data/IGGIELGN_Productions.geojson",
-            planned_lng="data/gas_network/planned_LNGs.csv",
             regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
             regions_offshore=pypsaeur('resources/regions_offshore_elec_s{simpl}_{clusters}.geojson')
         output:
@@ -185,19 +184,6 @@ rule build_heat_demands:
     threads: 8
     benchmark: "benchmarks/build_heat_demands/{scope}_s{simpl}_{clusters}"
     script: "scripts/build_heat_demand.py"
-
-
-rule build_egs_potential:
-    input:
-        egs_potential="data/egs_global_potential.xlsx",
-        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
-        egs_cost="data/egs_costs.xlsx",
-        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
-    output:
-        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
-        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
-    script: "scripts/build_egs_potential.py"
 
 
 rule build_temperature_profiles:
@@ -245,6 +231,19 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+rule build_egs_potential:
+    input:
+        egs_potential="data/egs_global_potential.xlsx",
+        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
+        egs_cost="data/egs_costs.xlsx",
+        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+    output:
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+    script: "scripts/build_egs_potential.py"
+
+
 def input_eurostat(w):
     # 2016 includes BA, 2017 does not
     report_year = config["energy"]["eurostat_report_year"]
@@ -273,9 +272,9 @@ rule build_biomass_potentials:
         enspreso_biomass=HTTP.remote("https://cidportal.jrc.ec.europa.eu/ftp/jrc-opendata/ENSPRESO/ENSPRESO_BIOMASS.xlsx", keep_local=True),
         nuts2="data/nuts/NUTS_RG_10M_2013_4326_LEVL_2.geojson", # https://gisco-services.ec.europa.eu/distribution/v2/nuts/download/#nuts21
         regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
-        nuts3_population="../pypsa-eur/data/bundle/nama_10r_3popgdp.tsv.gz",
-        swiss_cantons="../pypsa-eur/data/bundle/ch_cantons.csv",
-        swiss_population="../pypsa-eur/data/bundle/je-e-21.03.02.xls",
+        nuts3_population=pypsaeur("data/bundle/nama_10r_3popgdp.tsv.gz"),
+        swiss_cantons=pypsaeur("data/bundle/ch_cantons.csv"),
+        swiss_population=pypsaeur("data/bundle/je-e-21.03.02.xls"),
         country_shapes=pypsaeur('resources/country_shapes.geojson')
     output:
         biomass_potentials_all='resources/biomass_potentials_all_s{simpl}_{clusters}.csv',
@@ -299,6 +298,23 @@ if config["sector"]["biomass_transport"]:
     build_biomass_transport_costs_output = rules.build_biomass_transport_costs.output
 else:
     build_biomass_transport_costs_output = {}
+
+
+if config["sector"]["regional_co2_sequestration_potential"]["enable"]:
+    rule build_sequestration_potentials:
+        input:
+            sequestration_potential=HTTP.remote("https://raw.githubusercontent.com/ericzhou571/Co2Storage/main/resources/complete_map_2020_unit_Mt.geojson", keep_local=True),
+            regions_onshore=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+            regions_offshore=pypsaeur("resources/regions_offshore_elec_s{simpl}_{clusters}.geojson"),
+        output:
+            sequestration_potential="resources/co2_sequestration_potential_elec_s{simpl}_{clusters}.csv"
+        threads: 1
+        resources: mem_mb=4000
+        benchmark: "benchmarks/build_sequestration_potentials_s{simpl}_{clusters}"
+        script: "scripts/build_sequestration_potentials.py"
+    build_sequestration_potentials_output = rules.build_sequestration_potentials.output
+else:
+    build_sequestration_potentials_output = {}
 
 
 rule build_salt_cavern_potentials:
@@ -536,7 +552,8 @@ rule prepare_sector_network:
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         **build_retro_cost_output,
         **build_biomass_transport_costs_output,
-        **gas_infrastructure
+        **gas_infrastructure,
+        **build_sequestration_potentials_output
     output: RDIR + '/prenetworks/elec_s{simpl}_{clusters}_lv{lv}_{opts}_{sector_opts}_{planning_horizons}.nc'
     threads: 1
     resources: mem_mb=2000

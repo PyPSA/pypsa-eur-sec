@@ -1,4 +1,4 @@
-version: 0.6.0
+version: 0.7.0
 
 logging_level: INFO
 
@@ -203,9 +203,21 @@ sector:
   MWh_MeOH_per_tCO2: 4.0321 # in LHV, source: DECHEMA (2017): Low carbon energy and feedstock for the European chemical industry , pg. 64.
   MWh_MeOH_per_MWh_e: 3.6907 # in LHV, source: DECHEMA (2017): Low carbon energy and feedstock for the European chemical industry , pg. 64.
   shipping_hydrogen_liquefaction: false # whether to consider liquefaction costs for shipping H2 demands
-  shipping_hydrogen_share: 0
-  shipping_methanol_share: 1
-  shipping_oil_share: 0
+  shipping_hydrogen_share:
+    2020: 0
+    2030: 0
+    2040: 0
+    2050: 0
+  shipping_methanol_share:
+    2020: 0
+    2030: 0.3
+    2040: 0.7
+    2050: 1
+  shipping_oil_share:
+    2020: 1
+    2030: 0.7
+    2040: 0.3
+    2050: 0
   shipping_methanol_efficiency: 0.46 # 10-15% higher https://www.iea-amf.org/app/webroot/files/file/Annex%20Reports/AMF_Annex_56.pdf, https://users.ugent.be/~lsileghe/documents/extended_abstract.pdf
   shipping_oil_efficiency: 0.40 #For conversion of fuel oil to propulsion in 2011
   aviation_demand_factor: 1. # relative aviation demand compared to today
@@ -249,10 +261,19 @@ sector:
   coal_cc: false
   dac: true
   co2_vent: false
+  allam_cycle: false
   SMR: true
+  regional_co2_sequestration_potential:
+    enable: false  # enable regionally resolved geological co2 storage potential
+    attribute: 'conservative estimate Mt'
+    include_onshore: false  # include onshore sequestration potentials
+    min_size: 3 # Gt, sites with lower potential will be excluded
+    max_size: 25 # Gt, max sequestration potential for any one site, TODO research suitable value
+    years_of_storage: 25 # years until potential exhausted at optimised annual rate
   co2_sequestration_potential: 200  #MtCO2/a sequestration potential for Europe
   co2_sequestration_cost: 10   #EUR/tCO2 for sequestration of CO2
-  co2_network: false
+  co2_spatial: false
+  co2network: false
   cc_fraction: 0.9  # default fraction of CO2 captured with post-combustion capture
   hydrogen_underground_storage: true
   hydrogen_underground_storage_locations:
@@ -260,8 +281,11 @@ sector:
     - nearshore  # within 50 km of sea
     # - offshore
   ammonia: false # can be false (no NH3 carrier), true (copperplated NH3), "regional" (regionalised NH3 without network)
+  min_part_load_fischer_tropsch: 0.9 # p_min_pu
+  min_part_load_methanolisation: 0.5 # p_min_pu
   use_fischer_tropsch_waste_heat: true
   use_fuel_cell_waste_heat: true
+  use_electrolysis_waste_heat: false
   electricity_distribution_grid: true
   electricity_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
   electricity_grid_connection: true  # only applies to onshore wind and utility PV
@@ -275,7 +299,8 @@ sector:
   gas_network_connectivity_upgrade: 1 # https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation.html#networkx.algorithms.connectivity.edge_augmentation.k_edge_augmentation
   gas_distribution_grid: true
   gas_distribution_grid_cost_factor: 1.0  #multiplies cost in data/costs.csv
-  biomass_transport: false  # biomass transport between nodes
+  biomass_spatial: false  # regionally resolve biomass (e.g. potentials)
+  biomass_transport: false  # allow transport of solid biomass between nodes
   conventional_generation: # generator : carrier
     OCGT: gas
   biomass_to_liquid: false
@@ -386,22 +411,50 @@ solving:
 
   solver:
     name: gurobi
-    threads: 4
-    method: 2 # barrier
-    crossover: 0
-    BarConvTol: 1.e-6
-    Seed: 123
-    AggFill: 0
-    PreDual: 0
-    GURO_PAR_BARDENSETHRESH: 200
-    #FeasibilityTol: 1.e-6
+    options: gurobi-default
 
-    #name: cplex
-    #threads: 4
-    #lpmethod: 4 # barrier
-    #solutiontype: 2 # non basic solution, ie no crossover
-    #barrier_convergetol: 1.e-5
-    #feasopt_tolerance: 1.e-6
+  solver_options:
+    gurobi-default:
+      threads: 4
+      method: 2 # barrier
+      crossover: 0
+      BarConvTol: 1.e-6
+      Seed: 123
+      AggFill: 0
+      PreDual: 0
+      GURO_PAR_BARDENSETHRESH: 200
+      seed: 10              # Consistent seed for all plattforms
+    gurobi-numeric-focus:
+      name: gurobi
+      NumericFocus: 3       # Favour numeric stability over speed
+      method: 2             # barrier
+      crossover: 0          # do not use crossover
+      BarHomogeneous: 1     # Use homogeneous barrier if standard does not converge
+      BarConvTol: 1.e-5
+      FeasibilityTol: 1.e-4
+      OptimalityTol: 1.e-4
+      ObjScale: -0.5
+      threads: 8
+      Seed: 123
+    gurobi-fallback:        # Use gurobi defaults
+      name: gurobi
+      crossover: 0
+      method: 2             # barrier
+      BarHomogeneous: 1     # Use homogeneous barrier if standard does not converge
+      BarConvTol: 1.e-5
+      FeasibilityTol: 1.e-5
+      OptimalityTol: 1.e-5
+      Seed: 123
+      threads: 8
+    cplex-default:
+      threads: 4
+      lpmethod: 4 # barrier
+      solutiontype: 2 # non basic solution, ie no crossover
+      barrier_convergetol: 1.e-5
+      feasopt_tolerance: 1.e-6
+
+    cbc-default: {} # Used in CI
+
   mem: 30000 #memory in MB; 20 GB enough for 50+B+I+H2; 100 GB for 181+B+I+H2
 
 
@@ -498,6 +551,7 @@ plotting:
     natural gas: '#e05b09'
     CCGT: '#a85522'
     CCGT marginal: '#a85522'
+    allam: '#B98F76'
     gas for industry co2 to atmosphere: '#692e0a'
     gas for industry co2 to stored: '#8a3400'
     gas for industry: '#853403'
