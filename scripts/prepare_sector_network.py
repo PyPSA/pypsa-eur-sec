@@ -2940,7 +2940,6 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     th_eff = 0.8
     print("=============================")
     print(f"WARNING: Setting th efficiency manually to {th_eff}!")
-    print("co2 omitted")
     print("=============================")
     n.madd(
         "Link",
