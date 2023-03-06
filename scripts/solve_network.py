@@ -151,7 +151,7 @@ def add_chp_constraints(n):
     heat = (n.links.index.str.contains("urban central")
             & n.links.index.str.contains("CHP")
             & n.links.index.str.contains("heat"))
-
+    
     electric_ext = n.links[electric].query("p_nom_extendable").index
     heat_ext = n.links[heat].query("p_nom_extendable").index
 
@@ -186,6 +186,60 @@ def add_chp_constraints(n):
         n.model.add_constraints(lhs <= rhs, name='chplink-backpressure')
 
 
+def add_geothermal_chp_constraints(n):
+    """
+    Fixes capacity expansion
+    of geothermal for urban central heating
+    to a factor times the built capacity of geothermal
+    for electricity generation
+
+    Also upper bounds heat generation by factor times
+    electricity generation
+    
+    the factor is relative efficiency (eta_heat / eta_el)
+    multiplied by the estimated area of land available for
+    geothermal generation close to urban areas. The
+    factor quantifying available land is already built into
+    eta_heat.
+    """
+
+    # discharger_bool = n.links.index.str.contains("battery discharger")
+    # charger_bool = n.links.index.str.contains("battery charger")
+
+    # dischargers_ext= n.links[discharger_bool].query("p_nom_extendable").index
+    # chargers_ext= n.links[charger_bool].query("p_nom_extendable").index
+
+    # eff = n.links.efficiency[dischargers_ext].values
+
+    # lhs = n.model["Link-p_nom"].loc[chargers_ext] - n.model["Link-p_nom"].loc[dischargers_ext] * eff
+
+    # from pprint import pprint
+    # print(n.model["Link-p_nom"].loc[dischargers_ext].coords)
+        
+    print("++++++++++++++++++++++++++++++++++++++++")
+
+    geoth_chp_elec_bool = n.links.index.str.contains("geothermal CHP electric")
+    geoth_chp_heat_bool = n.links.index.str.contains("geothermal CHP heat")
+
+    geoth_chp_elec = n.links[geoth_chp_elec_bool].query("p_nom_extendable").index
+    geoth_chp_heat = n.links[geoth_chp_heat_bool].query("p_nom_extendable").index
+
+    effs_elec = n.links.efficiency[geoth_chp_elec].values
+    effs_heat = n.links.efficiency[geoth_chp_heat].values
+    eff = (effs_elec / effs_heat)[0]
+
+    p_nom_lhs = n.model["Link-p_nom"].loc[geoth_chp_elec] - n.model["Link-p_nom"].loc[geoth_chp_heat] * eff
+
+    n.model.add_constraints(p_nom_lhs == 0, name="geothermal-fixed_capacity_ratio_electricity_residential_heat")
+    
+    print("YOIIPPPIIIIIIIIIIIIIIIIIEEEEEEEEEEEEEEEEEEE")
+
+    p_lhs = n.model["Link-p"].loc[:, geoth_chp_elec] - n.model["Link-p"].loc[:, geoth_chp_heat] * eff
+
+    n.model.add_constraints(p_lhs >= 0., name="geothermal-upper_bound_residential_heat_vs_electricity")
+    print("DFUIFVSDNUIFGNVSLIDBFUVYNSIODFVBSILYDFBVIZUFVSK")
+
+
 def add_pipe_retrofit_constraint(n):
     """Add constraint for retrofitting existing CH4 pipelines to H2 pipelines."""
     gas_pipes_i = n.links.query("carrier == 'gas pipeline' and p_nom_extendable").index
@@ -206,6 +260,7 @@ def add_pipe_retrofit_constraint(n):
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
+    add_geothermal_chp_constraints(n)
 
 
 def solve_network(n, config, opts="", **kwargs):
