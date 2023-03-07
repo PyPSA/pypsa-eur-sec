@@ -2912,20 +2912,27 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     eta_el = costs.at["geothermal", "efficiency electricity"]
 
     capital_cost = capital_cost * eta_el
-    capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
+    capital_cost.index = nodes + f" geothermal heat below lcoe {cutoff}"
     co2_intensity = costs.at["geothermal", "CO2 intensity"] * eta_el
+
+    p_nom_max.index = nodes + f" geothermal heat below lcoe {cutoff}"
 
     n.madd(
         "Generator",
-        nodes,
-        suffix=f" geothermal heat below lcoe {cutoff}",
-        bus=geothermal_bus_names,
+        nodes + f" geothermal heat below lcoe {cutoff}",
+        # suffix=f" geothermal heat below lcoe {cutoff}",
+        # bus=geothermal_bus_names,
+        bus=nodes,
         carrier="geothermal heat",
-        p_nom_max=p_nom_max / eta_el,
+        # p_nom_max=p_nom_max / eta_el,
+        p_nom_max=np.inf,
+        # p_nom=p_nom_max / eta_el,
         p_max_pu=1.,
         p_min_pu=0.,
         marginal_cost=0.,
-        capital_cost=0.001, # to prevent arbitrary sizing; costs are modeled through CHP Link
+        # capital_cost=capital_cost * eta_el,
+        capital_cost=0.1,
+        # p_nom_extendable=False,
         p_nom_extendable=True,
         unit="MWh_th",
     )
@@ -2935,8 +2942,10 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     print("=============================")
     print(f"WARNING: Setting th efficiency manually to {th_eff}!")
     print(f"WARNING: Same for emission {emission}!")
+    print(f"WARNING: Same for capital cost 1")
     print("=============================")
 
+    p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
     n.madd(
         "Link",
         nodes + f" geothermal CHP electric {cutoff}",
@@ -2945,15 +2954,18 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         bus2="co2 atmosphere",
         carrier="geothermal heat",
         p_nom_extendable=True,
-        capital_cost=capital_cost,
-        # capital_cost=1.,
-        marginal_cost=0.015,
-        efficiency=costs.at["geothermal", "efficiency electricity"],
+        p_nom_max=p_nom_max,
+        # capital_cost=capital_cost,
+        capital_cost=0.0,
+        marginal_cost=0.0,
+        efficiency=eta_el,
         # efficiency2=co2_intensity,
         efficiency2=emission,
         lifetime=costs.at["geothermal", "lifetime"]
     )
 
+    print("geothermal Heat is deactivated!!")
+    p_nom_max.index = nodes + f" geothermal CHP heat {cutoff}"
     n.madd(
         "Link",
         nodes + f" geothermal CHP heat {cutoff}",
@@ -2962,8 +2974,10 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         # connection to co2 emission is conducted via electricity part
         carrier="geothermal heat",
         p_nom_extendable=True,
+        # p_nom_max=p_nom_max / eta_el * th_eff,
+        p_nom_max=0.,
         capital_cost=0.1, # cost is obtained through the electricity part
-        marginal_cost=0.015,
+        marginal_cost=0.0,
         # efficiency=costs.at["geothermal", "efficiency residential heat"],
         efficiency=th_eff, 
         lifetime=costs.at["geothermal", "lifetime"]
