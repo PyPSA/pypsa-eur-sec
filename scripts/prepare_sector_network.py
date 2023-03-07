@@ -2951,7 +2951,6 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         p_nom_extendable=True,
         capital_cost=capital_cost,
         marginal_cost=0.,
-        # efficiency=costs.at["geothermal", "efficiency residential heat"],
         efficiency=costs.at["geothermal", "efficiency electricity"],
         efficiency2=co2_intensity,
         lifetime=costs.at["geothermal", "lifetime"]
@@ -2965,7 +2964,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         # connection to co2 emission is conducted via electricity part
         carrier="geothermal heat",
         p_nom_extendable=True,
-        capital_cost=0, # cost is obtained through the electricity part
+        capital_cost=0.01, # cost is obtained through the electricity part
         marginal_cost=0.,
         # efficiency=costs.at["geothermal", "efficiency residential heat"],
         efficiency=th_eff, 

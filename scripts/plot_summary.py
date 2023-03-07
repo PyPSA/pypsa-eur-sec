@@ -58,7 +58,7 @@ def rename_techs(label):
         "AC": "transmission lines",
         "DC": "transmission lines",
         "B2B": "transmission lines",
-        "egs_el": "enhanced geothermal",
+        "egs_el": "geothermal heat",
     }
 
     for ptr in prefix_to_remove:
@@ -95,7 +95,7 @@ preferred_order = pd.Index([
     "solar thermal",
     "solar rooftop",
     "solar",
-    "enhanced geothermal",
+    "geothermal heat",
     "building retrofitting",
     "ground heat pump",
     "air heat pump",
