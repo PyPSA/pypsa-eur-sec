@@ -115,14 +115,6 @@ def define_spatial(nodes, options):
 
         spatial.ammonia.df = pd.DataFrame(vars(spatial.ammonia), index=nodes)
     
-    # enhanced geothermal
-    # bus names are not defined here since, they are only initialized if a location
-    # has potential for enhanced geothermal 
-    
-    if options.get("egs"):
-        spatial.egs = SimpleNamespace()
-        spatial.egs.locations = nodes
-
     # hydrogen
     spatial.h2 = SimpleNamespace()
     spatial.h2.nodes = nodes + " H2"
