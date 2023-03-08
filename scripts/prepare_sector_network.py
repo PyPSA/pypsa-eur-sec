@@ -2931,12 +2931,13 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         p_min_pu=0.,
         marginal_cost=0.,
         # capital_cost=capital_cost * eta_el,
-        capital_cost=0.1,
+        capital_cost=capital_cost,
         # p_nom_extendable=False,
         p_nom_extendable=True,
         unit="MWh_th",
     )
 
+    """
     th_eff = 0.8
     emission = 0.
     print("=============================")
@@ -2982,6 +2983,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         efficiency=th_eff, 
         lifetime=costs.at["geothermal", "lifetime"]
     )
+    """
 
 
 

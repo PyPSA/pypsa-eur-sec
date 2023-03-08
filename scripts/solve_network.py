@@ -195,7 +195,7 @@ def add_geothermal_chp_constraints(n):
 
     Also upper bounds heat generation by factor times
     electricity generation
-    
+
     the factor is relative efficiency (eta_heat / eta_el)
     multiplied by the estimated area of land available for
     geothermal generation close to urban areas. The
@@ -213,13 +213,13 @@ def add_geothermal_chp_constraints(n):
     effs_heat = n.links.efficiency[geoth_chp_heat].values
     eff = (effs_elec / effs_heat)[0]
 
-    # p_nom_lhs = n.model["Link-p_nom"].loc[geoth_chp_elec] - n.model["Link-p_nom"].loc[geoth_chp_heat] * eff
+    p_nom_lhs = n.model["Link-p_nom"].loc[geoth_chp_elec] - n.model["Link-p_nom"].loc[geoth_chp_heat] * eff
 
-    # n.model.add_constraints(p_nom_lhs == 0., name="geothermal-fixed_capacity_ratio_electricity_residential_heat")
+    n.model.add_constraints(p_nom_lhs == 0., name="geothermal-fixed_capacity_ratio_electricity_residential_heat")
 
-    # p_lhs = n.model["Link-p"].loc[:, geoth_chp_elec] - n.model["Link-p"].loc[:, geoth_chp_heat] * eff
+    p_lhs = n.model["Link-p"].loc[:, geoth_chp_elec] - n.model["Link-p"].loc[:, geoth_chp_heat] * eff
 
-    # n.model.add_constraints(p_lhs >= 0., name="geothermal-upper_bound_residential_heat_vs_electricity")
+    n.model.add_constraints(p_lhs >= 0., name="geothermal-upper_bound_residential_heat_vs_electricity")
 
 
 def add_pipe_retrofit_constraint(n):
@@ -242,7 +242,7 @@ def add_pipe_retrofit_constraint(n):
 def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    add_geothermal_chp_constraints(n)
+    # add_geothermal_chp_constraints(n)
 
 
 def solve_network(n, config, opts="", **kwargs):
