@@ -584,9 +584,9 @@ def add_allam(n, costs):
     n.madd("Link",  
         nodes,
         suffix=" allam",  
-        bus0=spatial.gas.df.loc[nodes, "nodes"].values,  
+        bus0=spatial.gas.df.loc[nodes, "nodes"].values,
         bus1=nodes,  
-        bus2=spatial.co2.df.loc[nodes, "nodes"].values,  
+        bus2=spatial.co2.df.loc[nodes, "nodes"].values,
         carrier="allam",  
         p_nom_extendable=True,  
         # TODO: add costs to technology-data
@@ -2876,15 +2876,48 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         * Nyears
     )
 
-    geothermal_bus_names = nodes + f" geothermal heat lcoe {cutoff}"
+    try:
+        n.add("Bus",
+            "EU geothermal heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            location="EU",
+            )
+        n.add("Bus",
+            "EU geothermal waste heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            location="EU",
+            )
 
-    n.madd("Bus",
-        geothermal_bus_names,
-        location=nodes,
-        carrier="geothermal heat",
-        unit="MWh_th",
-        )
-    
+        n.add("Generator",
+            "EU geothermal heat",
+            bus="EU geothermal heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            p_nom_max=np.inf,
+            capital_cost=0.,
+            marginal_cost=0.,
+            p_nom_extendable=True, 
+            )
+        # simualates low grade heat after geothermal electricity generation
+        # coupled to p_nom of geothermal electricity by constraint
+        # see solve_network.py
+        # used for district heating
+        n.add("Generator",
+            "EU geothermal waste heat",
+            bus="EU geothermal waste heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            p_nom_max=np.inf,
+            capital_cost=0.,
+            marginal_cost=0.,
+            p_nom_extendable=True, 
+            )
+
+    except AssertionError:
+        pass
+
     # The format of the source paper (from hot rock to useful energy...)
     # only provided available electricity generation.
     # We are however also interested in available heat for district heating.
@@ -2910,81 +2943,45 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # capital_cost <- capital_cost * eta_el
 
     eta_el = costs.at["geothermal", "efficiency electricity"]
+    eta_heat = costs.at["geothermal", "efficiency residential heat"]
 
-    capital_cost = capital_cost * eta_el
     capital_cost.index = nodes + f" geothermal heat below lcoe {cutoff}"
-    co2_intensity = costs.at["geothermal", "CO2 intensity"] * eta_el
 
     p_nom_max.index = nodes + f" geothermal heat below lcoe {cutoff}"
-
-    n.madd(
-        "Generator",
-        nodes + f" geothermal heat below lcoe {cutoff}",
-        # suffix=f" geothermal heat below lcoe {cutoff}",
-        # bus=geothermal_bus_names,
-        bus=nodes,
-        carrier="geothermal heat",
-        # p_nom_max=p_nom_max / eta_el,
-        p_nom_max=np.inf,
-        # p_nom=p_nom_max / eta_el,
-        p_max_pu=1.,
-        p_min_pu=0.,
-        marginal_cost=0.,
-        # capital_cost=capital_cost * eta_el,
-        capital_cost=capital_cost,
-        # p_nom_extendable=False,
-        p_nom_extendable=True,
-        unit="MWh_th",
-    )
-
-    """
-    th_eff = 0.8
-    emission = 0.
-    print("=============================")
-    print(f"WARNING: Setting th efficiency manually to {th_eff}!")
-    print(f"WARNING: Same for emission {emission}!")
-    print(f"WARNING: Same for capital cost 1")
-    print("=============================")
-
+    
     p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
+    capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
+
     n.madd(
         "Link",
         nodes + f" geothermal CHP electric {cutoff}",
-        bus0=geothermal_bus_names,
+        bus0="EU geothermal heat bus",
         bus1=nodes,
         bus2="co2 atmosphere",
         carrier="geothermal heat",
         p_nom_extendable=True,
-        p_nom_max=p_nom_max,
-        # capital_cost=capital_cost,
-        capital_cost=0.0,
-        marginal_cost=0.0,
+        p_nom_max=p_nom_max / eta_el,
+        capital_cost=capital_cost * eta_el,
+        marginal_cost=0.001,
         efficiency=eta_el,
-        # efficiency2=co2_intensity,
-        efficiency2=emission,
+        efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
         lifetime=costs.at["geothermal", "lifetime"]
     )
-
-    print("geothermal Heat is deactivated!!")
-    p_nom_max.index = nodes + f" geothermal CHP heat {cutoff}"
+    
+    p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
     n.madd(
         "Link",
-        nodes + f" geothermal CHP heat {cutoff}",
-        bus0=geothermal_bus_names,
+        nodes + f" geothermal CHP district heat {cutoff}",
+        bus0="EU geothermal waste heat bus",
         bus1=nodes + " urban central heat",
-        # connection to co2 emission is conducted via electricity part
-        carrier="geothermal heat",
+        carrier="geothermal waste heat",
         p_nom_extendable=True,
-        # p_nom_max=p_nom_max / eta_el * th_eff,
-        p_nom_max=0.,
-        capital_cost=0.1, # cost is obtained through the electricity part
-        marginal_cost=0.0,
-        # efficiency=costs.at["geothermal", "efficiency residential heat"],
-        efficiency=th_eff, 
+        p_nom_max=p_nom_max / eta_el,
+        capital_cost=0., # costs through electric part
+        marginal_cost=0.,
+        efficiency=eta_heat,
         lifetime=costs.at["geothermal", "lifetime"]
     )
-    """
-
 
 
 #%%
@@ -3149,6 +3146,13 @@ if __name__ == "__main__":
               color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
               co2_emissions=costs.loc["geothermal", "CO2 intensity"],
               )
+        n.add("Carrier",
+              "geothermal waste heat",
+              nice_name="Geothermal Waste Heat",
+              color=snakemake.config["plotting"]["tech_colors"]["geothermal waste heat"],
+              # emissions through geothermal heat
+              co2_emissions=0.,
+              )
 
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
@@ -3163,12 +3167,6 @@ if __name__ == "__main__":
                 snakemake.config,
                 costs,
                 )
-
-    n.links.to_csv("pre_solve_links.csv")
-    n.generators.to_csv("pre_solve_generators.csv")
-    n.buses.to_csv("pre_solve_buses.csv")
-    n.loads.to_csv("pre_solve_loads.csv")
-    n.loads_t.p_set.to_csv("pre_solve_demand_time_series.csv")
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 

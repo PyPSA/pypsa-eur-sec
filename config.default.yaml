@@ -539,6 +539,7 @@ plotting:
     solar rooftop: '#ffea80'
     # geothermal
     geothermal heat: '#c19e01'
+    geothermal waste heat: '#c19e02'
     # gas
     OCGT: '#e0986c'
     OCGT marginal: '#e0986c'
