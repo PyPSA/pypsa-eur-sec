@@ -2963,7 +2963,8 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         capital_cost=capital_cost * eta_el,
         marginal_cost=0.001,
         efficiency=eta_el,
-        efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+        # efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+        efficiency2=0.,
         lifetime=costs.at["geothermal", "lifetime"]
     )
     
@@ -3144,7 +3145,8 @@ if __name__ == "__main__":
               "geothermal heat",
               nice_name="Geothermal Heat",
               color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
-              co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+              # co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+              co2_emissions=0.,
               )
         n.add("Carrier",
               "geothermal waste heat",

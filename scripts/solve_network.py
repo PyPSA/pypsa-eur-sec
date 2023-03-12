@@ -255,7 +255,7 @@ def solve_network(n, config, opts="", **kwargs):
     if skip_iterations:
         status, condition = n.optimize(
             solver_name=solver_name,
-            extra_functionalitml=extra_functionality,
+            extra_functionality=extra_functionality,
             **solver_options,
             **kwargs,
         )
