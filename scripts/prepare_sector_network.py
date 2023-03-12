@@ -2943,9 +2943,8 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
     # capital_cost <- capital_cost * eta_el
 
     eta_el = costs.at["geothermal", "efficiency electricity"]
-    eta_heat = costs.at["geothermal", "efficiency residential heat"]
-
-    capital_cost.index = nodes + f" geothermal heat below lcoe {cutoff}"
+    eta_dh = costs.at["geothermal", "efficiency residential heat"]
+    dh_cost = costs.at["geothermal", "district heating cost"] # relative cost of district heating capacity
 
     p_nom_max.index = nodes + f" geothermal heat below lcoe {cutoff}"
     
@@ -2968,6 +2967,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         lifetime=costs.at["geothermal", "lifetime"]
     )
     
+    capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
     p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
     n.madd(
         "Link",
@@ -2977,9 +2977,9 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         carrier="geothermal waste heat",
         p_nom_extendable=True,
         p_nom_max=p_nom_max / eta_el,
-        capital_cost=0., # costs through electric part
+        capital_cost=capital_cost * dh_cost * eta_dh, # costs as share of electric part (see Frey et al 2022)
         marginal_cost=0.,
-        efficiency=eta_heat,
+        efficiency=eta_dh,
         lifetime=costs.at["geothermal", "lifetime"]
     )
 
