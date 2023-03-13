@@ -237,6 +237,8 @@ rule build_egs_potential:
         egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
         egs_cost="data/egs_costs.xlsx",
         shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+        pop_layout_urban="resources/pop_layout_urban.nc",
+        pop_layout_rural="resources/pop_layout_rural.nc",
     output:
         egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
