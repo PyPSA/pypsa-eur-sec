@@ -114,7 +114,7 @@ def define_spatial(nodes, options):
             spatial.ammonia.locations = ["EU"]
 
         spatial.ammonia.df = pd.DataFrame(vars(spatial.ammonia), index=nodes)
-    
+
     # hydrogen
     spatial.h2 = SimpleNamespace()
     spatial.h2.nodes = nodes + " H2"
@@ -2828,7 +2828,7 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
+def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_share):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
@@ -2900,7 +2900,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
             marginal_cost=0.,
             p_nom_extendable=True, 
             )
-        # simualates low grade heat after geothermal electricity generation
+        # simulates low grade heat after geothermal electricity generation
         # coupled to p_nom of geothermal electricity by constraint
         # see solve_network.py
         # used for district heating
@@ -2967,9 +2967,18 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs):
         efficiency2=0.,
         lifetime=costs.at["geothermal", "lifetime"]
     )
+
+    df_area_share = pd.read_csv(dh_area_share, index_col=0)
+    print("received dh area share")
+    print(df_area_share.head())
+    print(df_area_share.tail())
     
     capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
     p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
+    df_area_share.index = p_nom_max.index
+
+    p_nom_max = p_nom_max.multiply(df_area_share)
+
     n.madd(
         "Link",
         nodes + f" geothermal CHP district heat {cutoff}",
@@ -3168,6 +3177,7 @@ if __name__ == "__main__":
                 costs_year,
                 snakemake.config,
                 costs,
+                snakemake.input["dh_area_share"]
                 )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))

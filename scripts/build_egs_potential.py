@@ -35,6 +35,7 @@ import xarray as xr
 import geopandas as gpd
 import pycountry
 from copy import deepcopy
+from atlite.gis import compute_intersectionmatrix
 
 # clearing inconsistencies in source data
 countryname_mapper = {
@@ -164,6 +165,44 @@ def get_egs_potentials(potentials_file,
     return egs_data
 
 
+def get_urban_share(shapes, pop_layout_urban, pop_layout_rural):
+    """
+    Computes per demand catchment area, the share of area considered urban.
+    These regions are considered as eligible for district heating using
+    waste heat left over after generation of electricity
+    """
+
+    def prepare_gdf(file, remove_zeros=True):
+        
+        ds = xr.open_dataset(file)
+        df = ds.to_dataframe().reset_index().rename(columns={
+                "x": "lon",
+                "y": "lat",
+                "__xarray_dataarray_variable__": "density",
+                })
+        if remove_zeros:
+            df = df.loc[df.density > 0]
+        df.reset_index(inplace=True)
+        df = gpd.GeoDataFrame(df.density, geometry=gpd.points_from_xy(df.lon,df.lat))
+        df["geometry"] = df.geometry.buffer(0.15)
+
+        return df
+
+    urban_areas = prepare_gdf(pop_layout_urban)
+    rural_areas = prepare_gdf(pop_layout_rural, remove_zeros=False)
+
+    shapes = gpd.read_file(shapes)
+
+    overlap_urban = compute_intersectionmatrix(urban_areas.geometry, shapes.geometry)
+    overlap_rural = compute_intersectionmatrix(rural_areas.geometry, shapes.geometry)
+
+    overlap_urban = np.array(overlap_urban.toarray().sum(axis=1)).flatten()
+    overlap_rural = np.array(overlap_rural.toarray().sum(axis=1)).flatten()
+    
+    return pd.Series(overlap_urban / overlap_rural, index=shapes.name)
+
+
+
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
@@ -182,7 +221,7 @@ if __name__ == "__main__":
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
         )
-
+    
     for cutoff in ["50", "100", "150"]:
         data = egs_data[cutoff]
 
@@ -203,3 +242,10 @@ if __name__ == "__main__":
             attrs=dict(units='Fill in units!'))
 
         ds.to_netcdf(snakemake.output[f"egs_potential_{cutoff}"])
+
+    dh_area_share = get_urban_share(
+        snakemake.input["shapes"],
+        snakemake.input["pop_layout_urban"],
+        snakemake.input["pop_layout_rural"],
+    )
+    dh_area_share.to_csv(snakemake.output["dh_area_share"])
