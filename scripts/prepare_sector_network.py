@@ -2968,10 +2968,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
         lifetime=costs.at["geothermal", "lifetime"]
     )
 
-    df_area_share = pd.read_csv(dh_area_share, index_col=0)
-    print("received dh area share")
-    print(df_area_share.head())
-    print(df_area_share.tail())
+    df_area_share = pd.read_csv(dh_area_share, index_col=0).loc[nodes]
     
     capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
     p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
