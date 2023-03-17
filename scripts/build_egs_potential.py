@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Inputs
 ------
@@ -28,30 +29,31 @@ Outputs
 """
 
 import logging
+from copy import deepcopy
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
-import xarray as xr
-import geopandas as gpd
 import pycountry
-from copy import deepcopy
+import xarray as xr
 from atlite.gis import compute_intersectionmatrix
 
 # clearing inconsistencies in source data
 countryname_mapper = {
-    'Macedonia': 'North Macedonia',
-    'Bosnia and Herz.': 'Bosnia and Herzegovina',
-    'Czech Republic': 'Czechia',
+    "Macedonia": "North Macedonia",
+    "Bosnia and Herz.": "Bosnia and Herzegovina",
+    "Czech Republic": "Czechia",
 }
 
 
-def get_egs_potentials(potentials_file,
-                       sustainable_potentials_file,
-                       costs_file,
-                       shapes_file,
-                       ):
+def get_egs_potentials(
+    potentials_file,
+    sustainable_potentials_file,
+    costs_file,
+    shapes_file,
+):
     """
-    Disaggregates data to the provided shapefile
+    Disaggregates data to the provided shapefile.
 
     Args:
         potentials_file(str or pathlib.Path): file with potentials
@@ -61,14 +63,14 @@ def get_egs_potentials(potentials_file,
     """
     shapes = gpd.read_file(shapes_file)
 
-    times = pd.date_range('2015-01-01', '2055-01-01', freq='5y')
+    times = pd.date_range("2015-01-01", "2055-01-01", freq="5y")
 
     # Concerning the cost of egs:
-    # The originating paper (see above) provides LCOE via 
+    # The originating paper (see above) provides LCOE via
     # (CAPEX + OPEX_fixed) / E + OPEX_var
     # where OPEX_var is zero (see the paper's supp)
     # E is the total energy generated during lifetime
-    # Upon request, the authors shared CAPEX and OPEX_fixed on a 
+    # Upon request, the authors shared CAPEX and OPEX_fixed on a
     # country level.
     # CAPEX is interpreted as investment cost as in pypsa-eur/data/costs.csv
     # OPEX_fixed is interpreted as FOM as in pypsa-eur/data/costs.csv
@@ -78,7 +80,7 @@ def get_egs_potentials(potentials_file,
     # The procedure to compute capital and marginal cost for the optimization
     # is copied from pypsa-eur/scripts/add_electricity.py (see load_costs(...))
 
-    # The conversion from opex, capex -> capital, marginal cost is executed 
+    # The conversion from opex, capex -> capital, marginal cost is executed
     # in scripts/prepare_sector_network.py
 
     cost_cutoffs = ["150", "100", "50"]
@@ -86,50 +88,48 @@ def get_egs_potentials(potentials_file,
 
     for cutoff in cost_cutoffs:
         inner = dict()
-        inner['potential'] = pd.DataFrame(index=times, columns=shapes['name'])
-        inner['opex_fixed'] = deepcopy(inner['potential'])
-        inner['capex'] = deepcopy(inner['potential'])
+        inner["potential"] = pd.DataFrame(index=times, columns=shapes["name"])
+        inner["opex_fixed"] = deepcopy(inner["potential"])
+        inner["capex"] = deepcopy(inner["potential"])
         egs_data[cutoff] = inner
 
-    shapes['area'] = shapes.geometry.apply(lambda geom: geom.area)
-    shapes['country'] = shapes['name'].apply(
-        lambda name: pycountry.countries.get(alpha_2=name[:2]).name)
+    shapes["area"] = shapes.geometry.apply(lambda geom: geom.area)
+    shapes["country"] = shapes["name"].apply(
+        lambda name: pycountry.countries.get(alpha_2=name[:2]).name
+    )
 
-    areas = pd.DataFrame(shapes.groupby('country').sum()['area'])
+    areas = pd.DataFrame(shapes.groupby("country").sum()["area"])
 
     def get_overlap(country_row, shape_row):
         if shape_row.country != country_row.name:
-            return 0.
+            return 0.0
         else:
             return shape_row.geometry.area / country_row.area
 
     for i, shape_row in shapes.iterrows():
-        areas[shape_row['name']] = areas.apply(
-            lambda country_row: get_overlap(country_row, shape_row),
-            axis=1
+        areas[shape_row["name"]] = areas.apply(
+            lambda country_row: get_overlap(country_row, shape_row), axis=1
         )
 
-    country_shares = areas.drop(columns=['area'])
+    country_shares = areas.drop(columns=["area"])
     assigner = np.ceil(country_shares)
 
-    cutoff_slices = [slice(18,19), slice(8,18), slice(0,8)]
+    cutoff_slices = [slice(18, 19), slice(8, 18), slice(0, 8)]
 
     for cutoff, cutoff_slice in zip(cost_cutoffs, cutoff_slices):
-
         for i, time in enumerate(times):
-
-            potential = pd.read_excel(potentials_file, sheet_name=(i+1), index_col=0)
-            potential = potential[[col for col in potential.columns if 'Power' in col]]
+            potential = pd.read_excel(potentials_file, sheet_name=(i + 1), index_col=0)
+            potential = potential[[col for col in potential.columns if "Power" in col]]
             potential = potential.loc["Afghanistan":"Zimbabwe"]
             potential = potential.rename(index=countryname_mapper)
 
             potential = potential.loc[areas.index]
             potential = potential[potential.columns[cutoff_slice]]
             potential = potential.sum(axis=1)
-            
+
             potential = country_shares.transpose() @ potential
 
-            egs_data[cutoff]['potential'].loc[time] = potential
+            egs_data[cutoff]["potential"].loc[time] = potential
 
     # loading capex and opex at difference LCOE cutoffs
     cutoff_skiprows = [1, 44, 87]
@@ -137,12 +137,12 @@ def get_egs_potentials(potentials_file,
     opex_usecols = slice(10, 18)
 
     for cutoff, skiprows in zip(cost_cutoffs, cutoff_skiprows):
-
-        prices = pd.read_excel(costs_file,
-                            sheet_name=1,
-                            index_col=0,
-                            skiprows=skiprows,
-                            )
+        prices = pd.read_excel(
+            costs_file,
+            sheet_name=1,
+            index_col=0,
+            skiprows=skiprows,
+        )
 
         prices = prices.iloc[:38]
         prices = prices.rename(index=countryname_mapper)
@@ -155,12 +155,11 @@ def get_egs_potentials(potentials_file,
         capex.columns = times
 
         for col in capex.columns:
-
             capex_by_shape = assigner.transpose() @ capex[col]
             opex_by_shape = assigner.transpose() @ opex[col]
 
-            egs_data[cutoff]['capex'].loc[col] = capex_by_shape
-            egs_data[cutoff]['opex_fixed'].loc[col] = opex_by_shape
+            egs_data[cutoff]["capex"].loc[col] = capex_by_shape
+            egs_data[cutoff]["opex_fixed"].loc[col] = opex_by_shape
 
     return egs_data
 
@@ -168,22 +167,28 @@ def get_egs_potentials(potentials_file,
 def get_urban_share(shapes, pop_layout_urban, pop_layout_rural):
     """
     Computes per demand catchment area, the share of area considered urban.
+
     These regions are considered as eligible for district heating using
     waste heat left over after generation of electricity
     """
 
     def prepare_gdf(file, remove_zeros=True):
-        
         ds = xr.open_dataset(file)
-        df = ds.to_dataframe().reset_index().rename(columns={
-                "x": "lon",
-                "y": "lat",
-                "__xarray_dataarray_variable__": "density",
-                })
+        df = (
+            ds.to_dataframe()
+            .reset_index()
+            .rename(
+                columns={
+                    "x": "lon",
+                    "y": "lat",
+                    "__xarray_dataarray_variable__": "density",
+                }
+            )
+        )
         if remove_zeros:
             df = df.loc[df.density > 0]
         df.reset_index(inplace=True)
-        df = gpd.GeoDataFrame(df.density, geometry=gpd.points_from_xy(df.lon,df.lat))
+        df = gpd.GeoDataFrame(df.density, geometry=gpd.points_from_xy(df.lon, df.lat))
         df["geometry"] = df.geometry.buffer(0.15)
 
         return df
@@ -198,17 +203,16 @@ def get_urban_share(shapes, pop_layout_urban, pop_layout_rural):
 
     overlap_urban = np.array(overlap_urban.toarray().sum(axis=1)).flatten()
     overlap_rural = np.array(overlap_rural.toarray().sum(axis=1)).flatten()
-    
-    return pd.Series(overlap_urban / overlap_rural, index=shapes.name)
 
+    return pd.Series(overlap_urban / overlap_rural, index=shapes.name)
 
 
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-
     if "snakemake" not in globals():
         from helper import mock_snakemake
+
         snakemake = mock_snakemake(
             "build_egs_potential",
             simpl="",
@@ -220,8 +224,8 @@ if __name__ == "__main__":
         snakemake.input["egs_sustainable_potential"],
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
-        )
-    
+    )
+
     for cutoff in ["50", "100", "150"]:
         data = egs_data[cutoff]
 
@@ -234,12 +238,13 @@ if __name__ == "__main__":
                 potential=(dims, data["potential"]),
                 opex_fixed=(dims, data["opex_fixed"]),
                 capex=(dims, data["capex"]),
-                ),
+            ),
             coords={
-                'time': (("time"), time),
-                'countries': (("countries"), countries),
-                },
-            attrs=dict(units='Fill in units!'))
+                "time": (("time"), time),
+                "countries": (("countries"), countries),
+            },
+            attrs=dict(units="Fill in units!"),
+        )
 
         ds.to_netcdf(snakemake.output[f"egs_potential_{cutoff}"])
 

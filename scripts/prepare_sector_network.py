@@ -3241,6 +3241,7 @@ def add_egs_potential(n,
                       dh_area_share):
     """
     Adds EGS potential to model.
+
     Built in scripts/build_egs_potential.py
     """
 
@@ -3259,9 +3260,9 @@ def add_egs_potential(n,
     # marginal_cost conversion Euro/kW -> Euro/MW
     # capital_cost conversion Euro/kW -> Euro/MW
 
-    p_nom_max = p_nom_max.loc[:costs_year].iloc[-1] * 1000.
-    opex_fixed = opex_fixed.loc[:costs_year].iloc[-1] * 1000.
-    capex = capex.loc[:costs_year].iloc[-1] * 1000.
+    p_nom_max = p_nom_max.loc[:costs_year].iloc[-1] * 1000.0
+    opex_fixed = opex_fixed.loc[:costs_year].iloc[-1] * 1000.0
+    capex = capex.loc[:costs_year].iloc[-1] * 1000.0
 
     # take subset with p_nom_max != 0
     buses = p_nom_max.loc[p_nom_max != 0].index
@@ -3271,8 +3272,8 @@ def add_egs_potential(n,
     opex_fixed = opex_fixed.loc[buses]
     capex = capex.loc[buses]
 
-    # Please find 
-    # scripts/build_egs_potential.py 
+    # Please find
+    # scripts/build_egs_potential.py
     # for a discussion of the following steps
 
     egs_annuity = annuity(lt, r=dr)
@@ -3284,43 +3285,47 @@ def add_egs_potential(n,
     )
 
     try:
-        n.add("Bus",
+        n.add(
+            "Bus",
             "EU geothermal heat bus",
             carrier="geothermal heat",
             unit="MWh_th",
             location="EU",
-            )
-        n.add("Bus",
+        )
+        n.add(
+            "Bus",
             "EU geothermal waste heat bus",
             carrier="geothermal heat",
             unit="MWh_th",
             location="EU",
-            )
+        )
 
-        n.add("Generator",
+        n.add(
+            "Generator",
             "EU geothermal heat",
             bus="EU geothermal heat bus",
             carrier="geothermal heat",
             unit="MWh_th",
             p_nom_max=np.inf,
-            capital_cost=0.,
-            marginal_cost=0.,
-            p_nom_extendable=True, 
-            )
+            capital_cost=0.0,
+            marginal_cost=0.0,
+            p_nom_extendable=True,
+        )
         # simulates low grade heat after geothermal electricity generation
         # coupled to p_nom of geothermal electricity by constraint
         # see solve_network.py
         # used for district heating
-        n.add("Generator",
+        n.add(
+            "Generator",
             "EU geothermal waste heat",
             bus="EU geothermal waste heat bus",
             carrier="geothermal heat",
             unit="MWh_th",
             p_nom_max=np.inf,
-            capital_cost=0.,
-            marginal_cost=0.,
-            p_nom_extendable=True, 
-            )
+            capital_cost=0.0,
+            marginal_cost=0.0,
+            p_nom_extendable=True,
+        )
 
     except AssertionError:
         pass
@@ -3332,7 +3337,7 @@ def add_egs_potential(n,
     # and model heat extracted from the ground as a generator, and
     # the CHP as a link connecting extracted heat to both
     # electricity and district central thermal loads.
-    # The given data is W \equiv available electricity [GW] 
+    # The given data is W \equiv available electricity [GW]
     # We assume this electricity is generated with an efficiency eta_el of
     # ~ 10 percent, following the literature.
     # The low efficiency is explained by the steam temperatures between
@@ -3348,7 +3353,9 @@ def add_egs_potential(n,
 
     eta_el = costs.at["geothermal", "efficiency electricity"]
     eta_dh = costs.at["geothermal", "efficiency residential heat"]
-    dh_cost = costs.at["geothermal", "district heating cost"] # relative cost of district heating capacity
+    dh_cost = costs.at[
+        "geothermal", "district heating cost"
+    ]  # relative cost of district heating capacity
 
     p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
     capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
@@ -3370,7 +3377,7 @@ def add_egs_potential(n,
     )
 
     df_area_share = pd.read_csv(dh_area_share, index_col=0).loc[nodes]
-    
+
     capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
     p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
     df_area_share.index = p_nom_max.index
@@ -3385,14 +3392,16 @@ def add_egs_potential(n,
         carrier="geothermal waste heat",
         p_nom_extendable=True,
         p_nom_max=p_nom_max / eta_el,
-        capital_cost=capital_cost * dh_cost * eta_dh, # costs as share of electric part (see Frey et al 2022)
-        marginal_cost=0.,
+        capital_cost=capital_cost
+        * dh_cost
+        * eta_dh,  # costs as share of electric part (see Frey et al 2022)
+        marginal_cost=0.0,
         efficiency=eta_dh,
-        lifetime=costs.at["geothermal", "lifetime"]
+        lifetime=costs.at["geothermal", "lifetime"],
     )
 
 
-#%%
+# %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from helper import mock_snakemake
@@ -3592,8 +3601,8 @@ if __name__ == "__main__":
                 costs_year,
                 snakemake.config,
                 costs,
-                snakemake.input["dh_area_share"]
-                )
+                snakemake.input["dh_area_share"],
+            )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
