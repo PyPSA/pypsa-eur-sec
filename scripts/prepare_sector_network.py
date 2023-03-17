@@ -3233,12 +3233,7 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n,
-                      egs_data,
-                      cutoff,
-                      costs_year,
-                      config, costs,
-                      dh_area_share):
+def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_share):
     """
     Adds EGS potential to model.
 
@@ -3278,11 +3273,7 @@ def add_egs_potential(n,
 
     egs_annuity = annuity(lt, r=dr)
 
-    capital_cost = (
-        (egs_annuity + opex_fixed / (capex + opex_fixed))
-        * capex
-        * Nyears
-    )
+    capital_cost = (egs_annuity + opex_fixed / (capex + opex_fixed)) * capex * Nyears
 
     try:
         n.add(
@@ -3373,7 +3364,7 @@ def add_egs_potential(n,
         marginal_cost=0.0,
         efficiency=eta_el,
         efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
-        lifetime=costs.at["geothermal", "lifetime"]
+        lifetime=costs.at["geothermal", "lifetime"],
     )
 
     df_area_share = pd.read_csv(dh_area_share, index_col=0).loc[nodes]
@@ -3575,19 +3566,21 @@ if __name__ == "__main__":
         cluster_heat_buses(n)
 
     if options.get("egs"):
-        n.add("Carrier",
-              "geothermal heat",
-              nice_name="Geothermal Heat",
-              color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
-              co2_emissions=costs.loc["geothermal", "CO2 intensity"],
-              )
-        n.add("Carrier",
-              "geothermal waste heat",
-              nice_name="Geothermal Waste Heat",
-              color=snakemake.config["plotting"]["tech_colors"]["geothermal waste heat"],
-              # emissions through geothermal heat
-              co2_emissions=0.,
-              )
+        n.add(
+            "Carrier",
+            "geothermal heat",
+            nice_name="Geothermal Heat",
+            color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
+            co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+        )
+        n.add(
+            "Carrier",
+            "geothermal waste heat",
+            nice_name="Geothermal Waste Heat",
+            color=snakemake.config["plotting"]["tech_colors"]["geothermal waste heat"],
+            # emissions through geothermal heat
+            co2_emissions=0.0,
+        )
 
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
