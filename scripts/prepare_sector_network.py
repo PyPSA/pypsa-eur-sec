@@ -3233,7 +3233,12 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
-def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_share):
+def add_egs_potential(n,
+                      egs_data,
+                      cutoff,
+                      costs_year,
+                      config, costs,
+                      dh_area_share):
     """
     Adds EGS potential to model.
     Built in scripts/build_egs_potential.py
@@ -3270,13 +3275,10 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
     # scripts/build_egs_potential.py 
     # for a discussion of the following steps
 
-    if dr > 0:
-        annuity = dr / (1.0 - 1.0 / (1.0 + dr) ** lt)
-    else:
-        annuity = 1 / lt
+    egs_annuity = annuity(lt, r=dr)
 
     capital_cost = (
-        (annuity + opex_fixed / (capex + opex_fixed))
+        (egs_annuity + opex_fixed / (capex + opex_fixed))
         * capex
         * Nyears
     )
@@ -3337,22 +3339,17 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
     # 150 and 300 degrees.
     # We compute from this p_nom_max of total available generated heat via
     # p_nom_max = W / eta_el
-    # The combined heat and power is modelled through a link
-    # with electricity and thermal efficiency. 
-    # The capital cost of the CHP is modeled through the
-    # link, i.e. the CHP (organic rankine cycle) plant, hence
-    # capital cost of the generator are set to (approx) zero.
-    # Concerning capital cost and emission of the chp,
-    # these are modeled per MWh_el, hence the new values are 
-    # emission <- emission * eta_el
-    # capital_cost <- capital_cost * eta_el
+    # The combined heat and power is modeled through a second link
+    # with p_nom_max as a linear factor times p_nom_max used for
+    # electricity generation. This p_nom_max is also reduced by the
+    # share of area that can be considered urban, and is usable for
+    # district heating. It is costed at an additional 25 percent of the cost for
+    # electricity generation.
 
     eta_el = costs.at["geothermal", "efficiency electricity"]
     eta_dh = costs.at["geothermal", "efficiency residential heat"]
     dh_cost = costs.at["geothermal", "district heating cost"] # relative cost of district heating capacity
 
-    p_nom_max.index = nodes + f" geothermal heat below lcoe {cutoff}"
-    
     p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
     capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
 
@@ -3366,10 +3363,9 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
         p_nom_extendable=True,
         p_nom_max=p_nom_max / eta_el,
         capital_cost=capital_cost * eta_el,
-        marginal_cost=0.001,
+        marginal_cost=0.0,
         efficiency=eta_el,
-        # efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
-        efficiency2=0.,
+        efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
         lifetime=costs.at["geothermal", "lifetime"]
     )
 
@@ -3574,8 +3570,7 @@ if __name__ == "__main__":
               "geothermal heat",
               nice_name="Geothermal Heat",
               color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
-              # co2_emissions=costs.loc["geothermal", "CO2 intensity"],
-              co2_emissions=0.,
+              co2_emissions=costs.loc["geothermal", "CO2 intensity"],
               )
         n.add("Carrier",
               "geothermal waste heat",
