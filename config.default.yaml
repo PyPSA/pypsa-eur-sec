@@ -130,7 +130,6 @@ biomass:
     - Manure solid, liquid
     - Sludge
 
-
 solar_thermal:
   clearsky_model: simple  # should be "simple" or "enhanced"?
   orientation:
@@ -306,7 +305,7 @@ sector:
     OCGT: gas
   biomass_to_liquid: false
   biosng: false
-
+  egs: true
 
 
 industry:
@@ -550,6 +549,9 @@ plotting:
     solar PV: "#f9d002"
     solar thermal: '#ffbf2b'
     solar rooftop: '#ffea80'
+    # geothermal
+    geothermal heat: '#c19e01'
+    geothermal waste heat: '#c19e02'
     # gas
     OCGT: '#e0986c'
     OCGT marginal: '#e0986c'

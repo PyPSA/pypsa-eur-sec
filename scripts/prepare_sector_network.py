@@ -3233,6 +3233,164 @@ def set_temporal_aggregation(n, opts, solver_name):
     return n
 
 
+def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_share):
+    """
+    Adds EGS potential to model.
+
+    Built in scripts/build_egs_potential.py
+    """
+
+    costs_year = str(costs_year)
+
+    # p_nom_max = egs_data["sustainable_potential"].to_pandas()
+    p_nom_max = egs_data["potential"].to_pandas()
+    opex_fixed = egs_data["opex_fixed"].to_pandas()
+    capex = egs_data["capex"].to_pandas()
+
+    Nyears = n.snapshot_weightings.generators.sum() / 8760
+    dr = config["costs"]["discountrate"]
+    lt = costs.at["geothermal", "lifetime"]
+
+    # p_nom conversion GW -> MW
+    # marginal_cost conversion Euro/kW -> Euro/MW
+    # capital_cost conversion Euro/kW -> Euro/MW
+
+    p_nom_max = p_nom_max.loc[:costs_year].iloc[-1] * 1000.0
+    opex_fixed = opex_fixed.loc[:costs_year].iloc[-1] * 1000.0
+    capex = capex.loc[:costs_year].iloc[-1] * 1000.0
+
+    # take subset with p_nom_max != 0
+    buses = p_nom_max.loc[p_nom_max != 0].index
+    nodes = buses
+
+    p_nom_max = p_nom_max.loc[buses]
+    opex_fixed = opex_fixed.loc[buses]
+    capex = capex.loc[buses]
+
+    # Please find
+    # scripts/build_egs_potential.py
+    # for a discussion of the following steps
+
+    egs_annuity = annuity(lt, r=dr)
+
+    capital_cost = (egs_annuity + opex_fixed / (capex + opex_fixed)) * capex * Nyears
+
+    try:
+        n.add(
+            "Bus",
+            "EU geothermal heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            location="EU",
+        )
+        n.add(
+            "Bus",
+            "EU geothermal waste heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            location="EU",
+        )
+
+        n.add(
+            "Generator",
+            "EU geothermal heat",
+            bus="EU geothermal heat bus",
+            carrier="geothermal heat",
+            p_nom_max=np.inf,
+            capital_cost=0.0,
+            marginal_cost=0.0,
+            p_nom_extendable=True,
+        )
+        # simulates low grade heat after geothermal electricity generation
+        # coupled to p_nom of geothermal electricity by constraint
+        # see solve_network.py
+        # used for district heating
+        n.add(
+            "Generator",
+            "EU geothermal waste heat",
+            bus="EU geothermal waste heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            p_nom_max=np.inf,
+            capital_cost=0.0,
+            marginal_cost=0.0,
+            p_nom_extendable=True,
+        )
+
+    except AssertionError:
+        pass
+
+    # The format of the source paper (from hot rock to useful energy...)
+    # only provided available electricity generation.
+    # We are however also interested in available heat for district heating.
+    # For this we reverse engineer total available heat
+    # and model heat extracted from the ground as a generator, and
+    # the CHP as a link connecting extracted heat to both
+    # electricity and district central thermal loads.
+    # The given data is W \equiv available electricity [GW]
+    # We assume this electricity is generated with an efficiency eta_el of
+    # ~ 10 percent, following the literature.
+    # The low efficiency is explained by the steam temperatures between
+    # 150 and 300 degrees.
+    # We compute from this p_nom_max of total available generated heat via
+    # p_nom_max = W / eta_el
+    # The combined heat and power is modeled through a second link
+    # with p_nom_max as a linear factor times p_nom_max used for
+    # electricity generation. This p_nom_max is also reduced by the
+    # share of area that can be considered urban, and is usable for
+    # district heating. It is costed at an additional 25 percent of the cost for
+    # electricity generation.
+
+    eta_el = costs.at["geothermal", "efficiency electricity"]
+    eta_dh = costs.at["geothermal", "efficiency residential heat"]
+    dh_cost = costs.at[
+        "geothermal", "district heating cost"
+    ]  # relative cost of district heating capacity
+
+    p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
+    capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
+
+    n.madd(
+        "Link",
+        nodes + f" geothermal CHP electric {cutoff}",
+        bus0="EU geothermal heat bus",
+        bus1=nodes,
+        bus2="co2 atmosphere",
+        carrier="geothermal heat",
+        p_nom_extendable=True,
+        p_nom_max=p_nom_max / eta_el,
+        capital_cost=capital_cost * eta_el,
+        marginal_cost=0.0,
+        efficiency=eta_el,
+        efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+        lifetime=costs.at["geothermal", "lifetime"],
+    )
+
+    df_area_share = pd.read_csv(dh_area_share, index_col=0).loc[nodes]
+
+    capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
+    p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
+    df_area_share.index = p_nom_max.index
+
+    p_nom_max = p_nom_max.multiply(df_area_share)
+
+    n.madd(
+        "Link",
+        nodes + f" geothermal CHP district heat {cutoff}",
+        bus0="EU geothermal waste heat bus",
+        bus1=nodes + " urban central heat",
+        carrier="geothermal waste heat",
+        p_nom_extendable=True,
+        p_nom_max=p_nom_max / eta_el,
+        capital_cost=capital_cost
+        * dh_cost
+        * eta_dh,  # costs as share of electric part (see Frey et al 2022)
+        marginal_cost=0.0,
+        efficiency=eta_dh,
+        lifetime=costs.at["geothermal", "lifetime"],
+    )
+
+
 # %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -3405,6 +3563,38 @@ if __name__ == "__main__":
 
     if options.get("cluster_heat_buses", False) and not first_year_myopic:
         cluster_heat_buses(n)
+
+    if options.get("egs"):
+        n.add(
+            "Carrier",
+            "geothermal heat",
+            nice_name="Geothermal Heat",
+            color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
+            co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+        )
+        n.add(
+            "Carrier",
+            "geothermal waste heat",
+            nice_name="Geothermal Waste Heat",
+            color=snakemake.config["plotting"]["tech_colors"]["geothermal waste heat"],
+            # emissions through geothermal heat
+            co2_emissions=0.0,
+        )
+
+        logger.info("Adding Enhanced Geothermal Potential")
+        costs_year = snakemake.config["costs"]["year"]
+
+        for cutoff in ["50", "100", "150"]:
+            egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
+            add_egs_potential(
+                n,
+                egs_data,
+                cutoff,
+                costs_year,
+                snakemake.config,
+                costs,
+                snakemake.input["dh_area_share"],
+            )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 

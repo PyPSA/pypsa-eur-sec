@@ -231,6 +231,22 @@ rule build_solar_thermal_profiles:
     script: "scripts/build_solar_thermal_profiles.py"
 
 
+rule build_egs_potential:
+    input:
+        egs_potential="data/egs_global_potential.xlsx",
+        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
+        egs_cost="data/egs_costs.xlsx",
+        pop_layout_urban="resources/pop_layout_urban.nc",
+        pop_layout_rural="resources/pop_layout_rural.nc",
+        shapes=pypsaeur("resources/regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+    output:
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        dh_area_share="resources/dh_area_share_s{simpl}_{clusters}.csv",
+    script: "scripts/build_egs_potential.py"
+
+
 def input_eurostat(w):
     # 2016 includes BA, 2017 does not
     report_year = config["energy"]["eurostat_report_year"]
@@ -531,6 +547,10 @@ rule prepare_sector_network:
         cop_air_total="resources/cop_air_total_elec_s{simpl}_{clusters}.nc",
         cop_air_rural="resources/cop_air_rural_elec_s{simpl}_{clusters}.nc",
         cop_air_urban="resources/cop_air_urban_elec_s{simpl}_{clusters}.nc",
+        egs_potential_50="resources/egs_potential_profiles_50_s{simpl}_{clusters}.nc",
+        egs_potential_100="resources/egs_potential_profiles_100_s{simpl}_{clusters}.nc",
+        egs_potential_150="resources/egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        dh_area_share="resources/dh_area_share_s{simpl}_{clusters}.csv",
         solar_thermal_total="resources/solar_thermal_total_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         solar_thermal_urban="resources/solar_thermal_urban_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
         solar_thermal_rural="resources/solar_thermal_rural_elec_s{simpl}_{clusters}.nc" if config["sector"]["solar_thermal"] else [],
