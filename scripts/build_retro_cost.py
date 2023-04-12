@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Created on Fri Jan 22 10:36:39 2021.
+This script calculates the space heating savings through better insulation of
+the thermal envelope of a building and corresponding costs for different
+building types in different countries.
 
-This script should calculate the space heating savings through better
-insulation of the thermal envelope of a building and corresponding costs for
-different building types in different countries.
+Methodology
+-----------
 
------------------METHODOLOGY  ------------------------------------------------
 The energy savings calculations are based on the
 
   EN ISO 13790 / seasonal method https://www.iso.org/obp/ui/#iso:std:iso:13790:ed-2:v1:en:
@@ -25,7 +29,9 @@ The energy savings calculations are based on the
       - tabula https://episcope.eu/fileadmin/tabula/public/calc/tabula-calculator.xlsx
 
 
----------------------BASIC EQUAIONS -------------------------------------------
+Basic Equations
+---------------
+
 The basic equations:
 
     The Energy needed for space heating E_space [W/m²] are calculated as the
@@ -49,20 +55,17 @@ The basic equations:
 
         H_gains = nu * (H_solar + H_int)
 
----------------- STRUCTURE OF THE SCRIPT --------------------------------------
+Structure
+---------
 
 The script has the following structure:
 
-    (i) fixed parameters are set
-    (ii) functions
+    (0) fixed parameters are set
     (1) prepare data, bring to same format
     (2) calculate space heat demand depending on additional insulation material
     (3) calculate costs for corresponding additional insulation material
     (4) get cost savings per retrofitting measures for each sector by weighting
         with heated floor area
-
--------------------------------------------------------------------------------
-@author: Lisa
 """
 import pandas as pd
 import xarray as xr
@@ -304,7 +307,7 @@ def prepare_building_stock_data():
     u_values.set_index(["country_code", "subsector", "bage", "type"], inplace=True)
 
     #  only take in config.yaml specified countries into account
-    countries = ct_total.index
+    countries = snakemake.config["countries"]
     area_tot = area_tot.loc[countries]
 
     return u_values, country_iso_dic, countries, area_tot, area
@@ -1028,13 +1031,13 @@ def sample_dE_costs_area(
 # %% --- MAIN --------------------------------------------------------------
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_retro_cost",
             simpl="",
             clusters=48,
-            lv=1.0,
+            ll="v1.0",
             sector_opts="Co2L0-168H-T-H-B-I-solar3-dist1",
         )
 

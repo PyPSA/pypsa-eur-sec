@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Creates plots for optimised network topologies, including electricity, gas and
+hydrogen networks, and regional generation, storage and conversion capacities
+built.
+
+This rule plots a map of the network with technology capacities at the
+nodes.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -8,7 +21,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import pandas as pd
 import pypsa
-from helper import override_component_attrs
+from _helpers import override_component_attrs
 from make_summary import assign_carriers
 from plot_summary import preferred_order, rename_techs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
@@ -136,7 +149,7 @@ def plot_map(
     ac_color = "rosybrown"
     dc_color = "darkseagreen"
 
-    if snakemake.wildcards["lv"] == "1.0":
+    if snakemake.wildcards["ll"] == "v1.0":
         # should be zero
         line_widths = n.lines.s_nom_opt - n.lines.s_nom
         link_widths = n.links.p_nom_opt - n.links.p_nom
@@ -384,8 +397,7 @@ def plot_h2_map(network, regions):
         link_widths=link_widths_retro,
         branch_components=["Link"],
         ax=ax,
-        color_geomap=False,
-        boundaries=map_opts["boundaries"],
+        **map_opts,
     )
 
     regions.plot(
@@ -698,7 +710,7 @@ def plot_map_without(network):
     to_drop = n.links.index[(n.links.carrier != "DC") & (n.links.carrier != "B2B")]
     n.links.drop(to_drop, inplace=True)
 
-    if snakemake.wildcards["lv"] == "1.0":
+    if snakemake.wildcards["ll"] == "v1.0":
         line_widths = n.lines.s_nom
         link_widths = n.links.p_nom
     else:
@@ -892,10 +904,10 @@ def plot_series(network, carrier="AC", name="test"):
     fig.tight_layout()
 
     fig.savefig(
-        "{}{}/maps/series-{}-{}-{}-{}-{}.pdf".format(
-            snakemake.config["results_dir"],
-            snakemake.config["run"],
-            snakemake.wildcards["lv"],
+        "{}/{RDIR}maps/series-{}-{}-{}-{}-{}.pdf".format(
+            "results",
+            snakemake.params.RDIR,
+            snakemake.wildcards["ll"],
             carrier,
             start,
             stop,
@@ -907,19 +919,19 @@ def plot_series(network, carrier="AC", name="test"):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "plot_network",
             simpl="",
-            clusters="181",
-            lv="opt",
             opts="",
-            sector_opts="Co2L0-730H-T-H-B-I-A-solar+p3-linemaxext10",
-            planning_horizons="2050",
+            clusters="5",
+            ll="v1.5",
+            sector_opts="CO2L0-1H-T-H-B-I-A-solar+p3-dist1",
+            planning_horizons="2030",
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     overrides = override_component_attrs(snakemake.input.overrides)
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
@@ -927,6 +939,9 @@ if __name__ == "__main__":
     regions = gpd.read_file(snakemake.input.regions).set_index("name")
 
     map_opts = snakemake.config["plotting"]["map"]
+
+    if map_opts["boundaries"] is None:
+        map_opts["boundaries"] = regions.total_bounds[[0, 2, 1, 3]] + [-1, 1, -1, 1]
 
     plot_map(
         n,

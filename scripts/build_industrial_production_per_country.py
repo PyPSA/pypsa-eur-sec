@@ -1,18 +1,26 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
 Build industrial production per country.
 """
 
 import logging
+from functools import partial
 
 logger = logging.getLogger(__name__)
 
 import multiprocessing as mp
 
+import country_converter as coco
 import numpy as np
 import pandas as pd
-from helper import mute_print
+from _helpers import mute_print
 from tqdm import tqdm
+
+cc = coco.CountryConverter()
 
 tj_to_ktoe = 0.0238845
 ktoe_to_twh = 0.01163
@@ -31,40 +39,9 @@ sub_sheet_name_dict = {
     "Other Industrial Sectors": "OIS",
 }
 
-non_EU = ["NO", "CH", "ME", "MK", "RS", "BA", "AL"]
+eu28 = cc.EU28as("ISO2").ISO2.values
 
 jrc_names = {"GR": "EL", "GB": "UK"}
-
-eu28 = [
-    "FR",
-    "DE",
-    "GB",
-    "IT",
-    "ES",
-    "PL",
-    "SE",
-    "NL",
-    "BE",
-    "FI",
-    "DK",
-    "PT",
-    "RO",
-    "AT",
-    "BG",
-    "EE",
-    "GR",
-    "LV",
-    "CZ",
-    "HU",
-    "IE",
-    "SK",
-    "LT",
-    "HR",
-    "LU",
-    "SI",
-    "CY",
-    "MT",
-]
 
 sect2sub = {
     "Iron and steel": ["Electric arc", "Integrated steelworks"],
@@ -181,7 +158,7 @@ def find_physical_output(df):
     return slice(start, end)
 
 
-def get_energy_ratio(country):
+def get_energy_ratio(country, eurostat_dir, jrc_dir, year):
     if country == "CH":
         e_country = e_switzerland * tj_to_ktoe
     else:
@@ -210,7 +187,7 @@ def get_energy_ratio(country):
     return pd.Series({k: e_ratio[v] for k, v in sub2sect.items()})
 
 
-def industry_production_per_country(country):
+def industry_production_per_country(country, year, eurostat_dir, jrc_dir):
     def get_sector_data(sector, country):
         jrc_country = jrc_names.get(country, country)
         fn = f"{jrc_dir}/JRC-IDEES-2015_Industry_{jrc_country}.xlsx"
@@ -228,25 +205,33 @@ def industry_production_per_country(country):
 
         return df
 
-    ct = "EU28" if country in non_EU else country
-    demand = pd.concat([get_sector_data(s, ct) for s in sect2sub.keys()])
+    ct = "EU28" if country not in eu28 else country
+    demand = pd.concat([get_sector_data(s, ct) for s in sect2sub])
 
-    if country in non_EU:
-        demand *= get_energy_ratio(country)
+    if country not in eu28:
+        demand *= get_energy_ratio(country, eurostat_dir, jrc_dir, year)
 
     demand.name = country
 
     return demand
 
 
-def industry_production(countries):
+def industry_production(countries, year, eurostat_dir, jrc_dir):
     nprocesses = snakemake.threads
-    func = industry_production_per_country
+    disable_progress = snakemake.config["run"].get("disable_progressbar", False)
+
+    func = partial(
+        industry_production_per_country,
+        year=year,
+        eurostat_dir=eurostat_dir,
+        jrc_dir=jrc_dir,
+    )
     tqdm_kwargs = dict(
         ascii=False,
         unit=" country",
         total=len(countries),
         desc="Build industry production",
+        disable=disable_progress,
     )
     with mp.Pool(processes=nprocesses) as pool:
         demand_l = list(tqdm(pool.imap(func, countries), **tqdm_kwargs))
@@ -258,7 +243,7 @@ def industry_production(countries):
     return demand
 
 
-def separate_basic_chemicals(demand):
+def separate_basic_chemicals(demand, year):
     """
     Separate basic chemicals into ammonia, chlorine, methanol and HVC.
     """
@@ -290,13 +275,13 @@ def separate_basic_chemicals(demand):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_industrial_production_per_country")
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
-    countries = non_EU + eu28
+    countries = snakemake.config["countries"]
 
     year = snakemake.config["industry"]["reference_year"]
 
@@ -305,9 +290,9 @@ if __name__ == "__main__":
     jrc_dir = snakemake.input.jrc
     eurostat_dir = snakemake.input.eurostat
 
-    demand = industry_production(countries)
+    demand = industry_production(countries, year, eurostat_dir, jrc_dir)
 
-    separate_basic_chemicals(demand)
+    separate_basic_chemicals(demand, year)
 
     fn = snakemake.output.industrial_production_per_country
     demand.to_csv(fn, float_format="%.2f")

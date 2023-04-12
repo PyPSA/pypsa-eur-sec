@@ -1,12 +1,20 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
 Build industrial energy demand per country.
 """
 
 import multiprocessing as mp
+from functools import partial
 
+import country_converter as coco
 import pandas as pd
 from tqdm import tqdm
+
+cc = coco.CountryConverter()
 
 ktoe_to_twh = 0.011630
 
@@ -51,42 +59,12 @@ fuels = {
     "Electricity": "electricity",
 }
 
-eu28 = [
-    "FR",
-    "DE",
-    "GB",
-    "IT",
-    "ES",
-    "PL",
-    "SE",
-    "NL",
-    "BE",
-    "FI",
-    "DK",
-    "PT",
-    "RO",
-    "AT",
-    "BG",
-    "EE",
-    "GR",
-    "LV",
-    "CZ",
-    "HU",
-    "IE",
-    "SK",
-    "LT",
-    "HR",
-    "LU",
-    "SI",
-    "CY",
-    "MT",
-]
+eu28 = cc.EU28as("ISO2").ISO2.tolist()
 
 jrc_names = {"GR": "EL", "GB": "UK"}
 
 
-def industrial_energy_demand_per_country(country):
-    jrc_dir = snakemake.input.jrc
+def industrial_energy_demand_per_country(country, year, jrc_dir):
     jrc_country = jrc_names.get(country, country)
     fn = f"{jrc_dir}/JRC-IDEES-2015_EnergyBalance_{jrc_country}.xlsx"
 
@@ -150,7 +128,10 @@ def add_ammonia_energy_demand(demand):
     return demand
 
 
-def add_non_eu28_industrial_energy_demand(demand):
+def add_non_eu28_industrial_energy_demand(countries, demand):
+    non_eu28 = countries.difference(eu28)
+    if non_eu28.empty:
+        return demand
     # output in MtMaterial/a
     fn = snakemake.input.industrial_production_per_country
     production = pd.read_csv(fn, index_col=0) / 1e3
@@ -160,11 +141,9 @@ def add_non_eu28_industrial_energy_demand(demand):
     production["Basic chemicals (without ammonia)"] = production[chemicals].sum(axis=1)
     production.drop(columns=chemicals, inplace=True)
 
-    eu28_production = production.loc[eu28].sum()
+    eu28_production = production.loc[countries.intersection(eu28)].sum()
     eu28_energy = demand.groupby(level=1).sum()
     eu28_averages = eu28_energy / eu28_production
-
-    non_eu28 = production.index.symmetric_difference(eu28)
 
     demand_non_eu28 = pd.concat(
         {k: v * eu28_averages for k, v in production.loc[non_eu28].iterrows()}
@@ -173,14 +152,18 @@ def add_non_eu28_industrial_energy_demand(demand):
     return pd.concat([demand, demand_non_eu28])
 
 
-def industrial_energy_demand(countries):
+def industrial_energy_demand(countries, year):
     nprocesses = snakemake.threads
-    func = industrial_energy_demand_per_country
+    disable_progress = snakemake.config["run"].get("disable_progressbar", False)
+    func = partial(
+        industrial_energy_demand_per_country, year=year, jrc_dir=snakemake.input.jrc
+    )
     tqdm_kwargs = dict(
         ascii=False,
         unit=" country",
         total=len(countries),
         desc="Build industrial energy demand",
+        disable=disable_progress,
     )
     with mp.Pool(processes=nprocesses) as pool:
         demand_l = list(tqdm(pool.imap(func, countries), **tqdm_kwargs))
@@ -192,18 +175,19 @@ def industrial_energy_demand(countries):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_industrial_energy_demand_per_country_today")
 
     config = snakemake.config["industry"]
     year = config.get("reference_year", 2015)
+    countries = pd.Index(snakemake.config["countries"])
 
-    demand = industrial_energy_demand(eu28)
+    demand = industrial_energy_demand(countries.intersection(eu28), year)
 
     demand = add_ammonia_energy_demand(demand)
 
-    demand = add_non_eu28_industrial_energy_demand(demand)
+    demand = add_non_eu28_industrial_energy_demand(countries, demand)
 
     # for format compatibility
     demand = demand.stack(dropna=False).unstack(level=[0, 2])

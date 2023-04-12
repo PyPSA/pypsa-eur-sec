@@ -1,4 +1,11 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Prepares brownfield data from previous planning horizon.
+"""
 
 import logging
 
@@ -10,9 +17,8 @@ idx = pd.IndexSlice
 
 import numpy as np
 import pypsa
-import yaml
+from _helpers import override_component_attrs, update_config_with_sector_opts
 from add_existing_baseyear import add_build_year_to_new_assets
-from helper import override_component_attrs, update_config_with_sector_opts
 
 
 def add_brownfield(n, n_p, year):
@@ -122,19 +128,19 @@ def add_brownfield(n, n_p, year):
 # %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "add_brownfield",
             simpl="",
             clusters="37",
             opts="",
-            lv=1.0,
+            ll="v1.0",
             sector_opts="168H-T-H-B-I-solar+p3-dist1",
             planning_horizons=2030,
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     update_config_with_sector_opts(snakemake.config, snakemake.wildcards.sector_opts)
 

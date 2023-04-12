@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
 Build import locations for fossil gas from entry-points, LNG terminals and
-production sites.
+production sites with data from SciGRID_gas and Global Energy Monitor.
 """
 
 import logging
@@ -11,7 +15,6 @@ logger = logging.getLogger(__name__)
 import geopandas as gpd
 import pandas as pd
 from cluster_gas_network import load_bus_regions
-from shapely import wkt
 
 
 def read_scigrid_gas(fn):
@@ -76,7 +79,7 @@ def build_gas_input_locations(lng_fn, entry_fn, prod_fn, countries):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_gas_input_locations",
@@ -84,7 +87,7 @@ if __name__ == "__main__":
             clusters="37",
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     regions = load_bus_regions(
         snakemake.input.regions_onshore, snakemake.input.regions_offshore

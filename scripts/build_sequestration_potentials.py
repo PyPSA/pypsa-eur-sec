@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Build regionalised geological sequestration potential for carbon dioxide using
+data from `CO2Stop <https://setis.ec.europa.eu/european-co2-storage-
+database_en>`_.
+"""
+
 import geopandas as gpd
 import pandas as pd
 
@@ -26,7 +36,7 @@ def allocate_sequestration_potential(
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_sequestration_potentials", simpl="", clusters="181"

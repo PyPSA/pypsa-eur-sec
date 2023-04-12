@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build clustered population layouts.
+Build population layouts for all clustered model regions as total as well as
+split by urban and rural population.
 """
 
 import atlite
@@ -10,7 +15,7 @@ import xarray as xr
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_clustered_population_layouts",
@@ -18,7 +23,7 @@ if __name__ == "__main__":
             clusters=48,
         )
 
-    cutout = atlite.Cutout(snakemake.config["atlite"]["cutout"])
+    cutout = atlite.Cutout(snakemake.input.cutout)
 
     clustered_regions = (
         gpd.read_file(snakemake.input.regions_onshore)

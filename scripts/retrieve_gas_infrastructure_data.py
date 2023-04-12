@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
 """
 Retrieve gas infrastructure data from
 https://zenodo.org/record/4767098/files/IGGIELGN.zip.
@@ -8,14 +11,14 @@ import logging
 import zipfile
 from pathlib import Path
 
-from helper import progress_retrieve
+from _helpers import progress_retrieve
 
 logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("retrieve_gas_network_data")
         rootpath = ".."
@@ -29,9 +32,10 @@ if __name__ == "__main__":
     to_fn = Path(f"{rootpath}/data/gas_network/scigrid-gas")
 
     logger.info(f"Downloading databundle from '{url}'.")
-    progress_retrieve(url, zip_fn)
+    disable_progress = snakemake.config["run"].get("disable_progressbar", False)
+    progress_retrieve(url, zip_fn, disable=disable_progress)
 
-    logger.info(f"Extracting databundle.")
+    logger.info("Extracting databundle.")
     zipfile.ZipFile(zip_fn).extractall(to_fn)
 
     zip_fn.unlink()

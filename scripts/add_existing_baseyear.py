@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Adds existing power and heat generation capacities for initial planning
+horizon.
+"""
 
 import logging
 
@@ -10,12 +18,14 @@ idx = pd.IndexSlice
 
 from types import SimpleNamespace
 
+import country_converter as coco
 import numpy as np
 import pypsa
 import xarray as xr
-import yaml
-from helper import override_component_attrs, update_config_with_sector_opts
+from _helpers import override_component_attrs, update_config_with_sector_opts
 from prepare_sector_network import cluster_heat_buses, define_spatial, prepare_costs
+
+cc = coco.CountryConverter()
 
 spatial = SimpleNamespace()
 
@@ -53,8 +63,6 @@ def add_existing_renewables(df_agg):
     power plants.
     """
 
-    cc = pd.read_csv(snakemake.input.country_codes, index_col=0)
-
     carriers = {"solar": "solar", "onwind": "onwind", "offwind": "offwind-ac"}
 
     for tech in ["solar", "onwind", "offwind"]:
@@ -62,17 +70,7 @@ def add_existing_renewables(df_agg):
 
         df = pd.read_csv(snakemake.input[f"existing_{tech}"], index_col=0).fillna(0.0)
         df.columns = df.columns.astype(int)
-
-        rename_countries = {
-            "Czechia": "Czech Republic",
-            "UK": "United Kingdom",
-            "Bosnia Herzg": "Bosnia Herzegovina",
-            "North Macedonia": "Macedonia",
-        }
-
-        df.rename(index=rename_countries, inplace=True)
-
-        df.rename(index=cc["2 letter code (ISO-3166-2)"], inplace=True)
+        df.index = cc.convert(df.index, to="iso2")
 
         # calculate yearly differences
         df.insert(loc=0, value=0.0, column="1999")
@@ -160,7 +158,10 @@ def add_power_capacities_installed_before_baseyear(n, grouping_years, costs, bas
     mean = df_agg.loc[biomass_i, "DateIn"].mean()
     df_agg.loc[biomass_i, "DateIn"] = df_agg.loc[biomass_i, "DateIn"].fillna(int(mean))
     # Fill missing DateOut
-    dateout = df_agg.loc[biomass_i, "DateIn"] + snakemake.config["costs"]["lifetime"]
+    dateout = (
+        df_agg.loc[biomass_i, "DateIn"]
+        + snakemake.config["costs"]["fill_values"]["lifetime"]
+    )
     df_agg.loc[biomass_i, "DateOut"] = df_agg.loc[biomass_i, "DateOut"].fillna(dateout)
 
     # drop assets which are already phased out / decommissioned
@@ -417,9 +418,7 @@ def add_heating_capacities_installed_before_baseyear(
     # convert GW to MW
     df *= 1e3
 
-    cc = pd.read_csv(snakemake.input.country_codes, index_col=0)
-
-    df.rename(index=cc["2 letter code (ISO-3166-2)"], inplace=True)
+    df.index = cc.convert(df.index, to="iso2")
 
     # coal and oil boilers are assimilated to oil boilers
     df["oil boiler"] = df["oil boiler"] + df["coal boiler"]
@@ -437,10 +436,10 @@ def add_heating_capacities_installed_before_baseyear(
     ratio_residential = pd.Series(
         [
             (
-                n.loads_t.p_set.sum()["{} residential rural heat".format(node)]
+                n.loads_t.p_set.sum()[f"{node} residential rural heat"]
                 / (
-                    n.loads_t.p_set.sum()["{} residential rural heat".format(node)]
-                    + n.loads_t.p_set.sum()["{} services rural heat".format(node)]
+                    n.loads_t.p_set.sum()[f"{node} residential rural heat"]
+                    + n.loads_t.p_set.sum()[f"{node} services rural heat"]
                 )
             )
             for node in nodal_df.index
@@ -600,19 +599,19 @@ def add_heating_capacities_installed_before_baseyear(
 # %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "add_existing_baseyear",
             simpl="",
             clusters="45",
-            lv=1.0,
+            ll="v1.0",
             opts="",
             sector_opts="8760H-T-H-B-I-A-solar+p3-dist1",
             planning_horizons=2020,
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     update_config_with_sector_opts(snakemake.config, snakemake.wildcards.sector_opts)
 
@@ -630,10 +629,8 @@ if __name__ == "__main__":
     Nyears = n.snapshot_weightings.generators.sum() / 8760.0
     costs = prepare_costs(
         snakemake.input.costs,
-        snakemake.config["costs"]["USD2013_to_EUR2013"],
-        snakemake.config["costs"]["discountrate"],
+        snakemake.config["costs"],
         Nyears,
-        snakemake.config["costs"]["lifetime"],
     )
 
     grouping_years_power = snakemake.config["existing_capacities"][
@@ -656,7 +653,7 @@ if __name__ == "__main__":
             .to_pandas()
             .reindex(index=n.snapshots)
         )
-        default_lifetime = snakemake.config["costs"]["lifetime"]
+        default_lifetime = snakemake.config["costs"]["fill_values"]["lifetime"]
         add_heating_capacities_installed_before_baseyear(
             n,
             baseyear,

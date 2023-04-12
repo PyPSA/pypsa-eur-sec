@@ -1,38 +1,20 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
 """
-Build ammonia production.
+Build historical annual ammonia production per country in ktonNH3/a.
 """
 
+import country_converter as coco
 import pandas as pd
 
-country_to_alpha2 = {
-    "Austriae": "AT",
-    "Bulgaria": "BG",
-    "Belgiume": "BE",
-    "Croatia": "HR",
-    "Czechia": "CZ",
-    "Estonia": "EE",
-    "Finland": "FI",
-    "France": "FR",
-    "Germany": "DE",
-    "Greece": "GR",
-    "Hungarye": "HU",
-    "Italye": "IT",
-    "Lithuania": "LT",
-    "Netherlands": "NL",
-    "Norwaye": "NO",
-    "Poland": "PL",
-    "Romania": "RO",
-    "Serbia": "RS",
-    "Slovakia": "SK",
-    "Spain": "ES",
-    "Switzerland": "CH",
-    "United Kingdom": "GB",
-}
+cc = coco.CountryConverter()
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_ammonia_production")
 
@@ -45,10 +27,10 @@ if __name__ == "__main__":
         skipfooter=19,
     )
 
-    ammonia.rename(country_to_alpha2, inplace=True)
+    ammonia.index = cc.convert(ammonia.index, to="iso2")
 
     years = [str(i) for i in range(2013, 2018)]
-    countries = country_to_alpha2.values()
+    countries = ammonia.index.intersection(snakemake.config["countries"])
     ammonia = ammonia.loc[countries, years].astype(float)
 
     # convert from ktonN to ktonNH3

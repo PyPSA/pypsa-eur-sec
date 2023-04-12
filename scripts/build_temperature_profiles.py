@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build temperature profiles.
+Build time series for air and soil temperatures per clustered model region.
 """
 
 import atlite
@@ -12,7 +16,7 @@ from dask.distributed import Client, LocalCluster
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_temperature_profiles",
@@ -25,8 +29,7 @@ if __name__ == "__main__":
     client = Client(cluster, asynchronous=True)
 
     time = pd.date_range(freq="h", **snakemake.config["snapshots"])
-    cutout_config = snakemake.config["atlite"]["cutout"]
-    cutout = atlite.Cutout(cutout_config).sel(time=time)
+    cutout = atlite.Cutout(snakemake.input.cutout).sel(time=time)
 
     clustered_regions = (
         gpd.read_file(snakemake.input.regions_onshore)

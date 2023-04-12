@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Preprocess gas network based on data from bthe SciGRID Gas project
+Preprocess gas network based on data from bthe SciGRID_gas project
 (https://www.gas.scigrid.de/).
 """
 
@@ -140,11 +144,11 @@ def prepare_dataset(
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_gas_network")
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     gas_network = load_dataset(snakemake.input.gas_network)
 

@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Build total energy demands per country using JRC IDEES, eurostat, and EEA data.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6,11 +14,14 @@ logger = logging.getLogger(__name__)
 import multiprocessing as mp
 from functools import partial
 
+import country_converter as coco
 import geopandas as gpd
 import numpy as np
 import pandas as pd
-from helper import mute_print
+from _helpers import mute_print
 from tqdm import tqdm
+
+cc = coco.CountryConverter()
 
 idx = pd.IndexSlice
 
@@ -29,8 +40,7 @@ def reverse(dictionary):
     return {v: k for k, v in dictionary.items()}
 
 
-# translations for Eurostat
-eurostat_country_to_alpha2 = {
+eurostat_codes = {
     "EU28": "EU",
     "EA19": "EA",
     "Belgium": "BE",
@@ -77,38 +87,10 @@ eurostat_country_to_alpha2 = {
     "Switzerland": "CH",
 }
 
-non_EU = ["NO", "CH", "ME", "MK", "RS", "BA", "AL"]
 
 idees_rename = {"GR": "EL", "GB": "UK"}
 
-eu28 = [
-    "FR",
-    "DE",
-    "GB",
-    "IT",
-    "ES",
-    "PL",
-    "SE",
-    "NL",
-    "BE",
-    "FI",
-    "CZ",
-    "DK",
-    "PT",
-    "RO",
-    "AT",
-    "BG",
-    "EE",
-    "GR",
-    "LV",
-    "HU",
-    "IE",
-    "SK",
-    "LT",
-    "HR",
-    "LU",
-    "SI",
-] + ["CY", "MT"]
+eu28 = cc.EU28as("ISO2").ISO2.tolist()
 
 eu28_eea = eu28.copy()
 eu28_eea.remove("GB")
@@ -157,7 +139,7 @@ def build_eurostat(input_eurostat, countries, report_year, year):
         )
 
     # sorted_index necessary for slicing
-    lookup = eurostat_country_to_alpha2
+    lookup = eurostat_codes
     labelled_dfs = {
         lookup[df.columns[0]]: df
         for df in dfs.values()
@@ -192,9 +174,7 @@ def build_swiss(year):
     return df
 
 
-def idees_per_country(ct, year):
-    base_dir = snakemake.input.idees
-
+def idees_per_country(ct, year, base_dir):
     ct_totals = {}
 
     ct_idees = idees_rename.get(ct, ct)
@@ -396,13 +376,15 @@ def idees_per_country(ct, year):
 
 def build_idees(countries, year):
     nprocesses = snakemake.threads
+    disable_progress = snakemake.config["run"].get("disable_progressbar", False)
 
-    func = partial(idees_per_country, year=year)
+    func = partial(idees_per_country, year=year, base_dir=snakemake.input.idees)
     tqdm_kwargs = dict(
         ascii=False,
         unit=" country",
         total=len(countries),
         desc="Build from IDEES database",
+        disable=disable_progress,
     )
     with mute_print():
         with mp.Pool(processes=nprocesses) as pool:
@@ -501,30 +483,32 @@ def build_energy_totals(countries, eurostat, swiss, idees):
     # http://www.ssb.no/en/energi-og-industri/statistikker/husenergi/hvert-3-aar/2014-07-14
     # The main heating source for about 73 per cent of the households is based on electricity
     # => 26% is non-electric
-    elec_fraction = 0.73
 
-    no_norway = df.drop("NO")
+    if "NO" in df:
+        elec_fraction = 0.73
 
-    for sector in ["residential", "services"]:
-        # assume non-electric is heating
-        nonelectric = (
-            df.loc["NO", f"total {sector}"] - df.loc["NO", f"electricity {sector}"]
-        )
-        total_heating = nonelectric / (1 - elec_fraction)
+        no_norway = df.drop("NO")
 
-        for use in uses:
-            nonelectric_use = (
-                no_norway[f"total {sector} {use}"]
-                - no_norway[f"electricity {sector} {use}"]
-            )
+        for sector in ["residential", "services"]:
+            # assume non-electric is heating
             nonelectric = (
-                no_norway[f"total {sector}"] - no_norway[f"electricity {sector}"]
+                df.loc["NO", f"total {sector}"] - df.loc["NO", f"electricity {sector}"]
             )
-            fraction = nonelectric_use.div(nonelectric).mean()
-            df.loc["NO", f"total {sector} {use}"] = total_heating * fraction
-            df.loc["NO", f"electricity {sector} {use}"] = (
-                total_heating * fraction * elec_fraction
-            )
+            total_heating = nonelectric / (1 - elec_fraction)
+
+            for use in uses:
+                nonelectric_use = (
+                    no_norway[f"total {sector} {use}"]
+                    - no_norway[f"electricity {sector} {use}"]
+                )
+                nonelectric = (
+                    no_norway[f"total {sector}"] - no_norway[f"electricity {sector}"]
+                )
+                fraction = nonelectric_use.div(nonelectric).mean()
+                df.loc["NO", f"total {sector} {use}"] = total_heating * fraction
+                df.loc["NO", f"electricity {sector} {use}"] = (
+                    total_heating * fraction * elec_fraction
+                )
 
     # Missing aviation
 
@@ -683,7 +667,7 @@ def build_eurostat_co2(input_eurostat, countries, report_year, year=1990):
 def build_co2_totals(countries, eea_co2, eurostat_co2):
     co2 = eea_co2.reindex(countries)
 
-    for ct in countries.intersection(["BA", "RS", "AL", "ME", "MK"]):
+    for ct in pd.Index(countries).intersection(["BA", "RS", "AL", "ME", "MK"]):
         mappings = {
             "electricity": (
                 ct,
@@ -720,46 +704,49 @@ def build_transport_data(countries, population, idees):
     transport_data["number cars"] = idees["passenger cars"]
 
     # CH from http://ec.europa.eu/eurostat/statistics-explained/index.php/Passenger_cars_in_the_EU#Luxembourg_has_the_highest_number_of_passenger_cars_per_inhabitant
-    transport_data.at["CH", "number cars"] = 4.136e6
+    if "CH" in countries:
+        transport_data.at["CH", "number cars"] = 4.136e6
 
     missing = transport_data.index[transport_data["number cars"].isna()]
-    logger.info(
-        f"Missing data on cars from:\n{list(missing)}\nFilling gaps with averaged data."
-    )
+    if not missing.empty:
+        logger.info(
+            f"Missing data on cars from:\n{list(missing)}\nFilling gaps with averaged data."
+        )
 
-    cars_pp = transport_data["number cars"] / population
-    transport_data.loc[missing, "number cars"] = cars_pp.mean() * population
+        cars_pp = transport_data["number cars"] / population
+        transport_data.loc[missing, "number cars"] = cars_pp.mean() * population
 
     # collect average fuel efficiency in kWh/km
 
     transport_data["average fuel efficiency"] = idees["passenger car efficiency"]
 
     missing = transport_data.index[transport_data["average fuel efficiency"].isna()]
-    logger.info(
-        f"Missing data on fuel efficiency from:\n{list(missing)}\nFilling gapswith averaged data."
-    )
+    if not missing.empty:
+        logger.info(
+            f"Missing data on fuel efficiency from:\n{list(missing)}\nFilling gapswith averaged data."
+        )
 
-    fill_values = transport_data["average fuel efficiency"].mean()
-    transport_data.loc[missing, "average fuel efficiency"] = fill_values
+        fill_values = transport_data["average fuel efficiency"].mean()
+        transport_data.loc[missing, "average fuel efficiency"] = fill_values
 
     return transport_data
 
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_energy_totals")
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     config = snakemake.config["energy"]
 
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index("index")
     population = nuts3["pop"].groupby(nuts3.country).sum()
 
-    countries = population.index
-    idees_countries = countries.intersection(eu28)
+    countries = snakemake.config["countries"]
+    idees_countries = pd.Index(countries).intersection(eu28)
 
     data_year = config["energy_totals_year"]
     report_year = snakemake.config["energy"]["eurostat_report_year"]

@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
 """
-Retrieve and extract sector data bundle.
+Retrieve and extract data bundle for sector-coupled studies.
 """
 
 import logging
@@ -26,9 +29,10 @@ if __name__ == "__main__":
     to_fn = Path("data")
 
     logger.info(f"Downloading databundle from '{url}'.")
-    progress_retrieve(url, tarball_fn)
+    disable_progress = snakemake.config["run"].get("disable_progressbar", False)
+    progress_retrieve(url, tarball_fn, disable=disable_progress)
 
-    logger.info(f"Extracting databundle.")
+    logger.info("Extracting databundle.")
     tarfile.open(tarball_fn).extractall(to_fn)
 
     tarball_fn.unlink()

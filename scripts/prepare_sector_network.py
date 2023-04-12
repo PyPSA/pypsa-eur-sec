@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Adds all sector-coupling components to the network, including demand and supply
+technologies for the buildings, transport and industry sectors.
+"""
 
 import logging
 import os
@@ -10,12 +18,12 @@ import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from build_energy_totals import build_co2_totals, build_eea_co2, build_eurostat_co2
-from helper import (
+from _helpers import (
     generate_periodic_profiles,
     override_component_attrs,
     update_config_with_sector_opts,
 )
+from build_energy_totals import build_co2_totals, build_eea_co2, build_eurostat_co2
 from networkx.algorithms import complement
 from networkx.algorithms.connectivity.edge_augmentation import k_edge_augmentation
 from pypsa.geo import haversine_pts
@@ -235,7 +243,7 @@ def build_carbon_budget(o, input_eurostat, fn, emissions_scope, report_year):
         carbon_budget = float(o[o.find("cb") + 2 : o.find("ex")])
         r = float(o[o.find("ex") + 2 :])
 
-    countries = n.buses.country.dropna().unique()
+    countries = snakemake.config["countries"]
 
     e_1990 = co2_emissions_year(
         countries, input_eurostat, opts, emissions_scope, report_year, year=1990
@@ -386,7 +394,7 @@ def update_wind_solar_costs(n, costs):
         with xr.open_dataset(profile) as ds:
             underwater_fraction = ds["underwater_fraction"].to_pandas()
             connection_cost = (
-                snakemake.config["costs"]["lines"]["length_factor"]
+                snakemake.config["lines"]["length_factor"]
                 * ds["average_distance"].to_pandas()
                 * (
                     underwater_fraction
@@ -668,10 +676,10 @@ def add_dac(n, costs):
     )
 
 
-def add_co2limit(n, Nyears=1.0, limit=0.0):
+def add_co2limit(n, nyears=1.0, limit=0.0):
     logger.info(f"Adding CO2 budget limit as per unit of 1990 levels of {limit}")
 
-    countries = n.buses.country.dropna().unique()
+    countries = snakemake.config["countries"]
 
     sectors = emission_sectors_from_opts(opts)
 
@@ -680,7 +688,7 @@ def add_co2limit(n, Nyears=1.0, limit=0.0):
 
     co2_limit = co2_totals.loc[countries, sectors].sum().sum()
 
-    co2_limit *= limit * Nyears
+    co2_limit *= limit * nyears
 
     n.add(
         "GlobalConstraint",
@@ -724,37 +732,25 @@ def cycling_shift(df, steps=1):
     return df
 
 
-# TODO checkout PyPSA-Eur script
-def prepare_costs(cost_file, USD_to_EUR, discount_rate, Nyears, lifetime):
+def prepare_costs(cost_file, config, nyears):
     # set all asset costs and other parameters
     costs = pd.read_csv(cost_file, index_col=[0, 1]).sort_index()
 
     # correct units to MW and EUR
     costs.loc[costs.unit.str.contains("/kW"), "value"] *= 1e3
-    costs.loc[costs.unit.str.contains("USD"), "value"] *= USD_to_EUR
 
     # min_count=1 is important to generate NaNs which are then filled by fillna
     costs = (
         costs.loc[:, "value"].unstack(level=1).groupby("technology").sum(min_count=1)
     )
-    costs = costs.fillna(
-        {
-            "CO2 intensity": 0,
-            "FOM": 0,
-            "VOM": 0,
-            "discount rate": discount_rate,
-            "efficiency": 1,
-            "fuel": 0,
-            "investment": 0,
-            "lifetime": lifetime,
-        }
-    )
 
-    annuity_factor = (
-        lambda v: annuity(v["lifetime"], v["discount rate"]) + v["FOM"] / 100
-    )
+    costs = costs.fillna(config["fill_values"])
+
+    def annuity_factor(v):
+        return annuity(v["lifetime"], v["discount rate"]) + v["FOM"] / 100
+
     costs["fixed"] = [
-        annuity_factor(v) * v["investment"] * Nyears for i, v in costs.iterrows()
+        annuity_factor(v) * v["investment"] * nyears for i, v in costs.iterrows()
     ]
 
     return costs
@@ -1413,6 +1409,7 @@ def add_land_transport(n, costs):
     # TODO options?
 
     logger.info("Add land transport")
+    nhours = n.snapshot_weightings.generators.sum()
 
     transport = pd.read_csv(
         snakemake.input.transport_demand, index_col=0, parse_dates=True
@@ -1562,7 +1559,7 @@ def add_land_transport(n, costs):
             ice_share
             / ice_efficiency
             * transport[nodes].sum().sum()
-            / 8760
+            / nhours
             * costs.at["oil", "CO2 intensity"]
         )
 
@@ -2337,11 +2334,13 @@ def add_industry(n, costs):
     logger.info("Add industrial demand")
 
     nodes = pop_layout.index
+    nhours = n.snapshot_weightings.generators.sum()
+    nyears = nhours / 8760
 
     # 1e6 to convert TWh to MWh
     industrial_demand = (
         pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
-    )
+    ) * nyears
 
     n.madd(
         "Bus",
@@ -2356,10 +2355,10 @@ def add_industry(n, costs):
             industrial_demand.loc[spatial.biomass.locations, "solid biomass"].rename(
                 index=lambda x: x + " solid biomass for industry"
             )
-            / 8760
+            / nhours
         )
     else:
-        p_set = industrial_demand["solid biomass"].sum() / 8760
+        p_set = industrial_demand["solid biomass"].sum() / nhours
 
     n.madd(
         "Load",
@@ -2406,7 +2405,7 @@ def add_industry(n, costs):
         unit="MWh_LHV",
     )
 
-    gas_demand = industrial_demand.loc[nodes, "methane"] / 8760.0
+    gas_demand = industrial_demand.loc[nodes, "methane"] / nhours
 
     if options["gas_network"]:
         spatial_gas_demand = gas_demand.rename(index=lambda x: x + " gas for industry")
@@ -2458,7 +2457,7 @@ def add_industry(n, costs):
         suffix=" H2 for industry",
         bus=nodes + " H2",
         carrier="H2 for industry",
-        p_set=industrial_demand.loc[nodes, "hydrogen"] / 8760,
+        p_set=industrial_demand.loc[nodes, "hydrogen"] / nhours,
     )
 
     shipping_hydrogen_share = get(options["shipping_hydrogen_share"], investment_year)
@@ -2474,11 +2473,11 @@ def add_industry(n, costs):
     domestic_navigation = pop_weighted_energy_totals.loc[
         nodes, "total domestic navigation"
     ].squeeze()
-    international_navigation = pd.read_csv(
-        snakemake.input.shipping_demand, index_col=0
-    ).squeeze()
+    international_navigation = (
+        pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze() * nyears
+    )
     all_navigation = domestic_navigation + international_navigation
-    p_set = all_navigation * 1e6 / 8760
+    p_set = all_navigation * 1e6 / nhours
 
     if shipping_hydrogen_share:
         oil_efficiency = options.get(
@@ -2685,7 +2684,7 @@ def add_industry(n, costs):
     )
 
     demand_factor = options.get("HVC_demand_factor", 1)
-    p_set = demand_factor * industrial_demand.loc[nodes, "naphtha"].sum() / 8760
+    p_set = demand_factor * industrial_demand.loc[nodes, "naphtha"].sum() / nhours
     if demand_factor != 1:
         logger.warning(f"Changing HVC demand by {demand_factor*100-100:+.2f}%.")
 
@@ -2703,7 +2702,7 @@ def add_industry(n, costs):
         demand_factor
         * pop_weighted_energy_totals.loc[nodes, all_aviation].sum(axis=1).sum()
         * 1e6
-        / 8760
+        / nhours
     )
     if demand_factor != 1:
         logger.warning(f"Changing aviation demand by {demand_factor*100-100:+.2f}%.")
@@ -2722,7 +2721,7 @@ def add_industry(n, costs):
     co2_release = ["naphtha for industry", "kerosene for aviation"]
     co2 = (
         n.loads.loc[co2_release, "p_set"].sum() * costs.at["oil", "CO2 intensity"]
-        - industrial_demand.loc[nodes, "process emission from feedstock"].sum() / 8760
+        - industrial_demand.loc[nodes, "process emission from feedstock"].sum() / nhours
     )
 
     n.add(
@@ -2745,12 +2744,13 @@ def add_industry(n, costs):
             for node in nodes
         ],
         carrier="low-temperature heat for industry",
-        p_set=industrial_demand.loc[nodes, "low-temperature heat"] / 8760,
+        p_set=industrial_demand.loc[nodes, "low-temperature heat"] / nhours,
     )
 
     # remove today's industrial electricity demand by scaling down total electricity demand
     for ct in n.buses.country.dropna().unique():
         # TODO map onto n.bus.country
+
         loads_i = n.loads.index[
             (n.loads.index.str[:2] == ct) & (n.loads.carrier == "electricity")
         ]
@@ -2769,7 +2769,7 @@ def add_industry(n, costs):
         suffix=" industry electricity",
         bus=nodes,
         carrier="industry electricity",
-        p_set=industrial_demand.loc[nodes, "electricity"] / 8760,
+        p_set=industrial_demand.loc[nodes, "electricity"] / nhours,
     )
 
     n.madd(
@@ -2786,10 +2786,10 @@ def add_industry(n, costs):
             -industrial_demand.loc[nodes, sel]
             .sum(axis=1)
             .rename(index=lambda x: x + " process emissions")
-            / 8760
+            / nhours
         )
     else:
-        p_set = -industrial_demand.loc[nodes, sel].sum(axis=1).sum() / 8760
+        p_set = -industrial_demand.loc[nodes, sel].sum(axis=1).sum() / nhours
 
     # this should be process emissions fossil+feedstock
     # then need load on atmosphere for feedstock emissions that are currently going to atmosphere via Link Fischer-Tropsch demand
@@ -2833,10 +2833,10 @@ def add_industry(n, costs):
                 industrial_demand.loc[spatial.ammonia.locations, "ammonia"].rename(
                     index=lambda x: x + " NH3"
                 )
-                / 8760
+                / nhours
             )
         else:
-            p_set = industrial_demand["ammonia"].sum() / 8760
+            p_set = industrial_demand["ammonia"].sum() / nhours
 
         n.madd(
             "Load",
@@ -2888,6 +2888,7 @@ def add_agriculture(n, costs):
     logger.info("Add agriculture, forestry and fishing sector.")
 
     nodes = pop_layout.index
+    nhours = n.snapshot_weightings.generators.sum()
 
     # electricity
 
@@ -2899,7 +2900,7 @@ def add_agriculture(n, costs):
         carrier="agriculture electricity",
         p_set=pop_weighted_energy_totals.loc[nodes, "total agriculture electricity"]
         * 1e6
-        / 8760,
+        / nhours,
     )
 
     # heat
@@ -2912,7 +2913,7 @@ def add_agriculture(n, costs):
         carrier="agriculture heat",
         p_set=pop_weighted_energy_totals.loc[nodes, "total agriculture heat"]
         * 1e6
-        / 8760,
+        / nhours,
     )
 
     # machinery
@@ -2948,7 +2949,7 @@ def add_agriculture(n, costs):
             / efficiency_gain
             * machinery_nodal_energy
             * 1e6
-            / 8760,
+            / nhours,
         )
 
     if oil_share > 0:
@@ -2957,14 +2958,14 @@ def add_agriculture(n, costs):
             ["agriculture machinery oil"],
             bus=spatial.oil.nodes,
             carrier="agriculture machinery oil",
-            p_set=oil_share * machinery_nodal_energy.sum() * 1e6 / 8760,
+            p_set=oil_share * machinery_nodal_energy.sum() * 1e6 / nhours,
         )
 
         co2 = (
             oil_share
             * machinery_nodal_energy.sum()
             * 1e6
-            / 8760
+            / nhours
             * costs.at["oil", "CO2 intensity"]
         )
 
@@ -3394,19 +3395,20 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
 # %%
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "prepare_sector_network",
+            configfiles="test/config.overnight.yaml",
             simpl="",
             opts="",
-            clusters="37",
-            lv=1.5,
-            sector_opts="cb40ex0-365H-T-H-B-I-A-solar+p3-dist1",
-            planning_horizons="2020",
+            clusters="5",
+            ll="v1.5",
+            sector_opts="CO2L0-24H-T-H-B-I-A-solar+p3-dist1",
+            planning_horizons="2030",
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     update_config_with_sector_opts(snakemake.config, snakemake.wildcards.sector_opts)
 
@@ -3420,18 +3422,17 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
-    Nyears = n.snapshot_weightings.generators.sum() / 8760
+    nhours = n.snapshot_weightings.generators.sum()
+    nyears = nhours / 8760
 
     costs = prepare_costs(
         snakemake.input.costs,
-        snakemake.config["costs"]["USD2013_to_EUR2013"],
-        snakemake.config["costs"]["discountrate"],
-        Nyears,
-        snakemake.config["costs"]["lifetime"],
+        snakemake.config["costs"],
+        nyears,
     )
 
-    pop_weighted_energy_totals = pd.read_csv(
-        snakemake.input.pop_weighted_energy_totals, index_col=0
+    pop_weighted_energy_totals = (
+        pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0) * nyears
     )
 
     patch_electricity_network(n)
@@ -3512,14 +3513,10 @@ if __name__ == "__main__":
     limit_type = "config"
     limit = get(snakemake.config["co2_budget"], investment_year)
     for o in opts:
-        if not "cb" in o:
+        if "cb" not in o:
             continue
         limit_type = "carbon budget"
-        fn = (
-            snakemake.config["results_dir"]
-            + snakemake.config["run"]
-            + "/csvs/carbon_budget_distribution.csv"
-        )
+        fn = "results/" + snakemake.params.RDIR + "/csvs/carbon_budget_distribution.csv"
         if not os.path.exists(fn):
             emissions_scope = snakemake.config["energy"]["emissions"]
             report_year = snakemake.config["energy"]["eurostat_report_year"]
@@ -3530,14 +3527,14 @@ if __name__ == "__main__":
         limit = co2_cap.loc[investment_year]
         break
     for o in opts:
-        if not "Co2L" in o:
+        if "Co2L" not in o:
             continue
         limit_type = "wildcard"
         limit = o[o.find("Co2L") + 4 :]
         limit = float(limit.replace("p", ".").replace("m", "-"))
         break
     logger.info(f"Add CO2 limit from {limit_type}")
-    add_co2limit(n, Nyears, limit)
+    add_co2limit(n, nyears, limit)
 
     for o in opts:
         if not o[:10] == "linemaxext":

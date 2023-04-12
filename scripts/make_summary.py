@@ -1,4 +1,13 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+"""
+Create summary CSV files for all scenario runs including costs, capacities,
+capacity factors, curtailment, energy balances, prices and other metrics.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -8,8 +17,7 @@ import sys
 import numpy as np
 import pandas as pd
 import pypsa
-import yaml
-from helper import override_component_attrs
+from _helpers import override_component_attrs
 from prepare_sector_network import prepare_costs
 
 idx = pd.IndexSlice
@@ -208,15 +216,15 @@ def calculate_cumulative_cost():
     # integrate cost throughout the transition path
     for r in cumulative_cost.columns:
         for cluster in cumulative_cost.index.get_level_values(level=0).unique():
-            for lv in cumulative_cost.index.get_level_values(level=1).unique():
+            for ll in cumulative_cost.index.get_level_values(level=1).unique():
                 for sector_opts in cumulative_cost.index.get_level_values(
                     level=2
                 ).unique():
                     cumulative_cost.loc[
-                        (cluster, lv, sector_opts, "cumulative cost"), r
+                        (cluster, ll, sector_opts, "cumulative cost"), r
                     ] = np.trapz(
                         cumulative_cost.loc[
-                            idx[cluster, lv, sector_opts, planning_horizons], r
+                            idx[cluster, ll, sector_opts, planning_horizons], r
                         ].values,
                         x=planning_horizons,
                     )
@@ -434,9 +442,13 @@ def calculate_metrics(n, label, metrics):
         ["line_volume_AC", "line_volume_DC"], label
     ].sum()
 
-    if hasattr(n, "line_volume_limit"):
-        metrics.at["line_volume_limit", label] = n.line_volume_limit
-        metrics.at["line_volume_shadow", label] = n.line_volume_limit_dual
+    if "lv_limit" in n.global_constraints.index:
+        metrics.at["line_volume_limit", label] = n.global_constraints.at[
+            "lv_limit", "constant"
+        ]
+        metrics.at["line_volume_shadow", label] = n.global_constraints.at[
+            "lv_limit", "mu"
+        ]
 
     if "CO2Limit" in n.global_constraints.index:
         metrics.at["co2_shadow", label] = n.global_constraints.at["CO2Limit", "mu"]
@@ -639,7 +651,7 @@ def make_summaries(networks_dict):
     ]
 
     columns = pd.MultiIndex.from_tuples(
-        networks_dict.keys(), names=["cluster", "lv", "opt", "planning_horizon"]
+        networks_dict.keys(), names=["cluster", "ll", "opt", "planning_horizon"]
     )
 
     df = {}
@@ -669,34 +681,30 @@ def to_csv(df):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("make_summary")
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     networks_dict = {
-        (cluster, lv, opt + sector_opt, planning_horizon): snakemake.config[
-            "results_dir"
-        ]
-        + snakemake.config["run"]
-        + f"/postnetworks/elec_s{simpl}_{cluster}_lv{lv}_{opt}_{sector_opt}_{planning_horizon}.nc"
+        (cluster, ll, opt + sector_opt, planning_horizon): "results/"
+        + snakemake.params.RDIR
+        + f"/postnetworks/elec_s{simpl}_{cluster}_l{ll}_{opt}_{sector_opt}_{planning_horizon}.nc"
         for simpl in snakemake.config["scenario"]["simpl"]
         for cluster in snakemake.config["scenario"]["clusters"]
         for opt in snakemake.config["scenario"]["opts"]
         for sector_opt in snakemake.config["scenario"]["sector_opts"]
-        for lv in snakemake.config["scenario"]["lv"]
+        for ll in snakemake.config["scenario"]["ll"]
         for planning_horizon in snakemake.config["scenario"]["planning_horizons"]
     }
 
-    Nyears = 1
+    Nyears = len(pd.date_range(freq="h", **snakemake.config["snapshots"])) / 8760
 
     costs_db = prepare_costs(
         snakemake.input.costs,
-        snakemake.config["costs"]["USD2013_to_EUR2013"],
-        snakemake.config["costs"]["discountrate"],
+        snakemake.config["costs"],
         Nyears,
-        snakemake.config["costs"]["lifetime"],
     )
 
     df = make_summaries(networks_dict)
@@ -708,8 +716,5 @@ if __name__ == "__main__":
     if snakemake.config["foresight"] == "myopic":
         cumulative_cost = calculate_cumulative_cost()
         cumulative_cost.to_csv(
-            snakemake.config["summary_dir"]
-            + "/"
-            + snakemake.config["run"]
-            + "/csvs/cumulative_cost.csv"
+            "results/" + snakemake.params.RDIR + "/csvs/cumulative_cost.csv"
         )

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build transport demand.
+Build land transport demand per clustered model region including efficiency
+improvements due to drivetrain changes, time series for electric vehicle
+availability and demand-side management constraints.
 """
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from helper import generate_periodic_profiles
+from _helpers import generate_periodic_profiles
 
 
 def build_nodal_transport_data(fn, pop_layout):
@@ -77,7 +83,7 @@ def build_transport_demand(traffic_fn, airtemp_fn, nodes, nodal_transport_data):
     )
 
     transport = (
-        (transport_shape.multiply(energy_totals_transport) * 1e6 * Nyears)
+        (transport_shape.multiply(energy_totals_transport) * 1e6 * nyears)
         .divide(efficiency_gain * ice_correction)
         .multiply(1 + dd_EV)
     )
@@ -155,7 +161,7 @@ def bev_dsm_profile(snapshots, nodes, options):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_transport_demand",
@@ -175,7 +181,7 @@ if __name__ == "__main__":
 
     snapshots = pd.date_range(freq="h", **snakemake.config["snapshots"], tz="UTC")
 
-    Nyears = 1
+    nyears = len(snapshots) / 8760
 
     nodal_transport_data = build_nodal_transport_data(
         snakemake.input.transport_data, pop_layout

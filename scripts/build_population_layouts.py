@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build mapping between grid cells and population (total, urban, rural)
+Build mapping between cutout grid cells and population (total, urban, rural).
 """
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-import multiprocessing as mp
 
 import atlite
 import geopandas as gpd
@@ -17,13 +20,13 @@ import xarray as xr
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_population_layouts")
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
 
-    cutout = atlite.Cutout(snakemake.config["atlite"]["cutout"])
+    cutout = atlite.Cutout(snakemake.input.cutout)
 
     grid_cells = cutout.grid.geometry
 

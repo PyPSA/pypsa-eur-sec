@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build industry sector ratios.
+Build specific energy consumption by carrier and industries.
 """
 
 import pandas as pd
-from helper import mute_print
+from _helpers import mute_print
 
 # GWh/ktoe OR MWh/toe
 toe_to_MWh = 11.630
@@ -1458,7 +1462,7 @@ def other_industrial_sectors():
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_industry_sector_ratios")
 

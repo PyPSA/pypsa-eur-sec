@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
 """
 Build regional demand for international navigation based on outflow volume of
 ports.
@@ -11,7 +14,7 @@ import pandas as pd
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_shipping_demand_per_node",

@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2021-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+"""
+Compute biogas and solid biomass potentials for each clustered model region
+using data from JRC ENSPRESO.
+"""
+
 import geopandas as gpd
 import pandas as pd
 
@@ -202,7 +210,7 @@ def convert_nuts2_to_regions(bio_nuts2, regions):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("build_biomass_potentials", simpl="", clusters="5")
 

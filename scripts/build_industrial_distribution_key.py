@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2020-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
 """
-Build industrial distribution keys from hotmaps database.
+Build spatial distribution of industries from Hotmaps database.
 """
 
 import logging
@@ -95,13 +99,12 @@ def prepare_hotmaps_database(regions):
     return gdf
 
 
-def build_nodal_distribution_key(hotmaps, regions):
+def build_nodal_distribution_key(hotmaps, regions, countries):
     """
     Build nodal distribution keys for each sector.
     """
 
     sectors = hotmaps.Subsector.unique()
-    countries = regions.index.str[:2].unique()
 
     keys = pd.DataFrame(index=regions.index, columns=sectors, dtype=float)
 
@@ -134,7 +137,7 @@ def build_nodal_distribution_key(hotmaps, regions):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_industrial_distribution_key",
@@ -142,12 +145,14 @@ if __name__ == "__main__":
             clusters=48,
         )
 
-    logging.basicConfig(level=snakemake.config["logging_level"])
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
+
+    countries = snakemake.config["countries"]
 
     regions = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
 
     hotmaps = prepare_hotmaps_database(regions)
 
-    keys = build_nodal_distribution_key(hotmaps, regions)
+    keys = build_nodal_distribution_key(hotmaps, regions, countries)
 
     keys.to_csv(snakemake.output.industrial_distribution_key)
