@@ -512,6 +512,7 @@ sector:
   biomass_to_liquid: false
   biosng: false
   egs: true
+  flexible_egs: true
 
 
 industry:
