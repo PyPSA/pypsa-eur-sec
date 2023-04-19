@@ -19,9 +19,9 @@
 - Rock structures accessed by EGS are harder in nature than the formations drilled into for oil and gas -> little incentive existed for drilling equipment for this setting.
 - Backpressure applied to production wellbore induces energy storage
 
-##### The Role of Flexible Geothermal Power in Decarbonized Electricity Systems
+##### The Role of Flexible Geothermal Power in Decarbonized Electricity Systems - Reader's Digest
 *Wilson Ricks, Katharine Voller, Jack Norbeck, Jesse Jenkins*
-[working paper link](https://zenodo.org/record/7093330#.ZDUdrHZBxPY), paper in under review.
+[working paper reader's digest link](https://zenodo.org/record/7093330#.ZDUdrHZBxPY), paper in under review.
 
 - Flexible EGS enhances the role that EGS plays in the overall system by decreasing bulk electricity supply cost
 - Displaces more expensive competing resources by shifting their generation on diurnal and seasonal timescales.
@@ -35,6 +35,28 @@
     - shifting generation to high-value times makes a great difference.
     - generation shifted over time scales of days to months.
     - During this, round-trip efficiencies of 81-98% are achieved.
+
+##### The Role of Flexible Geothermal Power in Decarbonized Electricity Systems
+*Wilson Ricks, Katharine Voller, Jack Norbeck, Jesse Jenkins*
+[working paper link](https://zenodo.org/record/7093330/files/Working%20Paper.pdf?download=1)
+
+- old conception that EGS would operate as baseload generation
+- 11 zones, electricity only, GenX, hourly resolution
+- Account for the effect of local ambient temperature on air-cooled geomthermal systems.
+- Scenarios tested include EGS getting cheaper, reservoir performance, with and without flexibility, other technologies getting cheaper (market opportunity).
+- Strongest to weakest effect of deployment: baseline vs advanced drilling, market opportunity, with or without flexibility, and virtually no effect of reservoir performance. 
+- Inflexible EGS is mostly replacing competing clean firm resources such as load-following natural gas plants with CCS, hence is more prevalent in regions with low availability of VRE.
+- Inflexible EGS produces more constantly, bit lower during the day
+- Flexible EGS produces exclusively during night
+- Flexible EGS not only operates on diurnal cycles but also seasonal cycles.
+- GeoVision report: EGS plants air-cooled organic rankine cycles.
+- No future cost assumptions made: only considered advancement is being able to access hot rock at temperatures > 250 degrees.
+- Estimate available potential at depth for relevant region. Compute cost of transmission using Jenkins et al. (see page 14)
+- Ambient air temperatures cause variation in capacity factor between 56% and 116%, with lower values during higher temperatures.
+- GeoVision report: Technology Advancement could lead to a cost reduction to 3000$/kW
+- great discussion of cost assumptions
+- change in net power output versus years: goes down to -45% after 30 years, see fig 21 in supplement.
+- capacity factor multiplier to due to air temperature between 1.1 and 0.6; determined by: 1) take average yearly temp at each point. This is the temp for which the systems are designed. 2) Take time series of delta between temperature and average temperature, and create capacity factor from data in Figure 20 supplement.
 
 ##### The design space for long-duration energy storage in decarbonized power systems.
 *Sepulveda et al. 2021* [nature paper](https://www.nature.com/articles/s41560-021-00796-8)
