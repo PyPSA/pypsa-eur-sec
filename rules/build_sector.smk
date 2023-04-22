@@ -252,6 +252,17 @@ rule build_energy_totals:
         "../scripts/build_energy_totals.py"
 
 
+rule build_egs_constraints:
+    input:
+        shapes=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        faultlines="data/europe_mainland_faults.geojson",
+        heat_demand_density="data/europe_heat_demand.tif"
+    output:
+        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv"
+    script:
+        "scripts/build_egs_constraints.py"
+
+
 rule build_egs_potential:
     input:
         egs_potential="data/egs_global_potential.xlsx",
@@ -265,7 +276,8 @@ rule build_egs_potential:
         egs_potential_100=RESOURCES + "egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150=RESOURCES + "egs_potential_profiles_150_s{simpl}_{clusters}.nc",
         dh_area_share=RESOURCES + "dh_area_share_s{simpl}_{clusters}.csv",
-    script: "scripts/build_egs_potential.py"
+    script:
+        "scripts/build_egs_potential.py"
 
 
 rule build_biomass_potentials:
