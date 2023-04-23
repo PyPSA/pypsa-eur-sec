@@ -256,9 +256,20 @@ rule build_egs_constraints:
     input:
         shapes=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
         faultlines="data/europe_mainland_faults.geojson",
-        heat_demand_density="data/europe_heat_demand.tif"
+        heat_demand_density="data/europe_heat_demand.tif",
+        air_temperature=RESOURCES + "temp_air_total_elec_s{simpl}_{clusters}.nc",
     output:
-        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv"
+        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv",
+        egs_capacity_factors=RESOURCES + "egs_capacity_factors_s{simpl}_{clusters}.csv",
+    threads: 1
+    resources:
+        mem_mb=1000,
+    log:
+        LOGS + "build_egs_constraints_s{simpl}_{clusters}.log",
+    benchmark:
+        BENCHMARKS + "build_egs_constraints_s{simpl}_{clusters}"
+    conda:
+        "../envs/environment.yaml"
     script:
         "scripts/build_egs_constraints.py"
 
@@ -266,16 +277,22 @@ rule build_egs_constraints:
 rule build_egs_potential:
     input:
         egs_potential="data/egs_global_potential.xlsx",
-        egs_sustainable_potential="data/sustainable_egs_potential.xlsx",
         egs_cost="data/egs_costs.xlsx",
-        pop_layout_urban=RESOURCES + "pop_layout_urban.nc",
-        pop_layout_rural=RESOURCES + "pop_layout_rural.nc",
         shapes=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
     output:
         egs_potential_50=RESOURCES + "egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100=RESOURCES + "egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150=RESOURCES + "egs_potential_profiles_150_s{simpl}_{clusters}.nc",
         dh_area_share=RESOURCES + "dh_area_share_s{simpl}_{clusters}.csv",
+    threads: 1
+    resources:
+        mem_mb=1000,
+    log:
+        LOGS + "build_egs_potential_s{simpl}_{clusters}.log",
+    benchmark:
+        BENCHMARKS + "build_egs_potential_s{simpl}_{clusters}"
+    conda:
+        "../envs/environment.yaml"
     script:
         "scripts/build_egs_potential.py"
 
@@ -745,6 +762,8 @@ rule prepare_sector_network:
         egs_potential_50=RESOURCES + "egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100=RESOURCES + "egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150=RESOURCES + "egs_potential_profiles_150_s{simpl}_{clusters}.nc",
+        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv",
+        egs_capacity_factors=RESOURCES + "egs_capacity_factors_s{simpl}_{clusters}.csv",
         solar_thermal_total=RESOURCES
         + "solar_thermal_total_elec_s{simpl}_{clusters}.nc"
         if config["sector"]["solar_thermal"]

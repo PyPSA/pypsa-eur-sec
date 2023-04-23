@@ -513,6 +513,7 @@ sector:
   biosng: false
   egs: true
   flexible_egs: true
+  egs_fault_distance : 10 # km
 
 
 industry:

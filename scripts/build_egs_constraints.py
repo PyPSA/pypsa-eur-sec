@@ -18,7 +18,7 @@ def get_spatial_exclusion_factors(faults_file,
                                   ):
     """
 
-    """    
+    """
 
     faults = gpd.read_file(faults_file).set_crs(epsg=4326)
     network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
@@ -105,30 +105,68 @@ def get_spatial_exclusion_factors(faults_file,
 
     return egs_constraints 
 
+
+def get_capacity_factors(air_temperatures_file):
+    """
+    Performance of EGS is higher for lower temperatures, due to more efficient air cooling
+    Data from Ricks et al.: The Role of Flexible Geothermal Power in Decarbonized Elec Systems
+    """ 
+    
+    delta_T = [-15, -10, -5, 0, 5, 10, 15, 20]
+    cf = [1.17, 1.13, 1.07, 1, 0.925, 0.84, 0.75, 0.65]
+
+    x = np.linspace(-15, 20, 200)
+    y = np.interp(x, delta_T, cf)
+
+    upper_x = np.linspace(20, 25, 50)
+    m_upper = (y[-1] - y[-2]) / (x[-1] - x[-2])
+    upper_y = upper_x * m_upper - x[-1] * m_upper + y[-1]
+
+    lower_x = np.linspace(-20, -15, 50)
+    m_lower = (y[1] - y[0]) / (x[1] - x[0])
+    lower_y = lower_x * m_lower - x[0] * m_lower + y[0]
+
+    x = np.hstack((lower_x, x, upper_x))
+    y = np.hstack((lower_y, y, upper_y))
+        
+    air_temp = pd.read_csv(air_temperatures_file, index_col=0, parse_dates=True)
+
+    return pd.DataFrame({
+        col: np.interp((air_temp[col] - air_temp[col].mean()).values, x, y)
+        for col in air_temp.columns
+    }, index=air_temp.index)
+
+
+
 logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        from helper import mock_snakemake
+        from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
             "build_egs_potential",
             simpl="",
-            clusters=48,
+            clusters=37,
         )
 
     config = snakemake.config
-    
-    exclusion_radius = config["sector"]["egs_fault_distance"] # default 10 km
 
+    exclusion_radius = config["sector"]["egs_fault_distance"] # default 10 km
 
     egs_constraints = get_spatial_exclusion_factors(
                             snakemake.input["faultlines"],
                             snakemake.input["shapes"],
                             snakemake.input["heat_demand_density"],
-                            exclusion_radius, 
+                            exclusion_radius,
                             )
-    
+
     egs_constraints.to_csv(snakemake.output["egs_spatial_constraints"])
+
+    capacity_factors = get_capacity_factors(
+        snakemake.input["air_temperature"]
+    )
+
+    capacity_factors.to_csv(snakemake.output["egs_capacity_factors"])
                
