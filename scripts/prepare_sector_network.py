@@ -3318,6 +3318,7 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
             p_nom_extendable=True,
         )
 
+
     except AssertionError:
         pass
 
@@ -3342,6 +3343,23 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
     # district heating. It is costed at an additional 25 percent of the cost for
     # electricity generation.
 
+    n.madd(
+        "Bus",
+        nodes + f" geothermal reservoir {cutoff} bus",
+        carrier="geothermal heat",
+        unit="MWh_th",
+        location=nodes,
+    )
+
+    n.madd(
+        "Store",
+        nodes + f" geothermal reservoir {cutoff}",
+        bus=nodes + f" geothermal reservoir {cutoff} bus",
+        e_nom=0,
+        e_nom_extendable=config["sector"]["flexible_egs"],
+    )
+
+
     eta_el = costs.at["geothermal", "efficiency electricity"]
     eta_dh = costs.at["geothermal", "efficiency residential heat"]
     dh_cost = costs.at[
@@ -3353,15 +3371,26 @@ def add_egs_potential(n, egs_data, cutoff, costs_year, config, costs, dh_area_sh
 
     n.madd(
         "Link",
-        nodes + f" geothermal CHP electric {cutoff}",
+        nodes + f" geothermal injection well {cutoff}",
         bus0="EU geothermal heat bus",
+        bus1=nodes + f" geothermal reservoir {cutoff} bus",
+        carrier="geothermal heat",
+        p_nom_extendable=True,
+        p_nom_max=p_nom_max / eta_el,
+        capital_cost=0.,
+        lifetime=costs.at["geothermal", "lifetime"],
+    )
+
+    n.madd(
+        "Link",
+        nodes + f" geothermal production well {cutoff}",
+        bus0=nodes + f" geothermal reservoir {cutoff} bus",
         bus1=nodes,
         bus2="co2 atmosphere",
         carrier="geothermal heat",
         p_nom_extendable=True,
-        p_nom_max=p_nom_max / eta_el,
+        p_nom_max=p_nom_max / eta_el * 1.25,
         capital_cost=capital_cost * eta_el,
-        marginal_cost=0.0,
         efficiency=eta_el,
         efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
         lifetime=costs.at["geothermal", "lifetime"],
