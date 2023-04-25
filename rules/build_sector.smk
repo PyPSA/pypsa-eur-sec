@@ -283,7 +283,6 @@ rule build_egs_potential:
         egs_potential_50=RESOURCES + "egs_potential_profiles_50_s{simpl}_{clusters}.nc",
         egs_potential_100=RESOURCES + "egs_potential_profiles_100_s{simpl}_{clusters}.nc",
         egs_potential_150=RESOURCES + "egs_potential_profiles_150_s{simpl}_{clusters}.nc",
-        dh_area_share=RESOURCES + "dh_area_share_s{simpl}_{clusters}.csv",
     threads: 1
     resources:
         mem_mb=1000,

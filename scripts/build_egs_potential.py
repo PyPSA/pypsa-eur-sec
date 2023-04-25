@@ -216,12 +216,13 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "build_egs_potential",
             simpl="",
-            clusters=48,
+            clusters=37,
         )
 
+    print("We are actually in here")
     egs_data = get_egs_potentials(
         snakemake.input["egs_potential"],
-        snakemake.input["egs_sustainable_potential"],
+        None,
         snakemake.input["egs_cost"],
         snakemake.input["shapes"],
     )
@@ -248,9 +249,9 @@ if __name__ == "__main__":
 
         ds.to_netcdf(snakemake.output[f"egs_potential_{cutoff}"])
 
-    dh_area_share = get_urban_share(
-        snakemake.input["shapes"],
-        snakemake.input["pop_layout_urban"],
-        snakemake.input["pop_layout_rural"],
-    )
-    dh_area_share.to_csv(snakemake.output["dh_area_share"])
+    # dh_area_share = get_urban_share(
+    #     snakemake.input["shapes"],
+    #     snakemake.input["pop_layout_urban"],
+    #     snakemake.input["pop_layout_rural"],
+    # )
+    # dh_area_share.to_csv(snakemake.output["dh_area_share"])
