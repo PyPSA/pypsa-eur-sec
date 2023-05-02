@@ -8,7 +8,8 @@ import xarray as xr
 import rioxarray as xrx
 
 from shapely.geometry import MultiPoint, LineString, MultiPolygon, Polygon
-from shapely.ops import cascaded_union
+# from shapely.ops import cascaded_union
+from shapely.ops import unary_union
 
 
 def get_spatial_exclusion_factors(faults_file,
@@ -22,6 +23,8 @@ def get_spatial_exclusion_factors(faults_file,
 
     faults = gpd.read_file(faults_file).set_crs(epsg=4326)
     network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
+    network_regions.index = network_regions["name"]
+    network_regions = network_regions.geometry
     heat_demand_da = xrx.open_rasterio(heat_demand_density_file)
 
     # determine radius from km to utm
@@ -47,18 +50,21 @@ def get_spatial_exclusion_factors(faults_file,
     network_regions = network_regions.set_crs(epsg=4326).to_crs(utm_epsg)
     faults = faults.set_crs(epsg=4326).to_crs(utm_epsg)
 
-    excluded_zones = (
-        gpd.GeoSeries([cascaded_union(faults.buffer(exclusion_radius).tolist())])
-        .set_crs(utm_epsg)
-    )
-
+    faults = faults.buffer(exclusion_radius)
     remaining_area = list()
-    
-    for region in network_regions:
-        mask = excluded_zones.apply(lambda geom: geom.intersects(region))
 
-        for i, geom in excluded_zones.loc[mask].iteritems():
+    for i, region in network_regions.items():
+
+        mask = faults.apply(lambda geom: geom.intersects(region))
+        excluded_zones = faults.loc[mask]
+        region = region.buffer(0)
+
+        for _, geom in excluded_zones.items():
+            
+            if not geom.area:
+                continue
             region = region.difference(geom)
+        
         remaining_area.append(region)
     
     remaining_area = gpd.GeoSeries(remaining_area).set_crs(utm_epsg)
@@ -73,7 +79,8 @@ def get_spatial_exclusion_factors(faults_file,
         index=remaining_area.index
     )
 
-    for i, idx in enumerate(remaining_area.index):
+    from tqdm import tqdm
+    for i, idx in tqdm(enumerate(remaining_area.index)):
         
         available_share = remaining_area.iloc[i].area / network_regions.iloc[i].area
 
@@ -103,15 +110,18 @@ def get_spatial_exclusion_factors(faults_file,
         egs_constraints.loc[idx, "district_heating_share"] = available_share * district_heating_share
         egs_constraints.loc[idx, "rural_share"] = available_share * rural_share
 
+    egs_constraints.to_csv("egs_constraints.csv")
     return egs_constraints 
 
 
-def get_capacity_factors(air_temperatures_file):
+def get_capacity_factors(do_capacity_variation,
+                         network_regions_file,
+                         air_temperatures_file):
     """
     Performance of EGS is higher for lower temperatures, due to more efficient air cooling
     Data from Ricks et al.: The Role of Flexible Geothermal Power in Decarbonized Elec Systems
     """ 
-    
+
     delta_T = [-15, -10, -5, 0, 5, 10, 15, 20]
     cf = [1.17, 1.13, 1.07, 1, 0.925, 0.84, 0.75, 0.65]
 
@@ -128,13 +138,24 @@ def get_capacity_factors(air_temperatures_file):
 
     x = np.hstack((lower_x, x, upper_x))
     y = np.hstack((lower_y, y, upper_y))
-        
-    air_temp = pd.read_csv(air_temperatures_file, index_col=0, parse_dates=True)
 
-    return pd.DataFrame({
-        col: np.interp((air_temp[col] - air_temp[col].mean()).values, x, y)
-        for col in air_temp.columns
-    }, index=air_temp.index)
+    
+    
+
+    network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
+    index = network_regions["name"]
+
+    # air_temp = pd.read_csv(air_temperatures_file, index_col=0, parse_dates=True)
+    air_temp = xr.open_dataset(air_temperatures_file)
+
+    snapshots = air_temp.sel(name="AL1 0").to_dataframe()["temperature"].index
+    capacity_factors = pd.DataFrame(index=snapshots)
+
+    for bus in index:
+        temp = air_temp.sel(name=bus).to_dataframe()["temperature"]
+        capacity_factors[bus] = np.interp((temp - temp.mean()).values, x, y)
+    
+    return capacity_factors
 
 
 
@@ -164,9 +185,12 @@ if __name__ == "__main__":
 
     egs_constraints.to_csv(snakemake.output["egs_spatial_constraints"])
 
+    """
     capacity_factors = get_capacity_factors(
-        snakemake.input["air_temperature"]
+        config["sector"]["egs_capacity_variation"],
+        snakemake.input["air_temperature"],
     )
 
     capacity_factors.to_csv(snakemake.output["egs_capacity_factors"])
+    """
                

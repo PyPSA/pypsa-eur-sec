@@ -271,7 +271,7 @@ rule build_egs_constraints:
     conda:
         "../envs/environment.yaml"
     script:
-        "scripts/build_egs_constraints.py"
+        "../scripts/build_egs_constraints.py"
 
 
 rule build_egs_potential:
@@ -293,7 +293,7 @@ rule build_egs_potential:
     conda:
         "../envs/environment.yaml"
     script:
-        "scripts/build_egs_potential.py"
+        "../scripts/build_egs_potential.py"
 
 
 rule build_biomass_potentials:
