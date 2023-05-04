@@ -3255,7 +3255,7 @@ def add_egs_potential(n,
     capex = egs_data["capex"].to_pandas() / (1. - config["sector"]["egs_project_risk"])
 
     Nyears = n.snapshot_weightings.generators.sum() / 8760
-    dr = config["costs"]["discountrate"]
+    dr = config["costs"]["fill_values"]["discount rate"]
     lt = costs.at["geothermal", "lifetime"]
 
     # p_nom conversion GW -> MW
@@ -3326,7 +3326,6 @@ def add_egs_potential(n,
                 p_nom_extendable=True,
             )
 
-
     except AssertionError:
         pass
 
@@ -3374,10 +3373,10 @@ def add_egs_potential(n,
         "geothermal", "district heating cost"
     ]  # relative cost of district heating capacity
 
-    p_nom_max.index = nodes + f" geothermal CHP electric {cutoff}"
-    capital_cost.index = nodes + f" geothermal CHP electric {cutoff}"
+    p_nom_max.index = nodes + f" geothermal injection well {cutoff}"   
+    capital_cost.index = nodes + f" geothermal injection well {cutoff}"   
 
-    available_area = egs_constraints.sum(axis=1)
+    available_area = egs_constraints.sum(axis=1).loc[nodes]
     available_area.index = p_nom_max.index
 
     n.madd(
@@ -3391,6 +3390,12 @@ def add_egs_potential(n,
         capital_cost=0.,
         lifetime=costs.at["geothermal", "lifetime"],
     )
+
+    p_nom_max.index = nodes + f" geothermal production well {cutoff}"   
+    capital_cost.index = nodes + f" geothermal production well {cutoff}"   
+
+    available_area = egs_constraints.sum(axis=1).loc[nodes]
+    available_area.index = p_nom_max.index
 
     n.madd(
         "Link",
@@ -3411,7 +3416,7 @@ def add_egs_potential(n,
 
         capital_cost.index = nodes + f" geothermal CHP district heat {cutoff}"
         p_nom_max.index = nodes + f" geothermal CHP district heat {cutoff}"
-        district_heating_share = egs_constraints["district_heating_share"]
+        district_heating_share = egs_constraints["district_heating_share"].loc[nodes]
         district_heating_share.index = p_nom_max.index
 
         p_nom_max = p_nom_max.multiply(district_heating_share)
@@ -3611,7 +3616,7 @@ if __name__ == "__main__":
             co2_emissions=costs.loc["geothermal", "CO2 intensity"],
         )
         
-        if snakemake.config["sector"]["allow_district_heating"]:
+        if snakemake.config["sector"]["egs_allow_district_heating"]:
             n.add(
                 "Carrier",
                 "geothermal waste heat",
@@ -3624,7 +3629,8 @@ if __name__ == "__main__":
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
         
-        egs_constraints = pd.read_csv(snakemake.input["egs_spatial_constraints"])
+        egs_constraints = pd.read_csv(snakemake.input["egs_spatial_constraints"],
+                                      index_col=0)
 
         for cutoff in ["50", "100", "150"]:
             egs_data = xr.open_dataset(snakemake.input[f"egs_potential_{cutoff}"])
@@ -3636,8 +3642,11 @@ if __name__ == "__main__":
                 snakemake.config,
                 costs,
                 egs_constraints,
+                snakemake
             )
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
+
+    n.links.to_csv("linksbeforelopf.csv")
 
     n.export_to_netcdf(snakemake.output[0])

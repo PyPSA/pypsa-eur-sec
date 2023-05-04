@@ -1,18 +1,69 @@
 import logging
 from copy import deepcopy
 
+from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
 import rioxarray as xrx
+from tqdm import tqdm
+import json
 
 from shapely.geometry import MultiPoint, LineString, MultiPolygon, Polygon
-# from shapely.ops import cascaded_union
 from shapely.ops import unary_union
 
 
-def get_spatial_exclusion_factors(faults_file,
+def prepare_egs_data(egs_file):
+
+    with open(egs_file) as f:
+        jsondata = json.load(f)
+
+    def point_to_square(p, lon_extent=1., lat_extent=1.):
+
+        try:
+            x, y = p.coords.xy[0][0], p.coords.xy[1][0]
+        except IndexError:
+            return p
+        
+        return Polygon([
+            [x-lon_extent/2, y-lat_extent/2],
+            [x-lon_extent/2, y+lat_extent/2],
+            [x+lon_extent/2, y+lat_extent/2],
+            [x+lon_extent/2, y-lat_extent/2],
+            ])
+
+    years = [2015, 2020, 2025, 2030, 2035, 2040, 2045, 2050]
+    lcoes = ["LCOE50", "LCOE100", "LCOE150"]
+
+    for year in years:
+        df = pd.DataFrame(columns=["Lon", "Lat", "CAPEX", "HeatSust", "PowerSust"])
+
+        for lcoe in lcoes:
+
+            for country_data in jsondata[lcoe]:
+                try:
+                    country_df = pd.DataFrame(columns=df.columns, 
+                                              index=range(len(country_data[0][years.index(year)]["Lon"])))
+                except TypeError:
+                    country_df = pd.DataFrame(columns=df.columns, index=range(0))
+
+                for col in df.columns:
+                    country_df[col] = country_data[0][years.index(year)][col]
+
+                df = pd.concat((df, country_df.dropna()), axis=0, ignore_index=True)
+
+        gdf = gpd.GeoDataFrame(df.drop(columns=["Lon", "Lat"]), geometry=gpd.points_from_xy(df.Lon, df.Lat)).reset_index()
+        gdf["geometry"] = gdf.geometry.apply(lambda geom: point_to_square(geom))
+
+        (Path.cwd() / "data" / "egs_data").mkdir(exist_ok=True)
+        gdf.to_file(f"data/egs_data/egs_potential_{year}.geojson", driver="GeoJSON")
+
+
+
+def get_spatial_exclusion_factors(
+                                  cost_year,
+                                  faults_file,
                                   network_regions_file,
                                   heat_demand_density_file,
                                   fault_buffer,
@@ -21,9 +72,26 @@ def get_spatial_exclusion_factors(faults_file,
 
     """
 
-    faults = gpd.read_file(faults_file).set_crs(epsg=4326)
     network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
     network_regions.index = network_regions["name"]
+
+    egs_data = gpd.read_file(
+        f"data/egs_data/egs_potential_{cost_year}.geojson").set_crs(epsg=4326)
+    egs_shapes = egs_data.geometry
+    
+    overlap_matrix = pd.DataFrame(index=network_regions.index, columns=egs_shapes.index)
+    
+    for name, polygon in network_regions.geometry.items():
+        overlap_matrix.loc[name] = egs_shapes.intersection(polygon).area / egs_shapes.area
+
+    indicator_matrix = pd.DataFrame(np.ceil(overlap_matrix.values),
+        index=network_regions.index, columns=egs_shapes.index)
+
+
+
+        
+
+    faults = gpd.read_file(faults_file).set_crs(epsg=4326)
     network_regions = network_regions.geometry
     heat_demand_da = xrx.open_rasterio(heat_demand_density_file)
 
@@ -47,13 +115,16 @@ def get_spatial_exclusion_factors(faults_file,
         .length
     )
 
-    network_regions = network_regions.set_crs(epsg=4326).to_crs(utm_epsg)
+    # network_regions = network_regions.set_crs(epsg=4326).to_crs(utm_epsg)
+    egs_shapes = egs_shapes.to_crs(utm_epsg)
+
     faults = faults.set_crs(epsg=4326).to_crs(utm_epsg)
 
     faults = faults.buffer(exclusion_radius)
     remaining_area = list()
 
-    for i, region in network_regions.items():
+    # for i, region in network_regions.items():
+    for i, region in egs_shapes.items():
 
         mask = faults.apply(lambda geom: geom.intersects(region))
         excluded_zones = faults.loc[mask]
@@ -69,9 +140,11 @@ def get_spatial_exclusion_factors(faults_file,
     
     remaining_area = gpd.GeoSeries(remaining_area).set_crs(utm_epsg)
 
-    assert len(remaining_area) == len(network_regions), "lost regions"
+    # assert len(remaining_area) == len(network_regions), "lost regions"
+    assert len(remaining_area) == len(egs_shapes), "lost regions"
 
-    remaining_area.index = network_regions.index
+    # remaining_area.index = network_regions.index
+    remaining_area.index = egs_shapes.index
 
     egs_constraints = pd.DataFrame(
         np.zeros((len(remaining_area), 2)),
@@ -79,10 +152,10 @@ def get_spatial_exclusion_factors(faults_file,
         index=remaining_area.index
     )
 
-    from tqdm import tqdm
     for i, idx in tqdm(enumerate(remaining_area.index)):
         
-        available_share = remaining_area.iloc[i].area / network_regions.iloc[i].area
+        # available_share = remaining_area.iloc[i].area / network_regions.iloc[i].area
+        available_share = remaining_area.iloc[i].area / egs_shapes.iloc[i].area
 
         remainder = remaining_area.iloc[i:i+1].to_crs(epsg=3035)
 
@@ -114,8 +187,7 @@ def get_spatial_exclusion_factors(faults_file,
     return egs_constraints 
 
 
-def get_capacity_factors(do_capacity_variation,
-                         network_regions_file,
+def get_capacity_factors(network_regions_file,
                          air_temperatures_file):
     """
     Performance of EGS is higher for lower temperatures, due to more efficient air cooling
@@ -139,8 +211,6 @@ def get_capacity_factors(do_capacity_variation,
     x = np.hstack((lower_x, x, upper_x))
     y = np.hstack((lower_y, y, upper_y))
 
-    
-    
 
     network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
     index = network_regions["name"]
@@ -171,12 +241,15 @@ if __name__ == "__main__":
             simpl="",
             clusters=37,
         )
+    
+    prepare_egs_data(snakemake.input["egs_costs"])
 
     config = snakemake.config
 
     exclusion_radius = config["sector"]["egs_fault_distance"] # default 10 km
 
     egs_constraints = get_spatial_exclusion_factors(
+                            config["costs"]["year"],
                             snakemake.input["faultlines"],
                             snakemake.input["shapes"],
                             snakemake.input["heat_demand_density"],
@@ -185,12 +258,10 @@ if __name__ == "__main__":
 
     egs_constraints.to_csv(snakemake.output["egs_spatial_constraints"])
 
-    """
     capacity_factors = get_capacity_factors(
-        config["sector"]["egs_capacity_variation"],
+        snakemake.input["shapes"],
         snakemake.input["air_temperature"],
     )
 
     capacity_factors.to_csv(snakemake.output["egs_capacity_factors"])
-    """
                

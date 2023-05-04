@@ -254,6 +254,7 @@ rule build_energy_totals:
 
 rule build_egs_constraints:
     input:
+        egs_costs="data/egs_costs.json",
         shapes=RESOURCES + "regions_onshore_elec_s{simpl}_{clusters}.geojson",
         faultlines="data/europe_mainland_faults.geojson",
         heat_demand_density="data/europe_heat_demand.tif",
