@@ -61,13 +61,13 @@ def prepare_egs_data(egs_file):
 
 
 
-def get_spatial_exclusion_factors(
-                                  cost_year,
-                                  faults_file,
-                                  network_regions_file,
-                                  heat_demand_density_file,
-                                  fault_buffer,
-                                  ):
+def build_egs_potentials(
+                    cost_year,
+                    faults_file,
+                    network_regions_file,
+                    heat_demand_density_file,
+                    fault_buffer,
+                    ):
     """
 
     """
@@ -77,6 +77,7 @@ def get_spatial_exclusion_factors(
 
     egs_data = gpd.read_file(
         f"data/egs_data/egs_potential_{cost_year}.geojson").set_crs(epsg=4326)
+    egs_data.index = egs_data.geometry.astype(str)
     egs_shapes = egs_data.geometry
     
     overlap_matrix = pd.DataFrame(index=network_regions.index, columns=egs_shapes.index)
@@ -86,10 +87,6 @@ def get_spatial_exclusion_factors(
 
     indicator_matrix = pd.DataFrame(np.ceil(overlap_matrix.values),
         index=network_regions.index, columns=egs_shapes.index)
-
-
-
-        
 
     faults = gpd.read_file(faults_file).set_crs(epsg=4326)
     network_regions = network_regions.geometry
@@ -148,7 +145,7 @@ def get_spatial_exclusion_factors(
 
     egs_constraints = pd.DataFrame(
         np.zeros((len(remaining_area), 2)),
-        columns=["district_heating_share", "rural_share"],
+        columns=["dh_share", "rural_share"],
         index=remaining_area.index
     )
 
@@ -177,14 +174,30 @@ def get_spatial_exclusion_factors(
 
         district_mask = (gdf.heat_demand > 10)
 
-        district_heating_share = district_mask.sum() / len(district_mask)
+        if len(district_mask):
+            district_heating_share = district_mask.sum() / len(district_mask)
+        else:
+            district_heating_share = 0.
+
         rural_share = 1 - district_heating_share
 
-        egs_constraints.loc[idx, "district_heating_share"] = available_share * district_heating_share
+
+        egs_constraints.loc[idx, "dh_share"] = available_share * district_heating_share
         egs_constraints.loc[idx, "rural_share"] = available_share * rural_share
 
-    egs_constraints.to_csv("egs_constraints.csv")
-    return egs_constraints 
+    overlap_matrix.columns = egs_shapes.astype(str).values
+    indicator_matrix.columns = egs_shapes.astype(str).values
+
+    sustainability_factor = 0.0025
+
+    egs_data["Power"] = egs_data["PowerSust"] / sustainability_factor
+    egs_data["p_nom_max"] = egs_data["Power"] * egs_constraints[["dh_share", "rural_share"]].sum(axis=1)
+    egs_data["dh_share"] = egs_constraints["dh_share"].divide(egs_constraints[["dh_share", "rural_share"]].sum(axis=1))
+
+    egs_data = pd.concat((egs_data, egs_constraints), axis=1)
+    egs_data = egs_data[["p_nom_max", "CAPEX", "dh_share"]] 
+    
+    return egs_data, overlap_matrix, indicator_matrix
 
 
 def get_capacity_factors(network_regions_file,
@@ -210,7 +223,6 @@ def get_capacity_factors(network_regions_file,
 
     x = np.hstack((lower_x, x, upper_x))
     y = np.hstack((lower_y, y, upper_y))
-
 
     network_regions = gpd.read_file(network_regions_file).set_crs(epsg=4326)
     index = network_regions["name"]
@@ -248,7 +260,7 @@ if __name__ == "__main__":
 
     exclusion_radius = config["sector"]["egs_fault_distance"] # default 10 km
 
-    egs_constraints = get_spatial_exclusion_factors(
+    egs_potentials, overlap_matrix, indicator_matrix = build_egs_potentials(
                             config["costs"]["year"],
                             snakemake.input["faultlines"],
                             snakemake.input["shapes"],
@@ -256,7 +268,9 @@ if __name__ == "__main__":
                             exclusion_radius,
                             )
 
-    egs_constraints.to_csv(snakemake.output["egs_spatial_constraints"])
+    egs_potentials.to_csv(snakemake.output["egs_potentials"])
+    overlap_matrix.to_csv(snakemake.output["egs_overlap_matrix"])
+    indicator_matrix.to_csv(snakemake.output["egs_indicator_matrix"])
 
     capacity_factors = get_capacity_factors(
         snakemake.input["shapes"],

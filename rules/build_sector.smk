@@ -260,7 +260,9 @@ rule build_egs_constraints:
         heat_demand_density="data/europe_heat_demand.tif",
         air_temperature=RESOURCES + "temp_air_total_elec_s{simpl}_{clusters}.nc",
     output:
-        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv",
+        egs_potentials=RESOURCES + "egs_potentials_s{simpl}_{clusters}.csv",
+        egs_overlap_matrix =RESOURCES + "egs_overlap_matrix_s{simpl}_{clusters}.csv",
+        egs_indicator_matrix =RESOURCES + "egs_indicator_matrix_s{simpl}_{clusters}.csv",
         egs_capacity_factors=RESOURCES + "egs_capacity_factors_s{simpl}_{clusters}.csv",
     threads: 1
     resources:
@@ -759,10 +761,9 @@ rule prepare_sector_network:
         cop_air_total=RESOURCES + "cop_air_total_elec_s{simpl}_{clusters}.nc",
         cop_air_rural=RESOURCES + "cop_air_rural_elec_s{simpl}_{clusters}.nc",
         cop_air_urban=RESOURCES + "cop_air_urban_elec_s{simpl}_{clusters}.nc",
-        egs_potential_50=RESOURCES + "egs_potential_profiles_50_s{simpl}_{clusters}.nc",
-        egs_potential_100=RESOURCES + "egs_potential_profiles_100_s{simpl}_{clusters}.nc",
-        egs_potential_150=RESOURCES + "egs_potential_profiles_150_s{simpl}_{clusters}.nc",
-        egs_spatial_constraints=RESOURCES + "egs_spatial_constraints_s{simpl}_{clusters}.csv",
+        egs_potentials=RESOURCES + "egs_potentials_s{simpl}_{clusters}.csv",
+        egs_overlap_matrix =RESOURCES + "egs_overlap_matrix_s{simpl}_{clusters}.csv",
+        egs_indicator_matrix =RESOURCES + "egs_indicator_matrix_s{simpl}_{clusters}.csv",
         egs_capacity_factors=RESOURCES + "egs_capacity_factors_s{simpl}_{clusters}.csv",
         solar_thermal_total=RESOURCES
         + "solar_thermal_total_elec_s{simpl}_{clusters}.nc"
