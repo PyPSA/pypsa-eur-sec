@@ -543,8 +543,8 @@ def add_geothermal_chp_constraints(n):
     geothermal elec generation is only feasible close to urban areas.
     """
 
-    geoth_chp_elec_bool = n.links.index.str.contains("geothermal CHP electric")
-    geoth_chp_heat_bool = n.links.index.str.contains("geothermal CHP district heat")
+    geoth_chp_elec_bool = n.links.index.str.contains("geothermal production well")
+    geoth_chp_heat_bool = n.links.index.str.contains("geothermal district heat")
 
     geoth_chp_elec = n.links[geoth_chp_elec_bool].query("p_nom_extendable").index
     geoth_chp_heat = n.links[geoth_chp_heat_bool].query("p_nom_extendable").index
@@ -613,7 +613,7 @@ def extra_functionality(n, snapshots):
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    #add_geothermal_chp_constraints(n)
+    add_geothermal_chp_constraints(n)
 
 
 def solve_network(n, config, opts="", **kwargs):

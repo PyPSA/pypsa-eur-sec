@@ -3428,15 +3428,6 @@ def add_egs_potential(n,
                 lifetime=costs.at["geothermal", "lifetime"],
             )
 
-        n.buses.to_csv("with_geothermal_buses.csv")
-        n.stores.to_csv("with_geothermal_stores.csv")
-        n.links.to_csv("with_geothermal_links.csv")
-
-        break
-    
-    import sys
-    sys.exit()
-
 
     # The format of the source paper (from hot rock to useful energy...)
     # only provided available electricity generation.
