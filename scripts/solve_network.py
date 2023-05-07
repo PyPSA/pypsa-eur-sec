@@ -613,7 +613,7 @@ def extra_functionality(n, snapshots):
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    add_geothermal_chp_constraints(n)
+    # add_geothermal_chp_constraints(n)
 
 
 def solve_network(n, config, opts="", **kwargs):

@@ -3336,14 +3336,23 @@ def add_egs_potential(n,
         indicators.index = np.arange(len(indicators))
 
         bus_egs = egs_potentials.loc[overlaps.loc[overlaps > 0.].index]
+
+        if not len(bus_egs):
+            continue
         
         bus_egs["p_nom_max"] = bus_egs["p_nom_max"].multiply(overlaps)
+        bus_egs = bus_egs.loc[bus_egs.p_nom_max > 0.]
+        
         bus_egs["dh_p_nom_max"] = (
             bus_egs["p_nom_max"]
             .multiply(overlaps)
             .multiply(bus_egs["dh_share"])
             )
-        bus_egs["capital_cost"]
+
+        if config["sector"]["egs_performant"]:
+            bus_egs = bus_egs.sort_values(by="capital_cost").iloc[:1]
+            # bus_egs["capital_cost"] = np.zeros(len(bus_egs))
+            
         bus_egs.index = np.arange(len(bus_egs)).astype(str)
 
         n.madd(
@@ -3627,7 +3636,8 @@ if __name__ == "__main__":
             "geothermal heat",
             nice_name="Geothermal Heat",
             color=snakemake.config["plotting"]["tech_colors"]["geothermal heat"],
-            co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+            # co2_emissions=costs.loc["geothermal", "CO2 intensity"],
+            co2_emissions=0.,
         )
 
         if snakemake.config["sector"]["egs_allow_district_heating"]:

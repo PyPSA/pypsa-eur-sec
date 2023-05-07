@@ -26,7 +26,8 @@ from make_summary import assign_carriers
 from plot_summary import preferred_order, rename_techs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
 
-plt.style.use(["ggplot", "matplotlibrc"])
+# plt.style.use(["ggplot", "matplotlibrc"])
+plt.style.use(["ggplot"])
 
 
 def rename_techs_tyndp(tech):
@@ -925,10 +926,10 @@ if __name__ == "__main__":
             "plot_network",
             simpl="",
             opts="",
-            clusters="5",
-            ll="v1.5",
-            sector_opts="CO2L0-1H-T-H-B-I-A-solar+p3-dist1",
-            planning_horizons="2030",
+            clusters="37",
+            ll="copt",
+            sector_opts="CO2L0-180H-T-H-B-I-A-solar+p3-dist1",
+            planning_horizons="2050",
         )
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
