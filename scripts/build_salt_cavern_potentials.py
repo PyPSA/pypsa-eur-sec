@@ -2,8 +2,8 @@
 """
 Build salt cavern potentials for hydrogen storage.
 
-Technical Potential of Salt Caverns for Hydrogen Storage in Europe
-CC-BY 4.0
+Technical Potential of Salt Caverns for Hydrogen Storage in Europe CC-BY
+4.0
 https://doi.org/10.20944/preprints201910.0187.v1
 https://doi.org/10.1016/j.ijhydene.2019.12.161
 
