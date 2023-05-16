@@ -3349,10 +3349,10 @@ def add_egs_potential(n,
             .multiply(bus_egs["dh_share"])
             )
 
-        if config["sector"]["egs_performant"]:
+        if config["sector"]["egs_performant"] or config["sector"]["egs_fixed_capital_cost"]:
             bus_egs = bus_egs.sort_values(by="capital_cost").iloc[:1]
             # bus_egs["capital_cost"] = np.zeros(len(bus_egs))
-            
+        
         bus_egs.index = np.arange(len(bus_egs)).astype(str)
 
         n.madd(
@@ -3374,6 +3374,10 @@ def add_egs_potential(n,
         p_nom_max = bus_egs["p_nom_max"]
         p_nom_max.index = f"{bus} geothermal injection well " + bus_egs.index
 
+        if config["sector"]["egs_fixed_capital_cost"]:
+            capital_cost = config["sector"]["egs_fixed_capital_cost"]
+            p_nom_max = np.inf
+
         if config["sector"]["egs_capacity_variation"]:
             capacity_factor = pd.DataFrame({
                 col: egs_capacity_factors[bus] for col in p_nom_max.index
@@ -3394,11 +3398,13 @@ def add_egs_potential(n,
             efficiency=capacity_factor,
         )
 
-        p_nom_max = bus_egs["p_nom_max"]
-        p_nom_max.index = f"{bus} geothermal production well " + bus_egs.index
+        if not config["sector"]["egs_fixed_capital_cost"]:
 
-        capital_cost = bus_egs["capital_cost"]
-        capital_cost.index = f"{bus} geothermal production well " + bus_egs.index
+            p_nom_max = bus_egs["p_nom_max"]
+            p_nom_max.index = f"{bus} geothermal production well " + bus_egs.index
+
+            capital_cost = bus_egs["capital_cost"]
+            capital_cost.index = f"{bus} geothermal production well " + bus_egs.index
 
         n.madd(
             "Link",
@@ -3411,15 +3417,19 @@ def add_egs_potential(n,
             p_nom_max=p_nom_max / eta_el * 1.25,
             capital_cost=capital_cost * eta_el,
             efficiency=eta_el,
-            efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+            # efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+            efficiency2=0.,
             lifetime=costs.at["geothermal", "lifetime"],
         )
 
         if config["sector"]["egs_allow_district_heating"]:
 
-            capital_cost.index = f"{bus} geothermal district heat " + bus_egs.index
-            dh_p_nom_max = bus_egs["dh_p_nom_max"]
-            dh_p_nom_max.index = f"{bus} geothermal district heat " + bus_egs.index
+            if not config["sector"]["egs_fixed_capital_cost"]:
+                capital_cost.index = f"{bus} geothermal district heat " + bus_egs.index
+                dh_p_nom_max = bus_egs["dh_p_nom_max"]
+                dh_p_nom_max.index = f"{bus} geothermal district heat " + bus_egs.index
+            else:
+                dh_p_nom_max = np.inf
 
             n.madd(
                 "Link",
@@ -3666,6 +3676,7 @@ if __name__ == "__main__":
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
-    n.links.to_csv("linksbeforelopf.csv")
+    n.generators.to_csv("pre_lopf_gens.csv")
+    n.links.to_csv("pre_lopf_links.csv")
 
     n.export_to_netcdf(snakemake.output[0])

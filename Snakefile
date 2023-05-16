@@ -30,7 +30,8 @@ CDIR = RDIR if not run.get("shared_cutouts") else ""
 
 LOGS = "logs/" + RDIR
 BENCHMARKS = "benchmarks/" + RDIR
-RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
+# RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
+RESOURCES = "resources/egs_test/"
 RESULTS = "results/" + RDIR
 
 
