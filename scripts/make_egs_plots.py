@@ -38,89 +38,6 @@ tech_colors.loc["urban central air heat pump"] = tech_colors.loc["heat pump"]
 tech_colors.loc["urban central gas boiler"] = tech_colors.loc["gas"]
 
 
-def plot_timeseries(n, plot_bus, plot_carrier, savefile=None):
-
-    if not plot_bus == "all":
-        buses = n.buses.loc[n.buses.location == plot_bus]
-    else:
-        buses = n.buses
-
-    buses = buses.loc[buses.carrier == plot_carrier].index.tolist()
-
-    energy_inflows = pd.DataFrame(index=n.generators_t.p.index)
-    inflow_links = n.links.loc[n.links.bus1.isin(buses)]
-
-    for carrier in inflow_links.carrier.unique():
-        mask = inflow_links.carrier == carrier
-        carrier_primary_flow = n.links_t.p0[inflow_links.loc[mask].index]
-
-        efficiency = n.links.loc[inflow_links.loc[mask].index].efficiency
-
-        energy_inflows[carrier] = n.links_t.p0[
-            inflow_links.loc[mask].index
-            ].multiply(efficiency).sum(axis=1)
-
-        carrier_flow = n.links_t.p0[
-            inflow_links.loc[mask].index
-            ].multiply(efficiency)
-        
-        energy_inflows[carrier] = carrier_flow.sum(axis=1)
-
-    gens = n.generators.loc[n.generators.bus.isin(buses)]
-
-    for carrier in gens.carrier.unique():
-        if carrier in energy_inflows.columns:
-            energy_inflows[carrier] += n.generators_t.p[gens.loc[n.generators.carrier == carrier].index].sum(axis=1)
-        else:
-            energy_inflows[carrier] = n.generators_t.p[gens.loc[n.generators.carrier == carrier].index].sum(axis=1)
-
-    # linkflow = n.links_t.p0[feedings]
-    energy_inflows = energy_inflows * 1e-3
-
-    energy_outflows = pd.DataFrame(np.minimum(energy_inflows.values, np.zeros_like(energy_inflows)),
-                                index=energy_inflows.index, columns=energy_inflows.columns)
-    energy_outflows = energy_outflows[energy_outflows.sum().loc[energy_outflows.sum() < 0.].index]
-
-    energy_inflows = pd.DataFrame(np.maximum(energy_inflows.values, np.zeros_like(energy_inflows)),
-                                index=energy_inflows.index, columns=energy_inflows.columns)
-    energy_inflows = energy_inflows[energy_inflows.std().sort_values().index]
-
-    fig, ax = plt.subplots(1, 1, figsize=(16, 5))
-
-    ax.stackplot(energy_inflows.index,
-                list(energy_inflows.values.T), 
-                edgecolor="grey",
-                linewidth=.8,
-                alpha=0.85,
-                colors=tech_colors.loc[energy_inflows.columns].values,
-                labels=energy_inflows.columns)
-
-    if not energy_outflows.empty:
-        ax.stackplot(energy_outflows.index,
-                    list(energy_outflows.values.T),
-                    edgecolor="grey",
-                    linewidth=.8,
-                    alpha=0.85,
-                    colors=tech_colors.loc[energy_outflows.columns].values,
-                    labels=energy_outflows.columns)
-
-    ax.set_xlabel("Datetime")
-    ax.set_ylabel("Generation [GW]")
-    ax.legend(
-        loc="upper center", bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=5
-    )
-
-    if plot_bus == "all":
-        ax.set_title(f"Contributions to load {plot_carrier}; Whole System")
-    else:
-        ax.set_title(f"Contributions to load {plot_carrier} at Bus {plot_bus}")
-
-    if savefile is not None:
-        plt.savefig(savefile)
-
-    plt.show()
-
-
 def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
 
     max_piechart_size = 3.  
@@ -232,7 +149,7 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
     capacity_totals.index = n.buses.loc[buses].location
     capacity_totals.index.name = None
 
-    carriers = energy_totals.columns
+    # carriers = energy_totals.columns
 
     energy_totals = energy_totals.stack()
     capacity_totals = capacity_totals.stack()
@@ -247,6 +164,15 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
 
             fig, ax = plt.subplots(subplot_kw={"projection": proj})
             fig.set_size_inches(8, 6)
+
+            quantity = quantity.unstack()
+
+            chp_cols = [col for col in quantity.columns if "CHP" in col]
+            quantity["CHP"] = quantity[chp_cols].sum(axis=1)
+            quantity = quantity.drop(columns=chp_cols)
+
+            carriers = quantity.columns 
+            quantity = quantity.stack()
         
             bus_sizes = quantity / quantity.groupby(level=0).sum().max() * max_piechart_size
 
@@ -341,6 +267,89 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
 
     if return_data:
         return energy_totals, capacity_totals, costs
+
+def plot_timeseries(n, plot_bus, plot_carrier, savefile=None):
+
+    if not plot_bus == "all":
+        buses = n.buses.loc[n.buses.location == plot_bus]
+    else:
+        buses = n.buses
+
+    buses = buses.loc[buses.carrier == plot_carrier].index.tolist()
+
+    energy_inflows = pd.DataFrame(index=n.generators_t.p.index)
+    inflow_links = n.links.loc[n.links.bus1.isin(buses)]
+
+    for carrier in inflow_links.carrier.unique():
+        mask = inflow_links.carrier == carrier
+        carrier_primary_flow = n.links_t.p0[inflow_links.loc[mask].index]
+
+        efficiency = n.links.loc[inflow_links.loc[mask].index].efficiency
+
+        energy_inflows[carrier] = n.links_t.p0[
+            inflow_links.loc[mask].index
+            ].multiply(efficiency).sum(axis=1)
+
+        carrier_flow = n.links_t.p0[
+            inflow_links.loc[mask].index
+            ].multiply(efficiency)
+        
+        energy_inflows[carrier] = carrier_flow.sum(axis=1)
+
+    gens = n.generators.loc[n.generators.bus.isin(buses)]
+
+    for carrier in gens.carrier.unique():
+        if carrier in energy_inflows.columns:
+            energy_inflows[carrier] += n.generators_t.p[gens.loc[n.generators.carrier == carrier].index].sum(axis=1)
+        else:
+            energy_inflows[carrier] = n.generators_t.p[gens.loc[n.generators.carrier == carrier].index].sum(axis=1)
+
+    # linkflow = n.links_t.p0[feedings]
+    energy_inflows = energy_inflows * 1e-3
+
+    energy_outflows = pd.DataFrame(np.minimum(energy_inflows.values, np.zeros_like(energy_inflows)),
+                                index=energy_inflows.index, columns=energy_inflows.columns)
+    energy_outflows = energy_outflows[energy_outflows.sum().loc[energy_outflows.sum() < 0.].index]
+
+    energy_inflows = pd.DataFrame(np.maximum(energy_inflows.values, np.zeros_like(energy_inflows)),
+                                index=energy_inflows.index, columns=energy_inflows.columns)
+    energy_inflows = energy_inflows[energy_inflows.std().sort_values().index]
+
+    fig, ax = plt.subplots(1, 1, figsize=(16, 5))
+
+    ax.stackplot(energy_inflows.index,
+                list(energy_inflows.values.T), 
+                edgecolor="grey",
+                linewidth=.8,
+                alpha=0.85,
+                colors=tech_colors.loc[energy_inflows.columns].values,
+                labels=energy_inflows.columns)
+
+    if not energy_outflows.empty:
+        ax.stackplot(energy_outflows.index,
+                    list(energy_outflows.values.T),
+                    edgecolor="grey",
+                    linewidth=.8,
+                    alpha=0.85,
+                    colors=tech_colors.loc[energy_outflows.columns].values,
+                    labels=energy_outflows.columns)
+
+    ax.set_xlabel("Datetime")
+    ax.set_ylabel("Generation [GW]")
+    ax.legend(
+        loc="upper center", bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=5
+    )
+
+    if plot_bus == "all":
+        ax.set_title(f"Contributions to load {plot_carrier}; Whole System")
+    else:
+        ax.set_title(f"Contributions to load {plot_carrier} at Bus {plot_bus}")
+
+    if savefile is not None:
+        plt.savefig(savefile)
+
+    plt.show()
+
 
 
 def get_geothermal_capacity_barchart(n):

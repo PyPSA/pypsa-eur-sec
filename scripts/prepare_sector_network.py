@@ -3252,6 +3252,11 @@ def add_egs_potential(n,
     costs_year = str(costs_year)
     config = snakemake.config
 
+    assert config["sector"]["egs_elec"] or config["sector"]["egs_dh"], (
+        "if config['sector']['egs'] is True, atleast one of egs_elec or"
+        "egs_dh need to be True as well."
+    )
+
     overlap_matrix = pd.read_csv(egs_overlap_matrix_file, index_col=0)
     indicator_matrix = pd.read_csv(egs_indicator_matrix_file, index_col=0)
     egs_potentials = pd.read_csv(egs_potentials_file)
@@ -3282,30 +3287,31 @@ def add_egs_potential(n,
     egs_potentials["p_nom_max"] = egs_potentials ["p_nom_max"] * 1000.0
     egs_potentials["capital_cost"] = egs_potentials ["capital_cost"] * 1000.0
 
-    n.add(
-        "Bus",
-        "EU geothermal heat bus",
-        carrier="geothermal heat",
-        unit="MWh_th",
-        location="EU",
-    )
+    if config["sector"]["egs_elec"]:
+        n.add(
+            "Bus",
+            "EU geothermal heat bus",
+            carrier="geothermal heat",
+            unit="MWh_th",
+            location="EU",
+        )
 
-    n.add(
-        "Generator",
-        "EU geothermal heat",
-        bus="EU geothermal heat bus",
-        carrier="geothermal heat",
-        p_nom_max=np.inf,
-        capital_cost=0.0,
-        marginal_cost=0.0,
-        p_nom_extendable=True,
-    )
-    # simulates low grade heat after geothermal electricity generation
-    # coupled to p_nom of geothermal electricity by constraint
-    # see solve_network.py
-    # used for district heating
-    if config["sector"]["egs_allow_district_heating"]:
+        n.add(
+            "Generator",
+            "EU geothermal heat",
+            bus="EU geothermal heat bus",
+            carrier="geothermal heat",
+            p_nom_max=np.inf,
+            capital_cost=0.0,
+            marginal_cost=0.0,
+            p_nom_extendable=True,
+        )
 
+    if config["sector"]["egs_dh"]:
+        # simulates low grade heat after geothermal electricity generation
+        # coupled to p_nom of geothermal electricity by constraint
+        # see solve_network.py
+        # used for district heating
         n.add(
             "Bus",
             "EU geothermal waste heat bus",
@@ -3339,7 +3345,7 @@ def add_egs_potential(n,
 
         if not len(bus_egs):
             continue
-        
+
         bus_egs["p_nom_max"] = bus_egs["p_nom_max"].multiply(overlaps)
         bus_egs = bus_egs.loc[bus_egs.p_nom_max > 0.]
         
@@ -3355,22 +3361,6 @@ def add_egs_potential(n,
         
         bus_egs.index = np.arange(len(bus_egs)).astype(str)
 
-        n.madd(
-            "Bus",
-            f"{bus} geothermal reservoir bus " + bus_egs.index,
-            carrier="geothermal heat",
-            unit="MWh_th",
-            location=bus,
-        )
-
-        n.madd(
-            "Store",
-            f"{bus} geothermal reservoir " + bus_egs.index,
-            bus=f"{bus} geothermal reservoir bus " + bus_egs.index,
-            e_nom=0,
-            e_nom_extendable=config["sector"]["flexible_egs"],
-        )
-
         p_nom_max = bus_egs["p_nom_max"]
         p_nom_max.index = f"{bus} geothermal injection well " + bus_egs.index
 
@@ -3385,52 +3375,73 @@ def add_egs_potential(n,
         else:
             capacity_factor = 1.
 
-        n.madd(
-            "Link",
-            f"{bus} geothermal injection well " + bus_egs.index,
-            bus0="EU geothermal heat bus",
-            bus1=f"{bus} geothermal reservoir bus " + bus_egs.index,
-            carrier="geothermal heat",
-            p_nom_extendable=True,
-            p_nom_max=p_nom_max / eta_el,
-            capital_cost=0.,
-            lifetime=costs.at["geothermal", "lifetime"],
-            efficiency=capacity_factor,
-        )
+        if config["sector"]["egs_elec"]:
 
-        if not config["sector"]["egs_fixed_capital_cost"]:
+            n.madd(
+                "Bus",
+                f"{bus} geothermal reservoir bus " + bus_egs.index,
+                carrier="geothermal heat",
+                unit="MWh_th",
+                location=bus,
+            )
 
-            p_nom_max = bus_egs["p_nom_max"]
-            p_nom_max.index = f"{bus} geothermal production well " + bus_egs.index
+            n.madd(
+                "Store",
+                f"{bus} geothermal reservoir " + bus_egs.index,
+                bus=f"{bus} geothermal reservoir bus " + bus_egs.index,
+                e_nom=0,
+                e_nom_extendable=config["sector"]["flexible_egs"],
+            )
 
-            capital_cost = bus_egs["capital_cost"]
-            capital_cost.index = f"{bus} geothermal production well " + bus_egs.index
-
-        n.madd(
-            "Link",
-            f"{bus} geothermal production well " + bus_egs.index,
-            bus0=f"{bus} geothermal reservoir bus " + bus_egs.index,
-            bus1=bus,
-            bus2="co2 atmosphere",
-            carrier="geothermal heat",
-            p_nom_extendable=True,
-            p_nom_max=p_nom_max / eta_el * 1.25,
-            capital_cost=capital_cost * eta_el,
-            efficiency=eta_el,
-            # efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
-            efficiency2=0.,
-            lifetime=costs.at["geothermal", "lifetime"],
-        )
-
-        if config["sector"]["egs_allow_district_heating"]:
+            n.madd(
+                "Link",
+                f"{bus} geothermal injection well " + bus_egs.index,
+                bus0="EU geothermal heat bus",
+                bus1=f"{bus} geothermal reservoir bus " + bus_egs.index,
+                carrier="geothermal heat",
+                p_nom_extendable=True,
+                p_nom_max=p_nom_max / eta_el,
+                capital_cost=0.,
+                lifetime=costs.at["geothermal", "lifetime"],
+                efficiency=capacity_factor,
+            )
 
             if not config["sector"]["egs_fixed_capital_cost"]:
-                capital_cost.index = f"{bus} geothermal district heat " + bus_egs.index
+
+                p_nom_max = bus_egs["p_nom_max"]
+                p_nom_max.index = f"{bus} geothermal production well " + bus_egs.index
+
+                capital_cost = bus_egs["capital_cost"]
+                capital_cost.index = f"{bus} geothermal production well " + bus_egs.index
+
+            n.madd(
+                "Link",
+                f"{bus} geothermal production well " + bus_egs.index,
+                bus0=f"{bus} geothermal reservoir bus " + bus_egs.index,
+                bus1=bus,
+                bus2="co2 atmosphere",
+                carrier="geothermal heat",
+                p_nom_extendable=True,
+                p_nom_max=p_nom_max / eta_el * 1.25,
+                capital_cost=capital_cost * eta_el,
+                efficiency=eta_el,
+                # efficiency2=costs.at["geothermal", "CO2 intensity"] * eta_el,
+                efficiency2=0.,
+                lifetime=costs.at["geothermal", "lifetime"],
+            )
+
+        if config["sector"]["egs_dh"]:
+
+
+            if config["sector"]["egs_fixed_dh_capital_cost"] is not None:
+                dh_capital_cost = config["sector"]["egs_fixed_dh_capital_cost"]
+                dh_p_nom_max = np.inf
+            else:
+                dh_capital_cost =  capital_cost * dh_cost * eta_dh  # costs as share of electric part (see Frey et al 2022)
+                dh_capital_cost.index = f"{bus} geothermal district heat " + bus_egs.index
                 dh_p_nom_max = bus_egs["dh_p_nom_max"]
                 dh_p_nom_max.index = f"{bus} geothermal district heat " + bus_egs.index
-            else:
-                dh_p_nom_max = np.inf
-
+    
             n.madd(
                 "Link",
                 f"{bus} geothermal district heat " + bus_egs.index,
@@ -3439,9 +3450,7 @@ def add_egs_potential(n,
                 carrier="geothermal waste heat",
                 p_nom_extendable=True,
                 p_nom_max=dh_p_nom_max / eta_el,
-                capital_cost=capital_cost
-                * dh_cost
-                * eta_dh,  # costs as share of electric part (see Frey et al 2022)
+                capital_cost=dh_capital_cost,
                 marginal_cost=0.0,
                 efficiency=eta_dh,
                 lifetime=costs.at["geothermal", "lifetime"],
@@ -3650,7 +3659,7 @@ if __name__ == "__main__":
             co2_emissions=0.,
         )
 
-        if snakemake.config["sector"]["egs_allow_district_heating"]:
+        if snakemake.config["sector"]["egs_dh"]:
             n.add(
                 "Carrier",
                 "geothermal waste heat",

@@ -92,3 +92,22 @@
     - Wildly varying numbers observed in a field survey 2001 between 4 to 740 gCO2/kWhel
     - LCA estimates CO2 equivalent emissions are less than 50 g/kWhel, less than 80 g/kWhel for projected EGS, and between 14 and 202 g/kWh_th for district heating systems and GHPs.
 
+## On induced seismicity 
+
+### __Induced seismicity associated with Enhanced Geothermal Systems__
+2007, 800 citations, Majer et al., [link](https://www.sciencedirect.com/science/article/pii/S0375650507000387)
+
+- "We conclude that EGS-induced seismicity need not pose a threat to the development of geothermal energy resources if site selection is carried out properly, community issues are handled adequately and operators understand the underlying mechanisms causing the events".
+- Elaborations on Basel and the Geyers in CA indicate that induced seismicity is more likely in the proximity of faultlines.
+
+### __Review of induced seismicity in geothermal systems worldwide and implications for geothermal systems in the Netherlands__
+2019, 45 citations, Buijze et al, [link](https://www.cambridge.org/core/journals/netherlands-journal-of-geosciences/article/review-of-induced-seismicity-in-geothermal-systems-worldwide-and-implications-for-geothermal-systems-in-the-netherlands/FAF7C70E8F2DAF8DDC18B84B18BF146B)
+
+- "The case study review shows that doublets that circulate fluids through relatively shallow, porous, sedimentary aquifers far from the crystalline basement are unlikely to generate felt seismic events. "
+- "On the other hand, stimulations or circulations in or near competent, fractured, basement rocks and production and reinjection operations in high-temperature geothermal fields are more prone to induce felt events, occasionally with magnitudes of M > 5.0."
+- "The presence of large, optimally oriented and critically stressed faults increases the potential for induced seismicity."
+- [Database of human induced earthquakes.](http://inducedearthquakes.org/)
+- Key parameters of induced seismicity: rock type, injection pressure
+- Strong induced seismic events have been observed for various types of rock
+- "The majority of felt seismic events occurred in geothermal systems in tectonically active, convection-dominated settings, both in hydrothermal systems and petrothermal systems (EGS). Also petrothermal systems in tectonically inactive regions generated felt seismicity. Hot sedimentary aquifers in tectonically inactive, conduction-dominated settings, on the other hand, mostly did not generate felt seismicity, unless operations occurred close to competent (crystalline) basement rocks."
+- " Seismicity with M > 2.0 becomes more likely when operations cause stress changes on critically stressed faults (which are often found in the crystalline basement), or when stress perturbations are transmitted from sedimentary formations to the crystalline basement, e.g. if a hydraulic connection exists. The larger the pressure and temperature perturbations and the area over which they act, the larger is the chance of affecting a critically stressed fault or bringing a fault to failure.  Operations in porous sandstone aquifers interbedded with clayrich layers far from the basement are less likely to generate felt seismic events as pressure changes are lower and a hydraulic connection to the basement is often less likely."
