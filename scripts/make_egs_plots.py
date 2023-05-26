@@ -38,21 +38,12 @@ tech_colors.loc["urban central air heat pump"] = tech_colors.loc["heat pump"]
 tech_colors.loc["urban central gas boiler"] = tech_colors.loc["gas"]
 
 
-def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
+def get_network_data(n, demand_vector):
 
-    max_piechart_size = 3.  
-
-    n = network.copy()
-    assign_location(n)
-
-    map_opts = config["plotting"]["map"]
-    map_opts["color_geomap"]["ocean"] = "powderblue"
-    map_opts["color_geomap"]["land"] = "oldlace"
-    
-    buses = n.buses.loc[n.buses.carrier == loadpoint].index.to_list()
+    buses = n.buses.loc[n.buses.carrier == demand_vector].index.to_list()
     energy_totals = list()
     capacity_totals = list()
-
+        
     costs = pd.DataFrame(index=buses)
 
     gens = n.generators.loc[n.generators.bus.isin(buses)]
@@ -117,22 +108,27 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
 
     energy_totals.index = buses
     capacity_totals.index = buses
+    
+    return costs.unstack(), capacity_totals, energy_totals
+
+
+def plot_geothermal_map(network, demand_vector, return_data=False, do_plot=True):
+
+    max_piechart_size = 3.
+
+    n = network.copy()
+    assign_location(n)
+
+    map_opts = config["plotting"]["map"]
+    map_opts["color_geomap"]["ocean"] = "powderblue"
+    map_opts["color_geomap"]["land"] = "oldlace"
+    
+    buses = n.buses.loc[n.buses.carrier == demand_vector].index.to_list()
+
+    cost_totals, capacity_totals, energy_totals = get_network_data(n, demand_vector)
 
     proj = ccrs.EqualEarth()
 
-    # regions = regions.to_crs(proj.proj4_init)
-
-    """
-    linewidth_factor = 0
-    line_lower_threshold = 0
-    
-    ac_color = "rosybrown"
-    dc_color = "darkseagreen"
-
-    line_widths = n.lines.s_nom_opt - n.lines.s_nom
-    link_widths = n.links.p_nom_opt - n.links.p_nom
-    """
-    
     # hack because impossible to drop buses...
     eu_location = config["plotting"].get(
         "eu_node_location", dict(x=-5.5, y=46)
@@ -153,13 +149,14 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
 
     energy_totals = energy_totals.stack()
     capacity_totals = capacity_totals.stack()
+    cost_totals = cost_totals.stack()
 
     n.buses.drop(n.buses.index[n.buses.carrier != "AC"], inplace=True)
 
     if do_plot:
         
         for quantity, title in zip(
-            [energy_totals, capacity_totals, costs], 
+            [energy_totals, capacity_totals, cost_totals], 
             ["Energy Totals", "Capacity Totals", "Capacity Expansion Costs"]):
 
             fig, ax = plt.subplots(subplot_kw={"projection": proj})
@@ -175,14 +172,14 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
             quantity = quantity.stack()
         
             bus_sizes = quantity / quantity.groupby(level=0).sum().max() * max_piechart_size
-
+    
             n.plot(
                 bus_sizes=bus_sizes,
                 bus_colors=tech_colors,
                 ax=ax,
                 **map_opts,
             )
-            ax.set_title(title + f" For {loadpoint}")
+            ax.set_title(title + f" For {demand_vector}")
 
             legend_kw = dict(
                 bbox_to_anchor=(1.52, 1.04),
@@ -227,10 +224,14 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
             ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=45, ha="right")
             plt.show()
 
-            idx = pd.IndexSlice
-            gt = quantity.loc[idx[:,"geothermal heat"]]
-
             totals = quantity.groupby(level=0).sum()
+
+            idx = pd.IndexSlice
+            try:
+                gt = quantity.loc[idx[:,"geothermal heat"]]
+            except KeyError:
+                gt = pd.Series(np.zeros(len(totals)), index=totals.index)
+            
             totals = pd.concat((totals, pd.Series({"EU": totals.sum()})))
             
             diff = totals.drop(index=["EU"]).index.difference(gt.index)
@@ -266,7 +267,8 @@ def plot_geothermal_map(network, loadpoint, return_data=False, do_plot=True):
             plt.show()
 
     if return_data:
-        return energy_totals, capacity_totals, costs
+        return cost_totals.unstack(), capacity_totals.unstack(), energy_totals.unstack()
+
 
 def plot_timeseries(n, plot_bus, plot_carrier, savefile=None):
 
@@ -358,8 +360,6 @@ def get_geothermal_capacity_barchart(n):
     pnomopt = gt.groupby("bus1").sum()[["p_nom_opt"]] * 1e-3 * 0.1
     pnomopt["bus1"] = pnomopt.index
     
-    print(pnomopt.head())
-
     fig, ax = plt.subplots(1, 1, figsize=(16, 4))
 
     sns.barplot(data=pnomopt,

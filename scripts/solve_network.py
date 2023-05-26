@@ -613,7 +613,12 @@ def extra_functionality(n, snapshots):
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
     add_pipe_retrofit_constraint(n)
-    # add_geothermal_chp_constraints(n)
+
+    # I apologize for these lines
+    if (config["sector"]["egs_elec"] and config["sector"]["egs_dh"]) & \
+        (int(isinstance(config["sector"]["egs_fixed_capital_cost"], int)) + \
+         int(isinstance(config["sector"]["egs_dh_fixed_capital_cost"], int)) != 1.):
+        add_geothermal_chp_constraints(n)
 
 
 def solve_network(n, config, opts="", **kwargs):

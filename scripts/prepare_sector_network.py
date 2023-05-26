@@ -3253,7 +3253,7 @@ def add_egs_potential(n,
     config = snakemake.config
 
     assert config["sector"]["egs_elec"] or config["sector"]["egs_dh"], (
-        "if config['sector']['egs'] is True, atleast one of egs_elec or"
+        "if config['sector']['egs'] is True, atleast one of egs_elec or "
         "egs_dh need to be True as well."
     )
 
@@ -3329,6 +3329,10 @@ def add_egs_potential(n,
             marginal_cost=0.0,
             p_nom_extendable=True,
         )
+
+    if ((config["sector"]["egs_fixed_capital_cost"] is not None) or
+       (config["sector"]["egs_dh_fixed_capital_cost"] is not None)):
+        overlap_matrix.iloc[:,0] = np.ones(len(overlap_matrix)) 
 
     for bus, overlaps in overlap_matrix.iterrows():
 
@@ -3432,9 +3436,8 @@ def add_egs_potential(n,
 
         if config["sector"]["egs_dh"]:
 
-
-            if config["sector"]["egs_fixed_dh_capital_cost"] is not None:
-                dh_capital_cost = config["sector"]["egs_fixed_dh_capital_cost"]
+            if config["sector"]["egs_dh_fixed_capital_cost"] is not None:
+                dh_capital_cost = config["sector"]["egs_dh_fixed_capital_cost"]
                 dh_p_nom_max = np.inf
             else:
                 dh_capital_cost =  capital_cost * dh_cost * eta_dh  # costs as share of electric part (see Frey et al 2022)
@@ -3447,7 +3450,7 @@ def add_egs_potential(n,
                 f"{bus} geothermal district heat " + bus_egs.index,
                 bus0="EU geothermal waste heat bus",
                 bus1=f"{bus} urban central heat",
-                carrier="geothermal waste heat",
+                carrier="geothermal heat",
                 p_nom_extendable=True,
                 p_nom_max=dh_p_nom_max / eta_el,
                 capital_cost=dh_capital_cost,
@@ -3658,16 +3661,6 @@ if __name__ == "__main__":
             # co2_emissions=costs.loc["geothermal", "CO2 intensity"],
             co2_emissions=0.,
         )
-
-        if snakemake.config["sector"]["egs_dh"]:
-            n.add(
-                "Carrier",
-                "geothermal waste heat",
-                nice_name="Geothermal Waste Heat",
-                color=snakemake.config["plotting"]["tech_colors"]["geothermal waste heat"],
-                # emissions through geothermal heat
-                co2_emissions=0.0,
-            )
 
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
