@@ -3482,6 +3482,112 @@ def add_egs_potential(n,
     # electricity generation.
 
 
+def add_sweep_egs(n, snakemake, costs):
+
+    config = snakemake.config
+    nodes = pop_layout.index
+
+    config = snakemake.config    
+
+    dr = config["costs"]["fill_values"]["discount rate"]
+    lt = costs.at["geothermal", "lifetime"]
+    annuity_factor = annuity(lt, r=dr)
+
+    # annuitizing costs
+    injection_well_cost = annuity_factor * config["sector"]["egs_drilling_capex"] / 2.
+    production_well_cost = annuity_factor * config["sector"]["egs_drilling_capex"] / 2.
+    district_heating_cost = annuity_factor * config["sector"]["egs_district_heating_capex"]
+    orc_cost = annuity_factor * config["sector"]["egs_orc_capex"]
+
+    # fixing units Euro/kW -> Euro/MW
+    injection_well_cost = injection_well_cost * 1000.
+    production_well_cost = production_well_cost * 1000.
+    district_heating_cost = district_heating_cost * 1000.
+    orc_cost = orc_cost * 1000.
+
+    n.add(
+        "Bus",
+        "EU geothermal heat bus",
+        carrier="geothermal heat",
+        unit="MWh_th",
+        location="EU", 
+        )
+
+    n.add(
+        "Generator",
+        "EU geothermal heat",
+        bus="EU geothermal heat bus",
+        carrier="geothermal heat",
+        p_nom_max=np.inf,
+        capital_cost=0.0,
+        marginal_cost=0.0,
+        p_nom_extendable=True,
+    )
+
+    n.madd(
+        "Bus",
+        nodes,
+        suffix=" geothermal reservoir bus",
+        carrier="geothermal heat",
+        unit="MWh_th",
+        location=nodes,
+        )
+
+    n.madd(
+        "Link",
+        nodes,
+        suffix=" geothermal injection well",
+        bus0="EU geothermal heat bus",
+        bus1=nodes + " geothermal reservoir bus",
+        location=nodes,
+        capital_cost=injection_well_cost,
+        p_nom_extendable=True,
+    )
+
+    n.madd(
+        "Bus",
+        nodes,
+        suffix=" geothermal surface bus",
+        carrier="geothermal heat",
+        unit="MWh_th",
+        location=nodes,
+        )
+
+    n.madd(
+        "Link",
+        nodes,
+        suffix=" geothermal production well",
+        bus0=nodes + " geothermal reservoir bus",
+        bus1=nodes + " geothermal surface bus",
+        location=nodes,
+        capital_cost=production_well_cost,
+        p_nom_extendable=True,
+    )
+
+    n.madd(
+        "Link",
+        nodes,
+        suffix=" geothermal orc plant",
+        bus0=nodes + " geothermal surface bus",
+        bus1=nodes,
+        efficiency=costs.at["geothermal", "efficiency electricity"],
+        location=nodes,
+        capital_cost=orc_cost,
+        p_nom_extendable=True,
+    )
+
+    n.madd(
+        "Link",
+        nodes,
+        suffix=" geothermal district heating",
+        bus0=nodes + " geothermal surface bus",
+        bus1=nodes + " urban central heat",
+        efficiency=costs.at["geothermal", "efficiency residential heat"],
+        location=nodes,
+        capital_cost=district_heating_cost,
+        p_nom_extendable=True,
+    )
+
 
 # %%
 if __name__ == "__main__":
@@ -3665,16 +3771,23 @@ if __name__ == "__main__":
         logger.info("Adding Enhanced Geothermal Potential")
         costs_year = snakemake.config["costs"]["year"]
 
-        add_egs_potential(
-            n,
-            costs_year,
-            snakemake.input["egs_potentials"],
-            snakemake.input["egs_overlap_matrix"],
-            snakemake.input["egs_indicator_matrix"],
-            snakemake.input["egs_capacity_factors"],
-            snakemake,
-            costs
-        )
+
+        assert not (options.get("egs_potential_run") and options.get("egs_sweep_run"))
+        
+        if options.get("egs_potential_run"):
+            add_egs_potential(
+                n,
+                costs_year,
+                snakemake.input["egs_potentials"],
+                snakemake.input["egs_overlap_matrix"],
+                snakemake.input["egs_indicator_matrix"],
+                snakemake.input["egs_capacity_factors"],
+                snakemake,
+                costs
+            )
+
+        if options.get("egs_sweep_run"):
+            add_sweep_egs(n, snakemake, costs)
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
 
