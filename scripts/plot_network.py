@@ -48,13 +48,19 @@ def assign_location(n):
             c.df.loc[names, 'location'] = names.str[:i]
 
 
-def plot_map(network, components=["links", "stores", "storage_units", "generators"],
+def plot_map(network, regions, components=["links", "stores", "storage_units", "generators"],
              bus_size_factor=1.7e10, transmission=False, with_legend=True):
 
     tech_colors = snakemake.config['plotting']['tech_colors']
 
     n = network.copy()
     assign_location(n)
+
+    battery_storage = n.stores.loc[n.stores.carrier.str.contains('battery')]
+    location = battery_storage.bus.map(n.buses.location)
+    regions["battery"] = battery_storage.groupby(location).e_nom_opt.sum().div(1e3) # GWh
+    regions["battery"] = regions["battery"].where(regions["battery"] > 0.1)
+
     # Drop non-electric buses so they don't clutter the plot
     n.buses.drop(n.buses.index[n.buses.carrier != "AC"], inplace=True)
 
@@ -120,7 +126,7 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
         # should be zero
         line_widths = n.lines.s_nom_opt - n.lines.s_nom
         link_widths = n.links.p_nom_opt - n.links.p_nom
-        title = "added grid"
+        title = "grid expansion"
 
         if transmission:
             line_widths = n.lines.s_nom_opt
@@ -131,7 +137,7 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
     else:
         line_widths = n.lines.s_nom_opt - n.lines.s_nom_min
         link_widths = n.links.p_nom_opt - n.links.p_nom_min
-        title = "added grid"
+        title = "grid expansion"
 
         if transmission:
             line_widths = n.lines.s_nom_opt
@@ -144,8 +150,10 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
     line_widths[line_widths > line_upper_threshold] = line_upper_threshold
     link_widths[link_widths > line_upper_threshold] = line_upper_threshold
 
-    fig, ax = plt.subplots(subplot_kw={"projection": ccrs.EqualEarth()})
-    fig.set_size_inches(7, 6)
+    proj = ccrs.EqualEarth()
+
+    fig, ax = plt.subplots(figsize=(7, 6), subplot_kw={"projection": proj})
+    regions = regions.to_crs(proj.proj4_init)
 
     n.plot(
         bus_sizes=costs / bus_size_factor,
@@ -157,14 +165,31 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
         ax=ax,  **map_opts
     )
 
+    regions.plot(
+        ax=ax,
+        column="battery",
+        cmap='Greens',
+        linewidths=0,
+        legend=True,
+        vmax=120,
+        vmin=0,
+        legend_kwds={
+            "label": "Battery Storage [GWh]",
+            "shrink": 0.4,
+            "extend": "max",
+            "orientation": "horizontal",
+            "pad": -0.04,
+        },
+    )
+
     sizes = [20, 10, 5]
-    labels = [f"{s} bEUR/a" for s in sizes]
+    labels = [f"{s} bn€/a" for s in sizes]
     sizes = [s/bus_size_factor*1e9 for s in sizes]
 
     legend_kw = dict(
         loc="upper left",
-        bbox_to_anchor=(0.01, 1.06),
-        labelspacing=0.8,
+        bbox_to_anchor=(0.01, 1.07),
+        labelspacing=0.7,
         frameon=False,
         handletextpad=0,
         title='system cost',
@@ -186,9 +211,9 @@ def plot_map(network, components=["links", "stores", "storage_units", "generator
 
     legend_kw = dict(
         loc="upper left",
-        bbox_to_anchor=(0.27, 1.06),
+        bbox_to_anchor=(0.27, 1.07),
         frameon=False,
-        labelspacing=0.8,
+        labelspacing=0.7,
         handletextpad=1,
         title=title
     )
@@ -828,9 +853,9 @@ if __name__ == "__main__":
             'plot_network',
             simpl='',
             clusters="181",
-            lv='opt',
+            lv='1.0',
             opts='',
-            sector_opts='Co2L0-730H-T-H-B-I-A-solar+p3-linemaxext10',
+            sector_opts='Co2L0-25H-T-H-B-I-A-solar+p3-linemaxext15-seq1000-CF+sector+co2network+false',
             planning_horizons="2050",
         )
 
@@ -841,9 +866,9 @@ if __name__ == "__main__":
 
     map_opts = snakemake.config['plotting']['map']
 
-    plot_map(n,
+    plot_map(n, regions,
         components=["generators", "links", "stores", "storage_units"],
-        bus_size_factor=2e10,
+        bus_size_factor=2.5e10,
         transmission=False
     )
 
