@@ -3496,14 +3496,19 @@ def add_sweep_egs(n, snakemake, costs):
     # annuitizing costs
     injection_well_cost = annuity_factor * config["sector"]["egs_drilling_capex"] / 2.
     production_well_cost = annuity_factor * config["sector"]["egs_drilling_capex"] / 2.
-    district_heating_cost = annuity_factor * config["sector"]["egs_district_heating_capex"]
+    # district_heating_cost = annuity_factor * config["sector"]["egs_district_heating_capex"]
     orc_cost = annuity_factor * config["sector"]["egs_orc_capex"]
+    
+    dh_maxcost = annuity_factor * config["sector"]["egs_district_heating_max_cost"]
+    dh_steps = config["sector"]["egs_district_heating_cost_steps"]
+    dh_costrange = np.linspace(0, dh_maxcost, dh_steps)
+    print("costrange we are working with")
+    print(dh_costrange)
 
     # fixing units Euro/kW -> Euro/MW
     injection_well_cost = injection_well_cost * 1000.
     production_well_cost = production_well_cost * 1000.
-    district_heating_cost = district_heating_cost * 1000.
-    orc_cost = orc_cost * 1000.
+    # district_heating_cost = district_heating_cost * 1000.
 
     n.add(
         "Bus",
@@ -3576,17 +3581,24 @@ def add_sweep_egs(n, snakemake, costs):
         p_nom_extendable=True,
     )
 
-    n.madd(
-        "Link",
-        nodes,
-        suffix=" geothermal district heating",
-        bus0=nodes + " geothermal surface bus",
-        bus1=nodes + " urban central heat",
-        efficiency=costs.at["geothermal", "efficiency residential heat"],
-        location=nodes,
-        capital_cost=district_heating_cost,
-        p_nom_extendable=True,
-    )
+    p_nom_max = n.loads_t.p_set[
+        (nodes + " urban central heat").tolist()
+        ].max(axis=0) / dh_steps
+
+    for i, cc in enumerate(dh_costrange): 
+
+        n.madd(
+            "Link",
+            nodes,
+            suffix=f" geothermal district heating {i}",
+            bus0=nodes + " geothermal surface bus",
+            bus1=nodes + " urban central heat",
+            efficiency=costs.at["geothermal", "efficiency residential heat"],
+            location=nodes,
+            capital_cost=cc * costs.at["geothermal", "efficiency residential heat"],
+            p_nom_extendable=True,
+            p_nom_max=p_nom_max,
+        )
 
 
 # %%

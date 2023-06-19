@@ -112,7 +112,7 @@ def get_network_data(n, demand_vector):
     return costs.unstack(), capacity_totals, energy_totals
 
 
-def plot_geothermal_map(network, demand_vector, return_data=False, do_plot=True):
+def plot_geothermal_map(network, demand_vector, return_data=False):
 
     max_piechart_size = 3.
 
@@ -152,119 +152,117 @@ def plot_geothermal_map(network, demand_vector, return_data=False, do_plot=True)
     cost_totals = cost_totals.stack()
 
     n.buses.drop(n.buses.index[n.buses.carrier != "AC"], inplace=True)
-
-    if do_plot:
-        
-        for quantity, title in zip(
-            [energy_totals, capacity_totals, cost_totals], 
-            ["Energy Totals", "Capacity Totals", "Capacity Expansion Costs"]):
-
-            fig, ax = plt.subplots(subplot_kw={"projection": proj})
-            fig.set_size_inches(8, 6)
-
-            quantity = quantity.unstack()
-
-            chp_cols = [col for col in quantity.columns if "CHP" in col]
-            quantity["CHP"] = quantity[chp_cols].sum(axis=1)
-            quantity = quantity.drop(columns=chp_cols)
-
-            carriers = quantity.columns 
-            quantity = quantity.stack()
-        
-            bus_sizes = quantity / quantity.groupby(level=0).sum().max() * max_piechart_size
     
-            n.plot(
-                bus_sizes=bus_sizes,
-                bus_colors=tech_colors,
-                ax=ax,
-                **map_opts,
-            )
-            ax.set_title(title + f" For {demand_vector}")
+    for quantity, title in zip(
+        [energy_totals, capacity_totals, cost_totals], 
+        ["Energy Totals", "Capacity Totals", "Capacity Expansion Costs"]):
 
-            legend_kw = dict(
-                bbox_to_anchor=(1.52, 1.04),
-                frameon=False,
-            )
+        fig, ax = plt.subplots(subplot_kw={"projection": proj})
+        fig.set_size_inches(8, 6)
 
-            colors = [tech_colors[c] for c in carriers]
-            labels = carriers
+        quantity = quantity.unstack()
 
-            add_legend_patches(
-                ax,
-                colors,
-                labels,
-                legend_kw=legend_kw,
-            )
+        chp_cols = [col for col in quantity.columns if "CHP" in col]
+        quantity["CHP"] = quantity[chp_cols].sum(axis=1)
+        quantity = quantity.drop(columns=chp_cols)
 
-            plt.show()
+        carriers = quantity.columns 
+        quantity = quantity.stack()
+    
+        bus_sizes = quantity / quantity.groupby(level=0).sum().max() * max_piechart_size
 
-            fig, ax = plt.subplots(1, 1, figsize=(16, 4))
+        n.plot(
+            bus_sizes=bus_sizes,
+            bus_colors=tech_colors,
+            ax=ax,
+            **map_opts,
+        )
+        ax.set_title(title + f" For {demand_vector}")
 
-            barchart_df = pd.DataFrame(index=quantity.groupby(level=1).sum().index)
-            barchart_df["value"] = quantity.groupby(level=1).sum()
-            barchart_df["x"] = barchart_df.index
-            
-            sns.barplot(data=barchart_df,
-                        y="value",
-                        x="x",
-                        ax=ax,
-                        edgecolor="k",
-                        linewidth=.8,
-                        )
-            
-            for bar, tech in zip(ax.patches, barchart_df.index):
-                bar.set_color(tech_colors[tech])
-                bar.set_edgecolor("k")
-                bar.set_linewidth(.8)
-                bar.set_alpha(.8)
+        legend_kw = dict(
+            bbox_to_anchor=(1.52, 1.04),
+            frameon=False,
+        )
 
-            ax.set_ylabel(title)
-            ax.set_xlabel("Technology")
-            
-            ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=45, ha="right")
-            plt.show()
+        colors = [tech_colors[c] for c in carriers]
+        labels = carriers
 
-            totals = quantity.groupby(level=0).sum()
+        add_legend_patches(
+            ax,
+            colors,
+            labels,
+            legend_kw=legend_kw,
+        )
 
-            idx = pd.IndexSlice
-            try:
-                gt = quantity.loc[idx[:,"geothermal heat"]]
-            except KeyError:
-                gt = pd.Series(np.zeros(len(totals)), index=totals.index)
-            
-            totals = pd.concat((totals, pd.Series({"EU": totals.sum()})))
-            
-            diff = totals.drop(index=["EU"]).index.difference(gt.index)
-            gt = pd.concat((
-                gt, 
-                pd.Series(np.zeros_like(diff), index=diff), 
-                pd.Series({"EU": gt.sum()})))
+        plt.show()
 
-            percentages = pd.DataFrame(gt.divide(totals).values, index=gt.index, columns=["%"])
-            percentages["bus"] = percentages.index
+        fig, ax = plt.subplots(1, 1, figsize=(16, 4))
 
-            fig, ax = plt.subplots(1, 1, figsize=(16, 4))
-            sns.barplot(percentages,
-                        x="bus",
-                        y="%",
-                        color=tech_colors["geothermal heat"]
-                        )
+        barchart_df = pd.DataFrame(index=quantity.groupby(level=1).sum().index)
+        barchart_df["value"] = quantity.groupby(level=1).sum()
+        barchart_df["x"] = barchart_df.index
+        
+        sns.barplot(data=barchart_df,
+                    y="value",
+                    x="x",
+                    ax=ax,
+                    edgecolor="k",
+                    linewidth=.8,
+                    )
+        
+        for bar, tech in zip(ax.patches, barchart_df.index):
+            bar.set_color(tech_colors[tech])
+            bar.set_edgecolor("k")
+            bar.set_linewidth(.8)
+            bar.set_alpha(.8)
 
-            for bar in ax.patches:
-                bar.set_edgecolor("k")
-                bar.set_linewidth(.8)
-                bar.set_alpha(.8)
+        ax.set_ylabel(title)
+        ax.set_xlabel("Technology")
+        
+        ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=45, ha="right")
+        plt.show()
 
-            ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=45, ha="right")
+        totals = quantity.groupby(level=0).sum()
 
-            total_share = np.around(percentages.loc["EU", "%"]*100, decimals=2)
-            ax.set_title(f"{title}; Whole System Share: {total_share}%")
-            ax.set_ylabel(r"Share of EGS [%]")
-            ax.set_xlabel(r"Bus")
-            
-            ax.set_ylim(0, 1.)
+        idx = pd.IndexSlice
+        try:
+            gt = quantity.loc[idx[:,"geothermal heat"]]
+        except KeyError:
+            gt = pd.Series(np.zeros(len(totals)), index=totals.index)
+        
+        totals = pd.concat((totals, pd.Series({"EU": totals.sum()})))
+        
+        diff = totals.drop(index=["EU"]).index.difference(gt.index)
+        gt = pd.concat((
+            gt, 
+            pd.Series(np.zeros_like(diff), index=diff), 
+            pd.Series({"EU": gt.sum()})))
 
-            plt.show()
+        percentages = pd.DataFrame(gt.divide(totals).values, index=gt.index, columns=["%"])
+        percentages["bus"] = percentages.index
+
+        fig, ax = plt.subplots(1, 1, figsize=(16, 4))
+        sns.barplot(percentages,
+                    x="bus",
+                    y="%",
+                    color=tech_colors["geothermal heat"]
+                    )
+
+        for bar in ax.patches:
+            bar.set_edgecolor("k")
+            bar.set_linewidth(.8)
+            bar.set_alpha(.8)
+
+        ax.set_xticks(ax.get_xticks(), ax.get_xticklabels(), rotation=45, ha="right")
+
+        total_share = np.around(percentages.loc["EU", "%"]*100, decimals=2)
+        ax.set_title(f"{title}; Whole System Share: {total_share}%")
+        ax.set_ylabel(r"Share of EGS [%]")
+        ax.set_xlabel(r"Bus")
+        
+        ax.set_ylim(0, 1.)
+
+        plt.show()
 
     if return_data:
         return cost_totals.unstack(), capacity_totals.unstack(), energy_totals.unstack()
